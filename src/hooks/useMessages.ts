@@ -41,14 +41,14 @@ export function useMessages(chatId?: string) {
       .channel(`chat:${chatId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
         async (payload) => {
-          // Fetch the full message with reply data
-          const { data: fullMsg } = await supabase
-            .from('messages')
-            .select('*, reply:reply_to(id, content, sender_id)')
-            .eq('id', payload.new.id)
-            .single()
-          
-          setMessages((prev) => [...prev, fullMsg || payload.new])
+          // If we already have this message (optimistic update), we just update its status
+          setMessages((prev) => {
+            const exists = prev.find(m => m.id === payload.new.id || (m.status === 'sending' && m.content === payload.new.content && m.sender_id === payload.new.sender_id));
+            if (exists) {
+              return prev.map(m => m.id === exists.id ? { ...payload.new, status: 'sent' } : m);
+            }
+            return [...prev, payload.new];
+          });
           
           const { data: { user } } = await supabase.auth.getUser()
           if (payload.new.sender_id !== user?.id) {
@@ -70,18 +70,47 @@ export function useMessages(chatId?: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user || !chatId) return
 
+    const tempId = `temp-${Date.now()}`
     const msgData: any = {
       chat_id: chatId,
       sender_id: user.id,
       content,
       media_url: mediaUrl,
       media_type: mediaType,
-      status: 'sent',
+      status: 'sending',
+      created_at: new Date().toISOString(),
     }
     if (replyTo) msgData.reply_to = replyTo
 
-    const { error } = await supabase.from('messages').insert(msgData)
-    return { error }
+    // Optimistic Update
+    setMessages((prev) => [...prev, msgData])
+
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        chat_id: chatId,
+        sender_id: user.id,
+        content,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        status: 'sent',
+        reply_to: replyTo
+      })
+      .select()
+      .single()
+
+    if (error) {
+      // Remove optimistic message on error
+      setMessages((prev) => prev.filter(m => m.id !== tempId))
+      return { error }
+    }
+
+    if (data) {
+      // Update the optimistic message with the real data
+      setMessages((prev) => prev.map(m => m.status === 'sending' && m.content === content ? data : m))
+    }
+
+    return { error: null }
   }
 
   const forwardMessage = async (messageContent: string, targetChatId: string, mediaUrl?: string, mediaType?: string) => {

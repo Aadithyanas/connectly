@@ -1,7 +1,7 @@
 'use client'
 
 import { format } from 'date-fns'
-import { Check, CheckCheck, FileText, PlayCircle, Reply, Forward, ChevronDown, X } from 'lucide-react'
+import { Check, CheckCheck, FileText, PlayCircle, Reply, Forward, ChevronDown, X, Clock } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
@@ -14,7 +14,7 @@ interface Message {
   content: string
   sender_id: string
   created_at: string
-  status: 'sent' | 'delivered' | 'seen'
+  status: 'sending' | 'sent' | 'delivered' | 'seen'
   media_url?: string
   media_type?: string
   reply_to?: string
@@ -86,7 +86,7 @@ export default function MessageList({ messages, currentUserId, otherUserAvatar, 
  
                 {/* Message Bubble */}
                 <div
-                   className={`p-1.5 rounded-xl shadow-sm relative w-fit ${
+                   className={`p-1.5 rounded-xl shadow-sm relative w-fit min-w-[85px] ${
                      isOwn ? 'text-[#e9edef] rounded-tr-none' : 'text-[#e9edef] rounded-tl-none'
                    }`}
                   style={{ backgroundColor: isLoaded ? (isOwn ? settings.sentBubbleColor : settings.receivedBubbleColor) : (isOwn ? '#005c4b' : '#202c33') }}
@@ -151,33 +151,35 @@ export default function MessageList({ messages, currentUserId, otherUserAvatar, 
                     </div>
                   )}
 
-                  {/* Content */}
-                  {message.content && (
-                    <div className="relative pr-2">
-                       <p className={`px-1 leading-relaxed whitespace-pre-wrap break-words ${message.content.length < 15 ? 'pr-12' : 'pb-4'} ${
+                  {/* Content & Footer Area */}
+                  <div className="flex flex-col relative">
+                    {message.content && (
+                      <p className={`px-1 leading-relaxed whitespace-pre-wrap break-words pb-4 ${
                         !isLoaded || settings.textSize === 'medium' ? 'text-[14.5px]' : settings.textSize === 'small' ? 'text-[13px]' : 'text-[16px]'
                       }`}>
                         {message.content}
                       </p>
-                    </div>
-                  )}
-
-                  {/* Footer: Time + Ticks */}
-                  <div className={`flex items-center gap-1.5 absolute bottom-1 right-2 ${message.media_url && !message.content ? 'bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full ring-1 ring-white/10' : ''}`}>
-                    <span className="text-[10px] text-[#e9edef]/60 tabular-nums lowercase select-none whitespace-nowrap">
-                      {format(new Date(message.created_at), 'h:mm a')}
-                    </span>
-                    {isOwn && (
-                      <div className="flex items-center">
-                        {message.status === 'sent' ? (
-                          <Check className="w-3.5 h-3.5 text-[#e9edef]/40" />
-                        ) : message.status === 'delivered' ? (
-                          <CheckCheck className="w-4 h-4 text-[#e9edef]/40" />
-                        ) : (
-                          <CheckCheck className="w-4 h-4 text-[#53bdeb]" />
-                        )}
-                      </div>
                     )}
+
+                    {/* Footer: Time + Ticks */}
+                    <div className={`flex items-center gap-1.5 absolute bottom-0 right-0 ${message.media_url && !message.content ? 'bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full ring-1 ring-white/10' : ''}`}>
+                      <span className="text-[10px] text-[#e9edef]/60 tabular-nums lowercase select-none whitespace-nowrap">
+                        {format(new Date(message.created_at), 'h:mm a')}
+                      </span>
+                      {isOwn && (
+                        <div className="flex items-center">
+                          {message.status === 'sending' ? (
+                            <Clock className="w-3 h-3 text-[#e9edef]/40 animate-pulse" />
+                          ) : message.status === 'sent' ? (
+                            <Check className="w-3.5 h-3.5 text-[#e9edef]/40" />
+                          ) : message.status === 'delivered' ? (
+                            <CheckCheck className="w-4 h-4 text-[#e9edef]/40" />
+                          ) : (
+                            <CheckCheck className="w-4 h-4 text-[#53bdeb]" />
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Message Tail */}
