@@ -190,6 +190,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
         )}
         <MessageList 
           messages={messages} 
+          loading={loading}
           currentUserId={currentUser?.id} 
           otherUserAvatar={otherUser?.avatar_url}
           currentUserAvatar={currentUser?.user_metadata?.avatar_url}
@@ -200,7 +201,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
 
       {/* Input */}
       <MessageInput 
-        onSendMessage={async (content, mUrl, mType, replyTo) => { await sendMessage(content, mUrl, mType, replyTo) }} 
+        onSendMessage={async (content, mUrl, mType, replyTo, mFile) => { await sendMessage(content, mUrl, mType, replyTo, mFile) }} 
         onTyping={(isT) => { sendTypingStatus(isT) }}
         onFileUpload={async (file) => { return await uploadFile(file) }}
         replyingTo={replyingTo}

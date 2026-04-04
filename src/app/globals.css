@@ -53,3 +53,13 @@ body {
   scrollbar-width: auto;
   scrollbar-color: rgba(255, 255, 255, 0.35) rgba(0, 0, 0, 0.4);
 }
+
+@keyframes pulse-shimmer {
+  0% { background-color: rgba(32, 44, 51, 0.6); }
+  50% { background-color: rgba(42, 57, 66, 0.8); }
+  100% { background-color: rgba(32, 44, 51, 0.6); }
+}
+
+.animate-skeleton {
+  animation: pulse-shimmer 1.5s ease-in-out infinite;
+}

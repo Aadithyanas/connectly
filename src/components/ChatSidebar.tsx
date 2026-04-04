@@ -8,6 +8,7 @@ import { isUserOnline } from '@/hooks/useOnlineStatus'
 
 import SettingsModal from './SettingsModal'
 import { useSettings } from '@/hooks/useSettings'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 interface ChatSidebarProps {
   onSelectChat: (chatId: string) => void
@@ -17,10 +18,12 @@ interface ChatSidebarProps {
 }
 
 export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat, onOpenProfile }: ChatSidebarProps) {
+  usePushNotifications()
   const [chats, setChats] = useState<any[]>([])
   const [search, setSearch] = useState('')
   const [user, setUser] = useState<any>(null)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [loading, setLoading] = useState(true)
   const supabase = createClient()
   
   const { settings, isLoaded } = useSettings()
@@ -125,6 +128,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     // Sort by most recent message
     formattedChats.sort((a, b) => (b.last_msg_time || '').localeCompare(a.last_msg_time || ''))
     setChats(formattedChats)
+    setLoading(false)
   }
 
   useEffect(() => {
@@ -202,7 +206,19 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/40 backdrop-blur-sm">
-        {filteredChats.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex items-center px-4 py-3 border-b border-[#222e35]/50 animate-pulse">
+                <div className="w-12 h-12 rounded-full bg-[#202c33] shrink-0 mr-3 animate-skeleton"></div>
+                <div className="flex-1 min-w-0 pr-2">
+                  <div className="h-4 w-1/3 bg-[#202c33] rounded mb-2 animate-skeleton"></div>
+                  <div className="h-3 w-3/4 bg-[#202c33] rounded animate-skeleton"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <p className="text-[#8696a0] text-sm italic bg-black/50 px-4 py-2 rounded-lg">{search ? 'No conversations matching your search.' : 'No chats yet. Click + to start.'}</p>
           </div>

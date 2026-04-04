@@ -1,13 +1,73 @@
 'use client'
 
 import { format } from 'date-fns'
-import { Check, CheckCheck, FileText, PlayCircle, Reply, Forward, ChevronDown, X, Clock } from 'lucide-react'
+import { Check, CheckCheck, FileText, PlayCircle, Reply, Forward, ChevronDown, X, Clock, Loader2, Download } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 
 import CustomAudioPlayer from './CustomAudioPlayer'
 import { useSettings } from '@/hooks/useSettings'
+
+interface FlickerFreeMediaProps {
+  url: string
+  type: string
+  className?: string
+  onClick?: () => void
+  controls?: boolean
+}
+
+function FlickerFreeMedia({ url, type, className, onClick, controls }: FlickerFreeMediaProps) {
+  const [displayUrl, setDisplayUrl] = useState(url)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const isBlob = url.startsWith('blob:')
+  const nextUrlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    // If we're transitioning from a local BLOB to a remote URL, 
+    // we keep the BLOB visible until the remote one is fully ready.
+    if (displayUrl.startsWith('blob:') && !url.startsWith('blob:')) {
+      nextUrlRef.current = url
+      const img = new window.Image()
+      img.src = url
+      img.onload = () => {
+        setDisplayUrl(url)
+        if (displayUrl.startsWith('blob:')) {
+           URL.revokeObjectURL(displayUrl)
+        }
+      }
+    } else {
+      setDisplayUrl(url)
+    }
+  }, [url])
+
+  if (type === 'video') {
+    return (
+      <div className="relative w-full h-full flex items-center justify-center bg-[#202c33]/50">
+        {!isLoaded && <div className="absolute inset-0 bg-[#202c33] animate-pulse" />}
+        <video 
+          src={displayUrl} 
+          onLoadedData={() => setIsLoaded(true)}
+          controls={controls}
+          className={`${className} ${!isLoaded ? 'opacity-0' : 'opacity-100'}`}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center bg-[#202c33]/50">
+      {!isLoaded && <div className="absolute inset-0 bg-[#202c33] animate-pulse" />}
+      <img 
+        src={displayUrl} 
+        alt="Media" 
+        onLoad={() => setIsLoaded(true)}
+        onClick={onClick}
+        className={`${className} ${!isLoaded ? 'opacity-0' : 'opacity-100'}`} 
+      />
+    </div>
+  )
+}
 
 interface Message {
   id: string
@@ -18,12 +78,14 @@ interface Message {
   media_url?: string
   media_type?: string
   reply_to?: string
+  client_id?: string
   reply?: { id: string; content: string; sender_id: string } | null
   forwarded?: boolean
 }
 
 interface MessageListProps {
   messages: Message[]
+  loading?: boolean
   currentUserId: string
   otherUserAvatar?: string
   currentUserAvatar?: string
@@ -31,10 +93,11 @@ interface MessageListProps {
   onForward: (message: Message) => void
 }
 
-export default function MessageList({ messages, currentUserId, otherUserAvatar, currentUserAvatar, onReply, onForward }: MessageListProps) {
+export default function MessageList({ messages, loading, currentUserId, otherUserAvatar, currentUserAvatar, onReply, onForward }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
+  const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set())
   
   const { settings, isLoaded } = useSettings()
 
@@ -44,13 +107,42 @@ export default function MessageList({ messages, currentUserId, otherUserAvatar, 
     }
   }, [messages])
 
+  // Load downloaded media list from local storage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('connectly_downloaded_media')
+    if (saved) {
+      try {
+        const ids = JSON.parse(saved)
+        if (Array.isArray(ids)) setDownloadedIds(new Set(ids))
+      } catch (e) {
+        console.error("Error loading downloaded media state:", e)
+      }
+    }
+  }, [])
+
+  const handleDownload = (id: string) => {
+    setDownloadedIds(prev => {
+      const next = new Set(prev).add(id)
+      localStorage.setItem('connectly_downloaded_media', JSON.stringify(Array.from(next)))
+      return next
+    })
+  }
+
   const getSenderName = (senderId: string) => {
     return senderId === currentUserId ? 'You' : 'Them'
   }
 
   return (
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-1.5 custom-scrollbar bg-transparent">
-      {messages.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-col gap-4 py-2">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'} animate-pulse`}>
+              <div className={`p-4 rounded-xl shadow-sm relative min-w-[120px] max-w-[200px] h-12 bg-[#202c33]/40 animate-skeleton ${i % 2 === 0 ? 'rounded-tr-none' : 'rounded-tl-none'}`}></div>
+            </div>
+          ))}
+        </div>
+      ) : messages.length === 0 ? (
         <div className="flex items-center justify-center h-full text-[#8696a0] text-sm italic">
           Start a conversation...
         </div>
@@ -60,7 +152,7 @@ export default function MessageList({ messages, currentUserId, otherUserAvatar, 
           const isHovered = hoveredId === message.id
           return (
             <div
-              key={message.id}
+              key={message.client_id || message.id}
               className={`flex w-full mb-1 ${isOwn ? 'justify-end' : 'justify-start'} group items-start`}
               onMouseEnter={() => setHoveredId(message.id)}
               onMouseLeave={() => setHoveredId(null)}
@@ -89,7 +181,11 @@ export default function MessageList({ messages, currentUserId, otherUserAvatar, 
                    className={`p-1.5 rounded-xl shadow-sm relative w-fit min-w-[85px] ${
                      isOwn ? 'text-[#e9edef] rounded-tr-none' : 'text-[#e9edef] rounded-tl-none'
                    }`}
-                  style={{ backgroundColor: isLoaded ? (isOwn ? settings.sentBubbleColor : settings.receivedBubbleColor) : (isOwn ? '#005c4b' : '#202c33') }}
+                  style={{ 
+                    backgroundColor: message.media_url 
+                      ? 'transparent' // No bubble background for media-only messages to prevent teal flicker
+                      : (isLoaded ? (isOwn ? settings.sentBubbleColor : settings.receivedBubbleColor) : (isOwn ? '#005c4b' : '#202c33'))
+                  }}
                 >
                   {/* Forwarded Label */}
                   {message.forwarded && (
@@ -115,26 +211,90 @@ export default function MessageList({ messages, currentUserId, otherUserAvatar, 
                   {message.media_url && (
                     <div className="mb-1">
                       {message.media_type === 'image' && (
-                        <div className="relative rounded-lg overflow-hidden flex items-center justify-center bg-black/10">
-                          <img 
-                            src={message.media_url} 
-                            alt="Shared media" 
-                            onClick={() => setFullscreenImage(message.media_url as string)}
-                            className="max-w-full max-h-[350px] w-auto h-auto object-contain rounded-lg cursor-pointer hover:opacity-95 transition-opacity" 
+                        <div className="relative rounded-lg overflow-hidden flex items-center justify-center bg-black/10 group/media">
+                          <FlickerFreeMedia 
+                            url={message.media_url} 
+                            type={message.media_type || 'image'}
+                            onClick={() => {
+                              if (isOwn || downloadedIds.has(message.id)) {
+                                setFullscreenImage(message.media_url as string)
+                              }
+                            }}
+                            className={`max-w-full max-h-[350px] w-auto h-auto object-contain rounded-lg transition-all duration-500 ${
+                              (!isOwn && !downloadedIds.has(message.id)) ? 'blur-[30px] scale-110 grayscale' : 
+                              (isOwn && message.status === 'sending') ? 'blur-[8px]' : 'cursor-pointer hover:opacity-95'
+                            }`} 
                           />
+
+                          {/* Sender Loading Spinner */}
+                          {isOwn && message.status === 'sending' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-10">
+                              <div className="bg-black/60 p-3 rounded-full backdrop-blur-sm">
+                                <Loader2 className="w-8 h-8 text-white animate-spin" />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Receiver Download Button Overlay */}
+                          {!isOwn && !downloadedIds.has(message.id) && (
+                            <div className="absolute inset-0 flex items-center justify-center z-10">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDownload(message.id); }}
+                                className="bg-black/60 hover:bg-black/80 p-5 rounded-full backdrop-blur-md border border-white/20 transition-all transform hover:scale-110 group-active/media:scale-95 shadow-2xl"
+                              >
+                                <div className="flex flex-col items-center gap-1">
+                                  <Download className="w-8 h-8 text-white" />
+                                  <span className="text-[10px] text-white/80 font-bold uppercase tracking-wider">Download</span>
+                                </div>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                       {message.media_type === 'video' && (
-                        <div className="relative rounded-lg overflow-hidden flex items-center justify-center bg-black/10">
-                          <video 
-                            src={message.media_url} 
-                            controls 
-                            className="max-w-full max-h-[350px] w-auto h-auto rounded-lg" 
+                        <div className="relative rounded-lg overflow-hidden flex items-center justify-center bg-black/10 group/media">
+                          <FlickerFreeMedia 
+                            url={message.media_url} 
+                            type="video"
+                            controls={(isOwn || downloadedIds.has(message.id))}
+                            className={`max-w-full max-h-[350px] w-auto h-auto rounded-lg transition-all duration-500 ${
+                              (!isOwn && !downloadedIds.has(message.id)) ? 'blur-[30px] scale-110 grayscale' : 
+                              (isOwn && message.status === 'sending') ? 'blur-[8px]' : ''
+                            }`} 
                           />
+
+                          {/* Sender Loading Spinner */}
+                          {isOwn && message.status === 'sending' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-10">
+                              <div className="bg-black/60 p-3 rounded-full backdrop-blur-sm">
+                                <Loader2 className="w-8 h-8 text-white animate-spin" />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Receiver Download Button Overlay */}
+                          {!isOwn && !downloadedIds.has(message.id) && (
+                            <div className="absolute inset-0 flex items-center justify-center z-10">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDownload(message.id); }}
+                                className="bg-black/60 hover:bg-black/80 p-5 rounded-full backdrop-blur-md border border-white/20 transition-all transform hover:scale-110 group-active/media:scale-95 shadow-2xl"
+                              >
+                                <div className="flex flex-col items-center gap-1">
+                                  <Download className="w-8 h-8 text-white" />
+                                  <span className="text-[10px] text-white/80 font-bold uppercase tracking-wider">Download</span>
+                                </div>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                       {message.media_type === 'audio' && (
-                        <div className="py-1 px-1 min-w-[200px]">
+                        <div className="py-1 px-1 min-w-[200px] relative">
+                          {message.status === 'sending' && (
+                            <div className="absolute inset-0 bg-[#202c33]/40 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-lg">
+                               <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
+                            </div>
+                          )}
                           <CustomAudioPlayer 
                             src={message.media_url} 
                             isOwn={isOwn} 

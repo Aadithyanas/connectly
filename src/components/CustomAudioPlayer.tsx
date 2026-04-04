@@ -98,28 +98,31 @@ export default function CustomAudioPlayer({ src, isOwn, avatarUrl }: CustomAudio
   const inactiveColorClass = isOwn ? 'bg-[#e9edef]/40' : 'bg-[#8696a0]/50'
 
   return (
-    <div className="flex items-center gap-3 p-1 min-w-[240px] max-w-[320px]">
+    <div className="flex items-center gap-1.5 sm:gap-3 p-0.5 sm:p-1 w-full min-w-[160px] max-w-[320px]">
       <button 
         onClick={togglePlayPause} 
-        className="p-2 hover:bg-black/10 rounded-full transition-colors flex shrink-0"
+        className="p-1.5 sm:p-2 hover:bg-black/10 rounded-full transition-colors flex shrink-0"
       >
         {isPlaying ? (
-          <Pause className="w-6 h-6 fill-current text-[#aebac1]" />
+          <Pause className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-[#aebac1]" />
         ) : (
-          <Play className="w-6 h-6 fill-current text-[#aebac1] ml-0.5" />
+          <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-[#aebac1] ml-0.5" />
         )}
       </button>
 
-      <div className="flex-1 flex flex-col justify-center gap-1 min-w-[140px] mx-1">
+      <div className="flex-1 flex flex-col justify-center gap-0.5 sm:gap-1 min-w-[80px] sm:min-w-[140px] mx-0.5 sm:mx-1">
         {/* Waveform Progress Bar */}
-        <div className="relative w-full h-10 flex items-center justify-between group cursor-pointer gap-[2px]">
+        <div className="relative w-full h-8 sm:h-10 flex items-center justify-between group cursor-pointer gap-[1px] sm:gap-[2px]">
            {waveform.map((h, i) => {
+             // Reduce bars on smaller screens visually
+             if (i % 2 !== 0) return null // Only show half the bars visually for a cleaner look
+             
              const barPercent = (i / waveform.length) * 100
              const isPlayed = progress >= barPercent
              return (
                <div 
                  key={i} 
-                 className={`w-[3px] rounded-full transition-colors ${!isPlayed ? inactiveColorClass : ''}`} 
+                 className={`w-[2px] sm:w-[3px] rounded-full transition-colors ${!isPlayed ? inactiveColorClass : ''}`} 
                  style={{ height: `${h}px`, backgroundColor: isPlayed ? activeColor : undefined }} 
                />
              )
@@ -135,28 +138,28 @@ export default function CustomAudioPlayer({ src, isOwn, avatarUrl }: CustomAudio
           />
           {/* Audio Knob */}
           <div 
-            className="w-3.5 h-3.5 rounded-full absolute z-10 top-1/2 -translate-y-1/2 shadow-sm pointer-events-none transition-all"
-            style={{ left: `calc(${progress}% - 7px)`, backgroundColor: activeColor }}
+            className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full absolute z-10 top-1/2 -translate-y-1/2 shadow-sm pointer-events-none transition-all"
+            style={{ left: `calc(${progress}% - 5px)`, backgroundColor: activeColor }}
           ></div>
         </div>
 
-        <div className="flex items-center justify-between -mt-1">
-          <span className="text-[11px] text-[#e9edef]/60 tabular-nums font-medium">
+        <div className="flex items-center justify-between -mt-0.5">
+          <span className="text-[10px] sm:text-[11px] text-[#e9edef]/60 tabular-nums font-medium">
             {formatTime(currentTime > 0 ? currentTime : duration)}
           </span>
         </div>
       </div>
 
-      <div className="relative flex shrink-0 ml-2">
-        <div className="w-11 h-11 rounded-full bg-[#374248] flex items-center justify-center overflow-hidden border border-black/10">
+      <div className="relative flex shrink-0 ml-1 sm:ml-2">
+        <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-[#374248] flex items-center justify-center overflow-hidden border border-black/10">
           {avatarUrl ? (
             <Image src={avatarUrl} alt="Avatar" width={44} height={44} className="object-cover" />
           ) : (
-            <User className="w-6 h-6 text-[#8696a0]" />
+            <User className="w-5 h-5 sm:w-6 sm:h-6 text-[#8696a0]" />
           )}
         </div>
-        <div className="absolute -bottom-1 -left-1 text-white z-10 w-4 h-4 bg-[currentColor] rounded-full flex items-center justify-center border border-[#111b21]" style={{ color: activeColor }}>
-           <Mic className="w-2.5 h-2.5 text-[#111b21]" />
+        <div className="absolute -bottom-0.5 -left-0.5 text-white z-10 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-[currentColor] rounded-full flex items-center justify-center border border-[#111b21]" style={{ color: activeColor }}>
+           <Mic className="w-2 sm:w-2.5 h-2 sm:h-2.5 text-[#111b21]" />
         </div>
       </div>
     </div>
