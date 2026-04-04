@@ -11,10 +11,11 @@ export function usePresence(channelName: string = 'global') {
 
   useEffect(() => {
     let channel: RealtimeChannel
+    let isMounted = true
 
-    const initPresence = async () => {
+    const setup = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user || !isMounted) return
 
       channel = supabase.channel(`presence:${channelName}`, {
         config: {
@@ -26,6 +27,7 @@ export function usePresence(channelName: string = 'global') {
 
       channel
         .on('presence', { event: 'sync' }, () => {
+          if (!isMounted) return
           const state = channel.presenceState()
           setOnlineUsers(state)
         })
@@ -36,13 +38,14 @@ export function usePresence(channelName: string = 'global') {
           console.log('leave', key, leftPresences)
         })
         .on('broadcast', { event: 'typing' }, ({ payload }) => {
+          if (!isMounted) return
           setTypingUsers((prev) => ({
             ...prev,
             [payload.userId]: payload.isTyping,
           }))
         })
         .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
+          if (status === 'SUBSCRIBED' && isMounted) {
             await channel.track({
               userId: user.id,
               online_at: new Date().toISOString(),
@@ -51,9 +54,10 @@ export function usePresence(channelName: string = 'global') {
         })
     }
 
-    initPresence()
+    setup()
 
     return () => {
+      isMounted = false
       if (channel) {
         channel.unsubscribe()
       }

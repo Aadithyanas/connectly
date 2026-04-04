@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Image as ImageIcon, Type, PaintBucket } from 'lucide-react'
+import { X, Image as ImageIcon, Type, PaintBucket, Loader2 } from 'lucide-react'
 import { useSettings, AppSettings } from '@/hooks/useSettings'
 
 interface SettingsModalProps {
@@ -12,6 +12,7 @@ interface SettingsModalProps {
 export default function SettingsModal({ type, onClose }: SettingsModalProps) {
   const { settings, updateSettings, isLoaded } = useSettings()
   const [localSettings, setLocalSettings] = useState<AppSettings>(settings)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (isLoaded) setLocalSettings(settings)
@@ -19,8 +20,12 @@ export default function SettingsModal({ type, onClose }: SettingsModalProps) {
 
   if (!isLoaded) return null
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsSaving(true)
+    // Add artificial delay for loading satisfaction
+    await new Promise(r => setTimeout(r, 600))
     updateSettings(localSettings)
+    setIsSaving(false)
     onClose()
   }
 
@@ -117,9 +122,17 @@ export default function SettingsModal({ type, onClose }: SettingsModalProps) {
           </button>
           <button 
             onClick={handleSave}
-            className="px-6 py-2 bg-[#00a884] hover:bg-[#008f6f] text-[#111b21] font-medium text-sm rounded-md transition-colors"
+            disabled={isSaving}
+            className="flex items-center gap-2 px-6 py-2 bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-70 disabled:cursor-not-allowed text-[#111b21] font-medium text-sm rounded-md transition-colors min-w-[130px] justify-center"
           >
-            Save Changes
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <span>Save Changes</span>
+            )}
           </button>
         </div>
       </div>

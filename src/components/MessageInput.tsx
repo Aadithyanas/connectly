@@ -157,7 +157,7 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
   }
 
   return (
-    <div className="bg-[#202c33] border-t border-[#222e35] relative">
+    <div className="bg-[#202c33] border-t border-[#222e35] relative pb-2 sm:pb-0">
       {/* Emoji Picker Popup */}
       {showEmojiPicker && (
         <div className="absolute bottom-[calc(100%+12px)] left-2 sm:left-4 z-[999] shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-[#222e35] origin-bottom-left animate-in zoom-in-95 duration-150">
@@ -193,7 +193,7 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
       )}
 
       {/* Input Area */}
-      <div className="min-h-[62px] flex items-center px-4 py-2 gap-2">
+      <div className="min-h-[56px] flex items-center px-4 py-1.5 gap-2">
         {isRecording ? (
           <div className="flex-1 flex items-center justify-between bg-[#2a3942] rounded-full py-2 px-4 animate-in fade-in slide-in-from-right-8">
             <div className="flex items-center gap-3 text-[#f15c6d]">
@@ -229,7 +229,7 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
                 type="text"
                 placeholder={isUploading ? "Uploading media..." : "Type a message"}
                 disabled={isUploading}
-                className="w-full bg-[#2a3942] text-[#e9edef] rounded-lg py-2.5 px-4 focus:ring-0 border-none placeholder-[#8696a0] text-[15px] disabled:opacity-50"
+                className="w-full bg-[#2a3942] text-[#e9edef] rounded-lg py-2 px-4 focus:ring-0 border-none placeholder-[#8696a0] text-[15px] disabled:opacity-50"
                 value={content}
                 onChange={handleChange}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
@@ -241,16 +241,16 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
 
         <div className="flex items-center text-[#8696a0] shrink-0 ml-1">
           {content.trim() ? (
-            <button onClick={handleSend} className="p-3 bg-[#00a884] hover:bg-[#008f6f] text-[#111b21] rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-lg">
+            <button onClick={handleSend} className="p-2.5 bg-[#00a884] hover:bg-[#008f6f] text-[#111b21] rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-lg">
               <Send className="w-5 h-5" />
             </button>
           ) : isRecording ? (
-            <button onClick={() => stopRecording(false)} className="p-3 bg-[#25d366] hover:bg-[#1ebb5a] text-[#111b21] rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-lg">
+            <button onClick={() => stopRecording(false)} className="p-2.5 bg-[#25d366] hover:bg-[#1ebb5a] text-[#111b21] rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-lg">
               <Send className="w-5 h-5 pl-0.5" />
             </button>
           ) : (
-            <button onClick={startRecording} className="p-3 bg-[#00a884]/10 hover:bg-[#00a884]/20 text-[#00a884] rounded-full transition-colors">
-              <Mic className="w-6 h-6" />
+            <button onClick={startRecording} className="p-2.5 bg-[#00a884]/10 hover:bg-[#00a884]/20 text-[#00a884] rounded-full transition-colors">
+              <Mic className="w-5 h-5" />
             </button>
           )}
         </div>

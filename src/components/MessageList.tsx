@@ -61,11 +61,11 @@ export default function MessageList({ messages, currentUserId, otherUserAvatar, 
           return (
             <div
               key={message.id}
-              className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}
+              className={`flex w-full mb-1 ${isOwn ? 'justify-end' : 'justify-start'} group items-start`}
               onMouseEnter={() => setHoveredId(message.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
-              <div className="relative max-w-[65%] min-w-[120px]">
+              <div className={`relative max-w-[85%] sm:max-w-[75%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                 {/* Hover Action Menu */}
                 <div className={`absolute ${isOwn ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'} top-1 flex items-center gap-0.5 px-1 transition-all duration-200 z-10 ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                   <button 
@@ -83,12 +83,12 @@ export default function MessageList({ messages, currentUserId, otherUserAvatar, 
                     <Forward className="w-4 h-4" />
                   </button>
                 </div>
-
+ 
                 {/* Message Bubble */}
                 <div
-                  className={`p-1.5 rounded-xl shadow-sm relative ${
-                    isOwn ? 'text-[#e9edef] rounded-tr-none' : 'text-[#e9edef] rounded-tl-none'
-                  }`}
+                   className={`p-1.5 rounded-xl shadow-sm relative w-fit ${
+                     isOwn ? 'text-[#e9edef] rounded-tr-none' : 'text-[#e9edef] rounded-tl-none'
+                   }`}
                   style={{ backgroundColor: isLoaded ? (isOwn ? settings.sentBubbleColor : settings.receivedBubbleColor) : (isOwn ? '#005c4b' : '#202c33') }}
                 >
                   {/* Forwarded Label */}
@@ -153,24 +153,26 @@ export default function MessageList({ messages, currentUserId, otherUserAvatar, 
 
                   {/* Content */}
                   {message.content && (
-                    <p className={`px-1 leading-relaxed whitespace-pre-wrap break-words pb-4 ${
-                      !isLoaded || settings.textSize === 'medium' ? 'text-[14.5px]' : settings.textSize === 'small' ? 'text-[13px]' : 'text-[16px]'
-                    }`}>
-                      {message.content}
-                    </p>
+                    <div className="relative pr-2">
+                       <p className={`px-1 leading-relaxed whitespace-pre-wrap break-words ${message.content.length < 15 ? 'pr-12' : 'pb-4'} ${
+                        !isLoaded || settings.textSize === 'medium' ? 'text-[14.5px]' : settings.textSize === 'small' ? 'text-[13px]' : 'text-[16px]'
+                      }`}>
+                        {message.content}
+                      </p>
+                    </div>
                   )}
 
                   {/* Footer: Time + Ticks */}
-                  <div className={`absolute bottom-1 right-2 flex items-center gap-1 ${message.media_url && !message.content ? 'bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded-full' : ''}`}>
-                    <span className="text-[10px] text-[#e9edef]/50 tabular-nums lowercase">
+                  <div className={`flex items-center gap-1.5 absolute bottom-1 right-2 ${message.media_url && !message.content ? 'bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full ring-1 ring-white/10' : ''}`}>
+                    <span className="text-[10px] text-[#e9edef]/60 tabular-nums lowercase select-none whitespace-nowrap">
                       {format(new Date(message.created_at), 'h:mm a')}
                     </span>
                     {isOwn && (
                       <div className="flex items-center">
                         {message.status === 'sent' ? (
-                          <Check className="w-3.5 h-3.5 text-[#e9edef]/50" />
+                          <Check className="w-3.5 h-3.5 text-[#e9edef]/40" />
                         ) : message.status === 'delivered' ? (
-                          <CheckCheck className="w-4 h-4 text-[#e9edef]/50" />
+                          <CheckCheck className="w-4 h-4 text-[#e9edef]/40" />
                         ) : (
                           <CheckCheck className="w-4 h-4 text-[#53bdeb]" />
                         )}

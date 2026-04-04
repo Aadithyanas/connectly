@@ -78,7 +78,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="ml-auto w-full max-w-[400px] bg-[#111b21] border-l border-[#2a3942] flex flex-col shadow-2xl shadow-black/80"
+            className="ml-auto w-full md:max-w-[400px] h-full bg-[#111b21] border-l border-[#2a3942] flex flex-col shadow-2xl shadow-black/80"
           >
             {/* Header */}
             <div className="h-[120px] bg-[#202c33] flex items-end px-6 pb-4 relative overflow-hidden">

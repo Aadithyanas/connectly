@@ -176,7 +176,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   const textSizeClass = settings.textSize === 'small' ? 'text-sm' : settings.textSize === 'large' ? 'text-lg' : 'text-base'
 
   return (
-    <div className="w-[30%] min-w-[320px] flex flex-col border-r border-[#222e35] h-full shrink-0 relative transition-all" style={bgStyle}>
+    <div className="w-full flex flex-col border-r border-[#222e35] h-full shrink-0 relative transition-all" style={bgStyle}>
       {/* Header */}
       <div className="h-[60px] bg-[#202c33]/95 backdrop-blur-sm flex items-center justify-between px-4 sticky top-0 z-10">
         <div className="flex items-center gap-3 cursor-pointer" onClick={onOpenProfile}>

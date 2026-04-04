@@ -17,7 +17,7 @@ export default function ChatPage() {
   const [sidebarType, setSidebarType] = useState<'profile' | 'contact' | 'group'>('profile')
   const [sidebarData, setSidebarData] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
-  
+
   const supabase = createClient()
 
   useEffect(() => {
@@ -125,28 +125,33 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex w-full h-full relative overflow-hidden">
-      <ChatSidebar 
-        onSelectChat={handleSelectChat} 
-        activeChatId={activeChatId} 
-        onOpenNewChat={() => setIsNewChatModalOpen(true)}
-        onOpenProfile={handleOpenProfile}
-      />
+    <div className="flex w-full h-full relative overflow-hidden bg-[#111b21]">
+      <div className={`${activeChatId ? 'hidden md:flex' : 'flex'} w-full md:w-[30%] md:min-w-[320px] h-full transition-all`}>
+        <ChatSidebar
+          onSelectChat={handleSelectChat}
+          activeChatId={activeChatId}
+          onOpenNewChat={() => setIsNewChatModalOpen(true)}
+          onOpenProfile={handleOpenProfile}
+        />
+      </div>
 
-      <ChatWindow 
-        chatId={activeChatId} 
-        onOpenInfo={handleOpenChatInfo}
-      />
+      <div className={`${activeChatId ? 'flex' : 'hidden md:flex'} flex-1 h-full transition-all`}>
+        <ChatWindow
+          chatId={activeChatId}
+          onOpenInfo={handleOpenChatInfo}
+          onBack={() => setActiveChatId(undefined)}
+        />
+      </div>
 
-      <InfoSidebar 
-        isOpen={isInfoSidebarOpen} 
-        onClose={() => setIsInfoSidebarOpen(false)} 
+      <InfoSidebar
+        isOpen={isInfoSidebarOpen}
+        onClose={() => setIsInfoSidebarOpen(false)}
         type={sidebarType}
         data={sidebarData}
       />
 
-      <NewChatModal 
-        isOpen={isNewChatModalOpen} 
+      <NewChatModal
+        isOpen={isNewChatModalOpen}
         onClose={() => setIsNewChatModalOpen(false)}
         onChatCreated={(id) => {
           setActiveChatId(id)

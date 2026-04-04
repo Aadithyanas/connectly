@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { MessageSquare, ShieldCheck, Smartphone, Laptop, Search, MoreVertical } from 'lucide-react'
+import { MessageSquare, ShieldCheck, Smartphone, Laptop, Search, MoreVertical, ChevronLeft } from 'lucide-react'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
 import ForwardModal from './ForwardModal'
@@ -16,9 +16,10 @@ import { useSettings } from '@/hooks/useSettings'
 interface ChatWindowProps {
   chatId?: string
   onOpenInfo?: () => void
+  onBack?: () => void
 }
 
-export default function ChatWindow({ chatId, onOpenInfo }: ChatWindowProps) {
+export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowProps) {
   const { messages, loading, sendMessage, uploadFile, markAsSeen, forwardMessage } = useMessages(chatId)
   const { onlineUsers, typingUsers, sendTypingStatus } = usePresence(chatId || 'global')
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -139,9 +140,18 @@ export default function ChatWindow({ chatId, onOpenInfo }: ChatWindowProps) {
     <div className="flex-1 flex flex-col bg-[#0b141a] h-full overflow-hidden">
       {/* Header */}
       <div className="h-[60px] bg-[#202c33] flex items-center justify-between px-4 sticky top-0 z-10 border-b border-[#222e35] shrink-0">
-        <div className="flex items-center gap-3 cursor-pointer group" onClick={onOpenInfo}>
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-[#374248] flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+        <div className="flex items-center gap-3 cursor-pointer group min-w-0">
+          {onBack && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onBack(); }}
+              className="md:hidden p-1 mr-1 hover:bg-[#374248] rounded-full text-[#8696a0]"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+          <div className="flex items-center gap-3 min-w-0" onClick={onOpenInfo}>
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[#374248] flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
               {otherUser?.avatar_url ? (
                 <Image src={otherUser.avatar_url} alt={otherUser.name || ''} width={40} height={40} sizes="40px" className="object-cover rounded-full" />
               ) : (
@@ -159,6 +169,7 @@ export default function ChatWindow({ chatId, onOpenInfo }: ChatWindowProps) {
             </span>
           </div>
         </div>
+      </div>
         <div className="flex items-center gap-4 text-[#aebac1]">
           <Search className="w-5 h-5 cursor-pointer hover:text-[#e9edef]" />
           <MoreVertical onClick={() => setShowSettingsModal(true)} className="w-5 h-5 cursor-pointer hover:text-[#e9edef] active:opacity-50" />
@@ -166,22 +177,25 @@ export default function ChatWindow({ chatId, onOpenInfo }: ChatWindowProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto relative">
-        <div className="absolute inset-0 z-0 bg-[#0b141a]/90" style={{
-           ...(isLoaded && settings.chatBg.startsWith('#') 
-              ? { backgroundColor: settings.chatBg } 
-              : { backgroundImage: `url('${settings.chatBg}')`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'transparent' })
-        }}></div>
-        <div className="relative h-full flex flex-col z-10 w-full" style={{ ...(isLoaded && (settings.chatBg.startsWith('http') || settings.chatBg.startsWith('/')) ? { backgroundColor: 'rgba(11,20,26,0.6)' } : {}) }}>
-          <MessageList 
-            messages={messages} 
-            currentUserId={currentUser?.id} 
-            otherUserAvatar={otherUser?.avatar_url}
-            currentUserAvatar={currentUser?.user_metadata?.avatar_url}
-            onReply={handleReply}
-            onForward={handleForward}
-          />
-        </div>
+      <div 
+        className="flex-1 relative bg-cover bg-center overflow-hidden flex flex-col" 
+        style={isLoaded ? { 
+          ...(settings.chatBg.startsWith('http') || settings.chatBg.startsWith('/') 
+            ? { backgroundImage: `url('${settings.chatBg}')` } 
+            : { backgroundColor: settings.chatBg })
+        } : { backgroundColor: '#0b141a' }}
+      >
+        {isLoaded && (settings.chatBg.startsWith('http') || settings.chatBg.startsWith('/')) && (
+          <div className="absolute inset-0 bg-[#0b141a]/60 z-0 pointer-events-none"></div>
+        )}
+        <MessageList 
+          messages={messages} 
+          currentUserId={currentUser?.id} 
+          otherUserAvatar={otherUser?.avatar_url}
+          currentUserAvatar={currentUser?.user_metadata?.avatar_url}
+          onReply={handleReply}
+          onForward={handleForward}
+        />
       </div>
 
       {/* Input */}
