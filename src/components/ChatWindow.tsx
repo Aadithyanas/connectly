@@ -19,10 +19,12 @@ interface ChatWindowProps {
   onBack?: () => void
 }
 
+import { useAuth } from '@/context/AuthContext'
+
 export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowProps) {
   const { messages, loading, sendMessage, uploadFile, markAsSeen, forwardMessage } = useMessages(chatId)
   const { onlineUsers, typingUsers, sendTypingStatus } = usePresence(chatId || 'global')
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const { user } = useAuth()
   const [otherUser, setOtherUser] = useState<any>(null)
   const [replyingTo, setReplyingTo] = useState<any>(null)
   const [forwardingMessage, setForwardingMessage] = useState<any>(null)
@@ -30,24 +32,16 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
   const supabase = createClient()
   const { settings, isLoaded } = useSettings()
 
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setCurrentUser(user)
-    }
-    getUser()
-  }, [])
-
   // Fetch other user's profile
   useEffect(() => {
-    if (!chatId || !currentUser) return
+    if (!chatId || !user) return
 
     const fetchOtherUser = async () => {
       const { data: members } = await supabase
         .from('chat_members')
         .select('user_id')
         .eq('chat_id', chatId)
-        .neq('user_id', currentUser.id)
+        .neq('user_id', user.id)
         .limit(1)
         .single()
 
@@ -75,7 +69,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [chatId, currentUser?.id])
+  }, [chatId, user?.id])
 
   // Mark as seen
   useEffect(() => {
@@ -97,7 +91,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
       id: message.id,
       content: message.content,
       sender_id: message.sender_id,
-      senderName: message.sender_id === currentUser?.id ? 'You' : (otherUser?.name || 'Them'),
+      senderName: message.sender_id === user?.id ? 'You' : (otherUser?.name || 'Them'),
     })
   }
 
@@ -112,7 +106,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
   }
 
   const isOtherOnline = useIsUserOnline(otherUser)
-  const isOtherTyping = Object.entries(typingUsers).some(([uid, isT]) => uid !== currentUser?.id && isT)
+  const isOtherTyping = Object.entries(typingUsers).some(([uid, isT]) => uid !== user?.id && isT)
 
   if (!chatId) {
     return (
@@ -191,9 +185,9 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
         <MessageList 
           messages={messages} 
           loading={loading}
-          currentUserId={currentUser?.id} 
+          currentUserId={user?.id || ''} 
           otherUserAvatar={otherUser?.avatar_url}
-          currentUserAvatar={currentUser?.user_metadata?.avatar_url}
+          currentUserAvatar={user?.user_metadata?.avatar_url}
           onReply={handleReply}
           onForward={handleForward}
         />

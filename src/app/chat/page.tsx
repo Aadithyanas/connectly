@@ -8,8 +8,11 @@ import InfoSidebar from '@/components/InfoSidebar'
 import { createClient } from '@/utils/supabase/client'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 
+import { useAuth } from '@/context/AuthContext'
+
 export default function ChatPage() {
   useOnlineStatus() // Start heartbeat
+  const { user } = useAuth()
 
   const [activeChatId, setActiveChatId] = useState<string | undefined>(undefined)
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false)
@@ -21,15 +24,14 @@ export default function ChatPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+    const fetchProfile = async () => {
       if (user) {
         const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
         setCurrentUser(profile)
       }
     }
-    getUser()
-  }, [])
+    fetchProfile()
+  }, [user])
 
   // GLOBAL LISTENER: Mark ALL incoming messages as "delivered" instantly
   // This runs for ANY chat, even if the user hasn't opened it

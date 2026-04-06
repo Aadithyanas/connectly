@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { X, Search, User, Users, ChevronRight, Check, Plus } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import { useAuth } from '@/context/AuthContext'
 
 interface Profile {
   id: string
@@ -26,12 +27,12 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)
   const [groupName, setGroupName] = useState('')
   const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
   const supabase = createClient()
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && user) {
       const fetchProfiles = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
         const { data, error } = await supabase

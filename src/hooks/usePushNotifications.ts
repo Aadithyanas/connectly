@@ -2,11 +2,13 @@
 
 import { useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import { useAuth } from '@/context/AuthContext'
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
 export function usePushNotifications() {
   const supabase = createClient()
+  const { user } = useAuth()
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -37,7 +39,6 @@ export function usePushNotifications() {
           })
         }
 
-        const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
         // Save subscription to the database
@@ -64,7 +65,7 @@ export function usePushNotifications() {
     }
 
     subscribeUser()
-  }, [])
+  }, [user, supabase])
 }
 
 function urlBase64ToUint8Array(base64String: string) {

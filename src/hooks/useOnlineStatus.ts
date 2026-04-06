@@ -2,19 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import { useAuth } from '@/context/AuthContext'
 
 const HEARTBEAT_INTERVAL = 30000 // 30 seconds
 const OFFLINE_THRESHOLD = 60000  // 60 seconds without heartbeat = offline
 
 export function useOnlineStatus() {
   const supabase = createClient()
+  const { user } = useAuth()
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     let userId: string | null = null
 
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       userId = user.id
 
@@ -63,7 +64,7 @@ export function useOnlineStatus() {
         }).eq('id', userId)
       }
     }
-  }, [])
+  }, [user, supabase])
 }
 
 // Helper: static check if a user is truly online based on last_seen timestamp

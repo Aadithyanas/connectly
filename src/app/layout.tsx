@@ -16,8 +16,13 @@ export const metadata: Metadata = {
   title: "Connectly | Modern Chat",
   description: "High-performance real-time messaging.",
   manifest: "/manifest.json",
+};
+
+export const viewport = {
   themeColor: "#202c33",
 };
+
+import { AuthProvider } from "@/context/AuthContext";
 
 export default function RootLayout({
   children,
@@ -29,7 +34,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-screen antialiased`}
     >
-      <body className="h-screen overflow-hidden flex flex-col">{children}</body>
+      <body className="h-screen overflow-hidden flex flex-col">
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

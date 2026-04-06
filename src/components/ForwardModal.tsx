@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { X, Search, Forward, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import { useAuth } from '@/context/AuthContext'
 
 interface ForwardModalProps {
   isOpen: boolean
@@ -18,13 +19,13 @@ export default function ForwardModal({ isOpen, onClose, message, onForward }: Fo
   const [search, setSearch] = useState('')
   const [sending, setSending] = useState<string | null>(null)
   const [sent, setSent] = useState<string[]>([])
+  const { user } = useAuth()
   const supabase = createClient()
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || !user) return
 
     const fetchChats = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
       // Get user's chat IDs

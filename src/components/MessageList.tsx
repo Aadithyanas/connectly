@@ -178,13 +178,14 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
  
                 {/* Message Bubble */}
                 <div
-                   className={`p-1.5 rounded-xl shadow-sm relative w-fit min-w-[85px] ${
+                   className={`p-1.5 rounded-xl shadow-sm relative w-fit min-w-[85px] will-change-transform ${
                      isOwn ? 'text-[#e9edef] rounded-tr-none' : 'text-[#e9edef] rounded-tl-none'
                    }`}
                   style={{ 
-                    backgroundColor: message.media_url 
-                      ? 'transparent' // No bubble background for media-only messages to prevent teal flicker
-                      : (isLoaded ? (isOwn ? settings.sentBubbleColor : settings.receivedBubbleColor) : (isOwn ? '#005c4b' : '#202c33'))
+                    backgroundColor: (message.media_url && !message.content) 
+                      ? 'transparent' 
+                      : (isLoaded ? (isOwn ? settings.sentBubbleColor : settings.receivedBubbleColor) : (isOwn ? '#005c4b' : '#202c33')),
+                    backdropFilter: (message.media_url && message.content) ? 'blur(4px)' : 'none'
                   }}
                 >
                   {/* Forwarded Label */}
@@ -343,13 +344,14 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                   </div>
                   
                   {/* Message Tail */}
-                  {!message.media_url && (
-                    <div 
-                      className={`absolute top-0 w-2 h-2 ${
-                        isOwn ? '-right-2 bg-[#005c4b] [clip-path:polygon(0_0,0_100%,100%_0)]' : '-left-2 bg-[#202c33] [clip-path:polygon(100%_0,100%_100%,0_0)]'
-                      }`}
-                    />
-                  )}
+                  <div 
+                    className={`absolute top-0 w-2 h-2 ${
+                      isOwn ? '-right-2 [clip-path:polygon(0_0,0_100%,100%_0)]' : '-left-2 [clip-path:polygon(100%_0,100%_100%,0_0)]'
+                    } ${message.media_url && !message.content ? 'hidden' : ''}`}
+                    style={{ 
+                      backgroundColor: (isLoaded ? (isOwn ? settings.sentBubbleColor : settings.receivedBubbleColor) : (isOwn ? '#005c4b' : '#202c33'))
+                    }}
+                  />
                 </div>
               </div>
             </div>

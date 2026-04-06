@@ -14,6 +14,8 @@ interface InfoSidebarProps {
   data?: any
 }
 
+import { useAuth } from '@/context/AuthContext'
+
 export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebarProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(data?.name || '')
@@ -21,6 +23,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
   const [nickname, setNickname] = useState('')
   const [isEditingNickname, setIsEditingNickname] = useState(false)
   const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
   const supabase = createClient()
 
   useEffect(() => {
@@ -38,7 +41,6 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
 
   const handleUpdateProfile = async () => {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
     const { error } = await supabase

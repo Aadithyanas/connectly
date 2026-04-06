@@ -1,21 +1,21 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
+import { useAuth } from '@/context/AuthContext'
 
 export function useMessages(chatId?: string) {
   const [messages, setMessages] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
   const supabase = createClient()
   const channelRef = useRef<RealtimeChannel | null>(null)
   const currentUserRef = useRef<any>(null)
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      currentUserRef.current = user
-    }
-    fetchUser()
+    currentUserRef.current = user
+  }, [user])
 
+  useEffect(() => {
     // Request Notification permission
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission()
@@ -68,14 +68,13 @@ export function useMessages(chatId?: string) {
     channel
       .on('broadcast', { event: 'new_message' }, (payload) => {
         const newMessage = payload.payload
-        // Senders should ignore their own broadcasts (handled by optimistic UI)
         if (newMessage.sender_id === currentUserRef.current?.id) return
 
         setMessages((prev) => {
-          // If message ID (database UUID) or matching content already exists, skip
+          // STRICT DEDUPLICATION: Check if this CLIENT_ID already exists
           const exists = prev.find(m => 
-            m.id === newMessage.id || 
-            (m.content === newMessage.content && m.sender_id === newMessage.sender_id && Math.abs(new Date(m.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 10000)
+            (newMessage.client_id && m.client_id === newMessage.client_id) ||
+            m.id === newMessage.id
           );
           if (exists) return prev;
           return [...prev, newMessage];
@@ -84,15 +83,13 @@ export function useMessages(chatId?: string) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
         async (payload) => {
           setMessages((prev) => {
-            // CRITICAL: Check if this database ID is already in our state (e.g. from Broadcast or sendMessage update)
+            // Check if this database ID is already in our state
             const idExists = prev.some(m => m.id === payload.new.id);
-            if (idExists) return prev; // If ID exists, it's already updated, ignore.
+            if (idExists) return prev;
 
-            // Otherwise, check if we have a matching optimistic message to replace
+            // Use CLIENT_ID to match the optimistic message perfectly
             const optimisticMatch = prev.find(m => 
-              m.sender_id === payload.new.sender_id && 
-              m.content === payload.new.content && 
-              Math.abs(new Date(m.created_at).getTime() - new Date(payload.new.created_at).getTime()) < 10000
+              payload.new.client_id && m.client_id === payload.new.client_id
             );
 
             if (optimisticMatch) {
@@ -103,19 +100,15 @@ export function useMessages(chatId?: string) {
             return [...prev, payload.new];
           });
           
-          const { data: { user } } = await supabase.auth.getUser()
-          if (payload.new.sender_id !== user?.id) {
-            // Play notification sound
+          if (payload.new.sender_id !== currentUserRef.current?.id) {
             playNotificationSound()
-
-            // If the document is hidden, show a browser notification
+            // Document hidden check...
             if (document.hidden && Notification.permission === "granted") {
                 new Notification("New Message", {
                     body: payload.new.content || "📎 Media attachment",
                     icon: "/next.svg"
                 });
             }
-
             setTimeout(() => markAsSeen(), 200)
           }
         }
@@ -134,7 +127,6 @@ export function useMessages(chatId?: string) {
   }, [chatId])
 
   const sendMessage = async (content: string, mediaUrl?: string, mediaType?: string, replyTo?: string, mediaFile?: File) => {
-    const { data: { user } } = await supabase.auth.getUser()
     if (!user || !chatId) return
 
     let finalMediaUrl = mediaUrl
@@ -193,7 +185,8 @@ export function useMessages(chatId?: string) {
         media_url: finalMediaUrl,
         media_type: finalMediaType,
         status: 'sent',
-        reply_to: replyTo
+        reply_to: replyTo,
+        client_id: tempId
       })
       .select()
       .single()
@@ -214,7 +207,6 @@ export function useMessages(chatId?: string) {
   }
 
   const forwardMessage = async (messageContent: string, targetChatId: string, mediaUrl?: string, mediaType?: string) => {
-    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Not authenticated' }
 
     const { error } = await supabase.from('messages').insert({
@@ -230,7 +222,6 @@ export function useMessages(chatId?: string) {
   }
 
   const uploadFile = async (file: File) => {
-    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Not authenticated' }
 
     const fileExt = file.name.split('.').pop()

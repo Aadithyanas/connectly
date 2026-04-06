@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
+import { useAuth } from '@/context/AuthContext'
 
 export function usePresence(channelName: string = 'global') {
   const [onlineUsers, setOnlineUsers] = useState<Record<string, any>>({})
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({})
+  const { user } = useAuth()
   const supabase = createClient()
 
   useEffect(() => {
@@ -14,7 +16,6 @@ export function usePresence(channelName: string = 'global') {
     let isMounted = true
 
     const setup = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user || !isMounted) return
 
       channel = supabase.channel(`presence:${channelName}`, {
@@ -62,10 +63,9 @@ export function usePresence(channelName: string = 'global') {
         channel.unsubscribe()
       }
     }
-  }, [channelName])
+  }, [channelName, user]) // Add user to dependencies
 
   const sendTypingStatus = async (isTyping: boolean) => {
-    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
     const channel = supabase.channel(`presence:${channelName}`)
