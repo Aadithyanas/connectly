@@ -35,7 +35,7 @@ export default function ForwardModal({ isOpen, onClose, message, onForward }: Fo
         .eq('user_id', user.id)
 
       if (!memberOf) return
-      const chatIds = memberOf.map(m => m.chat_id)
+      const chatIds = memberOf.map((m: any) => m.chat_id)
 
       // Get chat details
       const { data: chatData } = await supabase
@@ -49,17 +49,17 @@ export default function ForwardModal({ isOpen, onClose, message, onForward }: Fo
         .select('chat_id, user_id')
         .in('chat_id', chatIds)
 
-      const otherUserIds = [...new Set((allMembers || []).filter(m => m.user_id !== user.id).map(m => m.user_id))]
+      const otherUserIds = [...new Set((allMembers || []).filter((m: any) => m.user_id !== user.id).map((m: any) => m.user_id))]
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, name, avatar_url')
         .in('id', otherUserIds)
 
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]))
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
 
-      const formatted = (chatData || []).map(chat => {
-        const otherMemberId = (allMembers || []).find(m => m.chat_id === chat.id && m.user_id !== user.id)?.user_id
-        const otherProfile = otherMemberId ? profileMap.get(otherMemberId) : null
+      const formatted = (chatData || []).map((chat: any) => {
+        const otherMemberId = (allMembers || []).find((m: any) => m.chat_id === chat.id && m.user_id !== user.id)?.user_id
+        const otherProfile: any = otherMemberId ? profileMap.get(otherMemberId) : null
         return {
           id: chat.id,
           name: chat.is_group ? chat.name : (otherProfile?.name || 'Unknown'),
@@ -83,7 +83,7 @@ export default function ForwardModal({ isOpen, onClose, message, onForward }: Fo
     setSent(prev => [...prev, chatId])
   }
 
-  const filteredChats = chats.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+  const filteredChats = chats.filter((c: any) => c.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <AnimatePresence>
@@ -120,7 +120,7 @@ export default function ForwardModal({ isOpen, onClose, message, onForward }: Fo
 
             {/* Chat List */}
             <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-              {filteredChats.map((chat) => {
+              {filteredChats.map((chat: any) => {
                 const isSent = sent.includes(chat.id)
                 const isSending = sending === chat.id
                 return (

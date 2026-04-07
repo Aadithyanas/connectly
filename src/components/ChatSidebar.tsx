@@ -51,7 +51,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         return
       }
       
-      const chatIds = memberOf.map(m => m.chat_id).filter(Boolean)
+      const chatIds = memberOf.map((m: any) => m.chat_id).filter(Boolean)
       if (chatIds.length === 0) { 
         setChats([])
         return 
@@ -74,7 +74,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         .in('chat_id', chatIds)
 
       // Step 4: Get all unique user IDs and fetch their profiles
-      const allUserIds = [...new Set((allMembers || []).map(m => m.user_id))].filter(Boolean)
+      const allUserIds = [...new Set((allMembers || []).map((m: any) => m.user_id))].filter(Boolean)
       let allProfiles = []
       
       if (allUserIds.length > 0) {
@@ -85,7 +85,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         if (data) allProfiles = data
       }
 
-      const profileMap = new Map(allProfiles.map(p => [p.id, p]))
+      const profileMap = new Map(allProfiles.map((p: any) => [p.id, p]))
 
       // Step 5: Get recent messages for each chat
       const { data: recentMessages } = await supabase
@@ -102,11 +102,11 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       }
 
       // Step 6: Build the final chat list
-      const formattedChats = chatData.map((chat) => {
+      const formattedChats = chatData.map((chat: any) => {
         // Find the OTHER person in 1-on-1 chats
-        const chatMembers = (allMembers || []).filter(m => m.chat_id === chat.id)
-        const otherMemberId = chatMembers.find(m => m.user_id !== user.id)?.user_id
-        const otherProfile = otherMemberId ? profileMap.get(otherMemberId) : null
+        const chatMembers = (allMembers || []).filter((m: any) => m.chat_id === chat.id)
+        const otherMemberId = chatMembers.find((m: any) => m.user_id !== user.id)?.user_id
+        const otherProfile: any = otherMemberId ? profileMap.get(otherMemberId) : null
 
         // Messages
         const msgs = messagesByChatId.get(chat.id) || []
@@ -114,7 +114,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
 
         // Unread count
         const unreadCount = msgs.filter(
-          m => m.sender_id !== user.id && m.status !== 'seen'
+          (m: any) => m.sender_id !== user.id && m.status !== 'seen'
         ).length
 
         // Format time
@@ -146,7 +146,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       })
 
       // Sort by most recent message
-      formattedChats.sort((a, b) => (b.last_msg_time || '').localeCompare(a.last_msg_time || ''))
+      formattedChats.sort((a: any, b: any) => (b.last_msg_time || '').localeCompare(a.last_msg_time || ''))
       setChats(formattedChats)
     } catch (err) {
       console.error('Fetch chats error:', err)
@@ -159,7 +159,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     fetchUserAndChats()
 
     const channel = supabase.channel('sidebar-sync')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload: any) => {
          fetchUserAndChats()
          // Acknowledge delivery if the message is for the current user and it is 'sent'
          if (payload.new && payload.new.sender_id !== user?.id && payload.new.status === 'sent') {
@@ -193,7 +193,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     window.location.href = '/login'
   }
 
-  const filteredChats = chats.filter(c =>
+  const filteredChats = chats.filter((c: any) =>
     (c.display_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
     (c.display_email?.toLowerCase() || '').includes(search.toLowerCase())
   )

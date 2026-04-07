@@ -41,7 +41,7 @@ export default function ChatPage() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
-        async (payload) => {
+        async (payload: any) => {
           const newMsg = payload.new as any
           if (newMsg.sender_id !== currentUser.id && newMsg.status === 'sent') {
              try {

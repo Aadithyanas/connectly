@@ -46,7 +46,7 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
         .eq('status_owner_id', user.id)
 
       if (allowedData) {
-        setSelectedMembers(new Set(allowedData.map(d => d.allowed_user_id)))
+        setSelectedMembers(new Set(allowedData.map((d: any) => d.allowed_user_id)))
       }
 
       // 3. Fetch all active members from chats (to populate the picker)
@@ -55,7 +55,7 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
         .select('chat_id')
         .eq('user_id', user.id)
 
-      const chatIds = (memberOf || []).map(m => m.chat_id)
+      const chatIds = (memberOf || []).map((m: any) => m.chat_id)
       
       if (chatIds.length > 0) {
         const { data: allMembers } = await supabase
@@ -65,10 +65,10 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
 
         const profiles = (allMembers || [])
           .map((m: any) => m.profiles)
-          .filter(p => p && p.id !== user.id)
+          .filter((p: any) => p && p.id !== user.id)
         
         // Deduplicate profiles
-        const uniqueProfiles = Array.from(new Map(profiles.map(p => [p.id, p])).values())
+        const uniqueProfiles = Array.from(new Map(profiles.map((p: any) => [p.id, p])).values()) as Profile[]
         setMembers(uniqueProfiles)
       }
 
@@ -96,7 +96,7 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
           .delete()
           .eq('status_owner_id', user.id)
 
-        const insertData = Array.from(selectedMembers).map(id => ({
+        const insertData = Array.from(selectedMembers).map((id: string) => ({
           status_owner_id: user.id,
           allowed_user_id: id
         }))
@@ -121,7 +121,7 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
     setSelectedMembers(next)
   }
 
-  const filteredMembers = members.filter(m => 
+  const filteredMembers = members.filter((m: Profile) => 
     m.name.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -153,7 +153,7 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
                   { id: 'everyone', label: 'Everyone', icon: Globe, desc: 'All registered Connectly members' },
                   { id: 'contacts', label: 'My Chats', icon: Users, desc: 'Only people you have chatted with' },
                   { id: 'selected', label: 'Selected Members', icon: MessageSquare, desc: 'Specifically chosen individuals' }
-                ].map((opt) => (
+                ].map((opt: any) => (
                   <label 
                     key={opt.id} 
                     className={`flex items-center p-4 rounded-2xl cursor-pointer border-2 transition-all ${visibility === opt.id ? 'bg-[#00a884]/10 border-[#00a884]' : 'bg-[#202c33] border-transparent hover:bg-[#2a3942]'}`}
