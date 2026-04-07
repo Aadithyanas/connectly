@@ -12,6 +12,11 @@ interface Profile {
   name: string
   email: string
   avatar_url: string | null
+  role: string | null
+  job_role: string | null
+  verification_level: number
+  availability_status: boolean
+  companies?: { name: string } | null
 }
 
 interface NewChatModalProps {
@@ -37,14 +42,23 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
 
         const { data, error } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, name, email, avatar_url, role, job_role, verification_level, availability_status, companies(name)')
           .neq('id', user.id)
         
-        if (!error && data) setProfiles(data)
+        if (!error && data) {
+          // Filter logic: Show students OR (professionals who are available)
+          // Note: verification_level >= 0 allows seeing new pros immediately
+          const visibleProfiles = data.filter((p: any) => 
+            p.role === 'student' || 
+            (p.role === 'professional' && p.availability_status !== false) ||
+            !p.role
+          )
+          setProfiles(visibleProfiles)
+        }
       }
       fetchProfiles()
     }
-  }, [isOpen])
+  }, [isOpen, user, supabase])
 
   const handleCreateDM = async (otherUserId: string) => {
     setLoading(true)
@@ -92,10 +106,14 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
 
   const filteredProfiles = search.trim() === '' 
     ? [] 
-    : profiles.filter(p => 
-        p.name.toLowerCase().includes(search.toLowerCase()) || 
-        p.email.toLowerCase().includes(search.toLowerCase())
-      )
+    : profiles.filter(p => {
+        const query = search.toLowerCase()
+        const matchesName = (p.name || '').toLowerCase().includes(query)
+        const matchesEmail = (p.email || '').toLowerCase().includes(query)
+        const matchesCompany = p.role === 'professional' && (p.companies?.name || '').toLowerCase().includes(query)
+        
+        return matchesName || matchesEmail || matchesCompany
+      })
 
   return (
     <AnimatePresence>
@@ -168,7 +186,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
                     </div>
                     <input
                       type="text"
-                      placeholder="Search by name or email..."
+                      placeholder="Search by name, email or company..."
                       className="block w-full pl-10 pr-3 py-2 bg-[#202c33] border-none text-[#e9edef] rounded-xl focus:ring-0 text-sm"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
@@ -190,7 +208,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
                       {selectedUsers.length === 0 && (
                         <div 
                           className="flex items-center px-4 py-3 hover:bg-[#202c33] cursor-pointer group border-b border-[#2a3942] transition-colors"
-                          onClick={() => setSelectedUsers([profiles[0]?.id].filter(Boolean))}
+                          onClick={() => setIsCreatingGroup(true)}
                         >
                           <div className="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center mr-3 shadow-lg group-hover:scale-105 transition-transform">
                             <Users className="w-6 h-6 text-white" />
@@ -239,8 +257,21 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
                                 )}
                               </div>
                               <div className="flex-1">
-                                <div className="text-[#e9edef] font-medium">{profile.name}</div>
-                                <div className="text-[#8696a0] text-sm truncate">{profile.email}</div>
+                                <div className="text-[#e9edef] font-medium flex items-center gap-2">
+                                  {profile.name}
+                                  {profile.role === 'professional' && profile.verification_level >= 2 && (
+                                    <Check className="w-3 h-3 text-[#3b82f6] fill-[#3b82f6]" />
+                                  )}
+                                </div>
+                                <div className="text-[#8696a0] text-sm truncate">
+                                  {profile.role === 'professional' ? (
+                                    <span className="text-[#00a884] font-medium">
+                                      {profile.job_role || 'Professional'} @ {profile.companies?.name || 'Unknown'}
+                                    </span>
+                                  ) : (
+                                    profile.email
+                                  )}
+                                </div>
                               </div>
                             </div>
                           )

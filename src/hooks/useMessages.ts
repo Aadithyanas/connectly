@@ -47,17 +47,22 @@ export function useMessages(chatId?: string) {
 
     const fetchMessages = async () => {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*, reply:reply_to(id, content, sender_id)')
-        .eq('chat_id', chatId)
-        .order('created_at', { ascending: true })
-
-      if (!error) {
-        setMessages(data || [])
-        markAsSeen()
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*, reply:reply_to(id, content, sender_id)')
+          .eq('chat_id', chatId)
+          .order('created_at', { ascending: true })
+          
+        if (!error) {
+          setMessages(data || [])
+          markAsSeen()
+        }
+      } catch (err: any) {
+        console.error(err)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     fetchMessages()
@@ -66,7 +71,7 @@ export function useMessages(chatId?: string) {
     channelRef.current = channel
 
     channel
-      .on('broadcast', { event: 'new_message' }, (payload) => {
+      .on('broadcast', { event: 'new_message' }, (payload: any) => {
         const newMessage = payload.payload
         if (newMessage.sender_id === currentUserRef.current?.id) return
 
@@ -81,7 +86,7 @@ export function useMessages(chatId?: string) {
         });
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
-        async (payload) => {
+        async (payload: any) => {
           setMessages((prev) => {
             // Check if this database ID is already in our state
             const idExists = prev.some(m => m.id === payload.new.id);
@@ -114,7 +119,7 @@ export function useMessages(chatId?: string) {
         }
       )
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
-        (payload) => {
+        (payload: any) => {
           setMessages((prev) => prev.map((msg) => (msg.id === payload.new.id ? { ...msg, ...payload.new } : msg)))
         }
       )

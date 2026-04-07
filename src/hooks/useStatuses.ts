@@ -47,11 +47,15 @@ export function useStatuses() {
       user: s.profiles
     }))
 
-    // Grouping
-    const mine = formatted.filter(s => s.user_id === user.id)
-    const others = formatted.filter(s => s.user_id !== user.id)
+    // Grouping - ensuring strict comparison to avoid self-presence in recent updates
+    const currentUserId = user.id;
+    const mine = formatted.filter(s => s.user_id === currentUserId)
+    const others = formatted.filter(s => s.user_id !== currentUserId)
     
     const othersGrouped = others.reduce((acc, status) => {
+      // Safety check: skip if somehow the filter above missed it
+      if (status.user_id === currentUserId) return acc;
+      
       if (!acc[status.user_id]) acc[status.user_id] = []
       acc[status.user_id].push(status)
       return acc

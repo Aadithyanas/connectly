@@ -37,28 +37,33 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
     if (!chatId || !user) return
 
     const fetchOtherUser = async () => {
-      const { data: members } = await supabase
-        .from('chat_members')
-        .select('user_id')
-        .eq('chat_id', chatId)
-        .neq('user_id', user.id)
-        .limit(1)
-        .single()
-
-      if (members) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, name, email, avatar_url, status, last_seen')
-          .eq('id', members.user_id)
+      try {
+        const { data: members, error: memError } = await supabase
+          .from('chat_members')
+          .select('user_id')
+          .eq('chat_id', chatId)
+          .neq('user_id', user.id)
+          .limit(1)
           .single()
-        
-        if (profile) setOtherUser(profile)
+
+        if (members) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, name, email, avatar_url, status, last_seen, availability_status, role')
+            .eq('id', members.user_id)
+            .single()
+          
+          if (profile) setOtherUser(profile)
+        }
+      } catch (err: any) {
+        console.error("fetchOtherUser error:", err)
+        setOtherUser({ name: "Error Loading" })
       }
     }
     fetchOtherUser()
 
     const channel = supabase.channel(`header-${chatId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
         setOtherUser((prev: any) => {
           if (prev && prev.id === payload.new.id) {
             return { ...prev, ...payload.new }
@@ -152,14 +157,21 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
                 <div className="w-full h-full bg-[#00a884] flex items-center justify-center text-white font-bold uppercase">{otherUser?.name?.[0] || 'C'}</div>
               )}
             </div>
-            {isOtherOnline && (
+            {isOtherOnline && otherUser?.availability_status !== false && (
               <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#25d366] rounded-full border-2 border-[#202c33]"></div>
             )}
           </div>
           <div className="flex flex-col">
             <h3 className="text-[#e9edef] text-[15.5px] font-medium leading-none mb-1 group-hover:text-[#00c99e] transition-colors">{otherUser?.name || 'Loading...'}</h3>
             <span className="text-[12px] font-medium">
-              {isOtherTyping ? <span className="text-[#25d366]">typing...</span> : isOtherOnline ? <span className="text-[#00a884]">online</span> : <span className="text-[#8696a0]">offline</span>}
+              {otherUser?.role === 'professional' && otherUser?.availability_status === false ? (
+                <span className="text-[#8696a0] italic flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-[#8696a0] rounded-full"></span>
+                  unavailable
+                </span>
+              ) : (
+                isOtherTyping ? <span className="text-[#25d366]">typing...</span> : isOtherOnline ? <span className="text-[#00a884]">online</span> : <span className="text-[#8696a0]">offline</span>
+              )}
             </span>
           </div>
         </div>
@@ -193,14 +205,35 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
         />
       </div>
 
-      {/* Input */}
-      <MessageInput 
-        onSendMessage={async (content, mUrl, mType, replyTo, mFile) => { await sendMessage(content, mUrl, mType, replyTo, mFile) }} 
-        onTyping={(isT) => { sendTypingStatus(isT) }}
-        onFileUpload={async (file) => { return await uploadFile(file) }}
-        replyingTo={replyingTo}
-        onCancelReply={() => setReplyingTo(null)}
-      />
+      {/* Banner / Input */}
+      {otherUser?.role === 'professional' && otherUser?.availability_status === false ? (
+        <div className="bg-[#202c33] px-6 py-4 flex flex-col items-center gap-2 border-t border-[#2a3942]">
+          <div className="bg-[#374248] rounded-full px-4 py-1.5 flex items-center gap-2">
+            <span className="text-[#00a884] text-xs font-bold uppercase tracking-widest">Privacy Shield Active</span>
+          </div>
+          <p className="text-[#8696a0] text-sm text-center">
+            This professional is currently **Unavailable for messages**. <br/>
+            You can still send a message, but they may not see it until they return.
+          </p>
+          <div className="w-full opacity-60 grayscale pointer-events-none">
+            <MessageInput 
+              onSendMessage={async (content, mUrl, mType, replyTo, mFile) => { await sendMessage(content, mUrl, mType, replyTo, mFile) }} 
+              onTyping={(isT) => { sendTypingStatus(isT) }}
+              onFileUpload={async (file) => { return await uploadFile(file) }}
+              replyingTo={replyingTo}
+              onCancelReply={() => setReplyingTo(null)}
+            />
+          </div>
+        </div>
+      ) : (
+        <MessageInput 
+          onSendMessage={async (content, mUrl, mType, replyTo, mFile) => { await sendMessage(content, mUrl, mType, replyTo, mFile) }} 
+          onTyping={(isT) => { sendTypingStatus(isT) }}
+          onFileUpload={async (file) => { return await uploadFile(file) }}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
+        />
+      )}
 
       {/* Forward Modal */}
       <ForwardModal
@@ -211,7 +244,12 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
       />
 
       {showSettingsModal && (
-        <SettingsModal type="chat" onClose={() => setShowSettingsModal(false)} />
+        <SettingsModal 
+          type="chat" 
+          onClose={() => setShowSettingsModal(false)} 
+          otherUserId={otherUser?.id}
+          otherUserName={otherUser?.name}
+        />
       )}
     </div>
   )

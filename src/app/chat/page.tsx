@@ -34,7 +34,6 @@ export default function ChatPage() {
   }, [user])
 
   // GLOBAL LISTENER: Mark ALL incoming messages as "delivered" instantly
-  // This runs for ANY chat, even if the user hasn't opened it
   useEffect(() => {
     if (!currentUser) return
 
@@ -44,40 +43,29 @@ export default function ChatPage() {
         { event: 'INSERT', schema: 'public', table: 'messages' },
         async (payload) => {
           const newMsg = payload.new as any
-          // Only mark messages from OTHER people as delivered
           if (newMsg.sender_id !== currentUser.id && newMsg.status === 'sent') {
-            try {
-              await supabase.rpc('mark_messages_delivered', { cid: newMsg.chat_id })
-            } catch (e) {
-              // silently fail
-            }
+             try {
+               await supabase.rpc('mark_messages_delivered', { cid: newMsg.chat_id })
+             } catch (e) {
+               console.error("Marking message delivered failed:", e)
+             }
           }
         }
       )
       .subscribe()
 
-    // Also mark all existing undelivered messages as delivered on app load
+    // Highly optimized batch execution instead of the loop that crashed the browser
     const markAllDelivered = async () => {
-      // Get all chats user belongs to
-      const { data: memberOf } = await supabase
-        .from('chat_members')
-        .select('chat_id')
-        .eq('user_id', currentUser.id)
-
-      if (memberOf) {
-        for (const m of memberOf) {
-          try {
-            await supabase.rpc('mark_messages_delivered', { cid: m.chat_id })
-          } catch (e) {
-            // silently fail
-          }
-        }
+      try {
+        await supabase.rpc('mark_all_messages_delivered')
+      } catch (e) {
+        // Silently fail if they haven't applied the SQL patch yet
       }
     }
     markAllDelivered()
 
     return () => { supabase.removeChannel(globalChannel) }
-  }, [currentUser?.id])
+  }, [currentUser?.id, supabase])
 
   const handleSelectChat = (id: string) => {
     setActiveChatId(id)

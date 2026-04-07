@@ -13,6 +13,17 @@ export default async function ChatLayout({
     redirect('/login')
   }
 
+  // Server-side onboarding guard — redirect to onboarding if role not yet set
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.role) {
+    redirect('/onboarding')
+  }
+
   return (
     <div className="h-dvh bg-[#111b21] text-[#e9edef] overflow-hidden selection:bg-[#00a884]/30 flex flex-col">
       {/* Main App Container */}

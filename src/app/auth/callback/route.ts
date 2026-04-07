@@ -11,7 +11,13 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .single()
+
+      const redirectPath = profile?.role ? next : '/onboarding'
+      return NextResponse.redirect(`${origin}${redirectPath}`)
     }
   }
 

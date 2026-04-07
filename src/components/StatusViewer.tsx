@@ -16,28 +16,34 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [currentDuration, setCurrentDuration] = useState(5000) // Default 5s for images
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(true)
   const [isWaiting, setIsWaiting] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const currentStatus = statuses[currentIndex]
 
+  // Reset loading states when index changes
+  useEffect(() => {
+    setIsLoadingMetadata(true)
+    setIsWaiting(false)
+  }, [currentIndex])
+
   // Sync video play/pause with isPaused state
   useEffect(() => {
     if (videoRef.current) {
-      if (isPaused || isWaiting) {
+      if (isPaused) {
         videoRef.current.pause()
       } else {
         videoRef.current.play().catch(() => {})
       }
     }
-  }, [isPaused, isWaiting])
+  }, [isPaused])
 
   const goToNext = useCallback(() => {
     if (currentIndex < statuses.length - 1) {
       setCurrentIndex(prev => prev + 1)
       setProgress(0)
       setCurrentDuration(5000) // Reset to standard 5s for the next item
-      setIsWaiting(false)
     } else {
       onClose()
     }
@@ -48,7 +54,6 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
       setCurrentIndex(prev => prev - 1)
       setProgress(0)
       setCurrentDuration(5000)
-      setIsWaiting(false)
     }
   }
 
@@ -58,24 +63,36 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
       // Use video duration but cap at 30 seconds
       const vidDur = Math.min(videoRef.current.duration * 1000, 30000)
       setCurrentDuration(vidDur)
+      setIsLoadingMetadata(false)
     }
   }
 
   useEffect(() => {
-    if (isPaused || isWaiting) return
+    // Basic guards
+    if (isPaused || isWaiting || (currentStatus.content_type === 'video' && isLoadingMetadata)) return
 
-    const interval = 50 
-    const step = (100 / (currentDuration / interval))
+    const intervalTime = 50 
     
     const timer = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) return 100
-        return Math.min(prev + step, 100)
-      })
-    }, interval)
+      if (currentStatus.content_type === 'video' && videoRef.current) {
+        // VIDEO MASTER CLOCK: Read direct from video time
+        const vid = videoRef.current
+        if (vid.duration) {
+          const currentProgress = (vid.currentTime / vid.duration) * 100
+          setProgress(currentProgress)
+        }
+      } else {
+        // IMAGE TIMER: Manual step progression
+        const step = (100 / (currentDuration / intervalTime))
+        setProgress(prev => {
+          if (prev >= 100) return 100
+          return Math.min(prev + step, 100)
+        })
+      }
+    }, intervalTime)
 
     return () => clearInterval(timer)
-  }, [isPaused, isWaiting, currentDuration])
+  }, [isPaused, isWaiting, isLoadingMetadata, currentDuration, currentStatus.content_type])
 
   useEffect(() => {
     if (progress >= 100) {
@@ -159,7 +176,7 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
 
         {currentStatus.content_type === 'video' ? (
           <div className="relative w-full h-full flex items-center justify-center">
-            {isWaiting && (
+            {(isWaiting || isLoadingMetadata) && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
                 <Loader2 className="w-12 h-12 text-white animate-spin opacity-80" />
               </div>
@@ -169,10 +186,16 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
               src={currentStatus.content_url} 
               autoPlay 
               muted={isMuted}
+              playsInline
               loop={false}
               onLoadedMetadata={handleLoadedMetadata}
               onWaiting={() => setIsWaiting(true)}
-              onPlaying={() => setIsWaiting(false)}
+              onStalled={() => setIsWaiting(true)}
+              onSuspend={() => setIsWaiting(true)}
+              onPlaying={() => {
+                setIsWaiting(false)
+                setIsLoadingMetadata(false)
+              }}
               onPause={() => setIsPaused(true)}
               onPlay={() => setIsPaused(false)}
               onEnded={goToNext}

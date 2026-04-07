@@ -36,117 +36,123 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   const { settings, isLoaded } = useSettings()
 
   const fetchUserAndChats = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    try {
+      if (!user) {
+        return
+      }
 
-    // Step 1: Get all chat IDs the user belongs to
-    const { data: memberOf, error: memberError } = await supabase
-      .from('chat_members')
-      .select('chat_id')
-      .eq('user_id', user.id)
+      // Step 1: Get all chat IDs the user belongs to
+      const { data: memberOf, error: memberError } = await supabase
+        .from('chat_members')
+        .select('chat_id')
+        .eq('user_id', user.id)
 
-    if (memberError || !memberOf) {
-      setLoading(false)
-      return
-    }
-    
-    const chatIds = memberOf.map(m => m.chat_id)
-    if (chatIds.length === 0) { 
-      setChats([])
-      setLoading(false)
-      return 
-    }
+      if (memberError || !memberOf) {
+        return
+      }
+      
+      const chatIds = memberOf.map(m => m.chat_id).filter(Boolean)
+      if (chatIds.length === 0) { 
+        setChats([])
+        return 
+      }
 
-    // Step 2: Get chat details
-    const { data: chatData, error: chatError } = await supabase
-      .from('chats')
-      .select('id, name, is_group, avatar_url')
-      .in('id', chatIds)
+      // Step 2: Get chat details
+      const { data: chatData, error: chatError } = await supabase
+        .from('chats')
+        .select('id, name, is_group, avatar_url')
+        .in('id', chatIds)
 
-    if (chatError || !chatData) {
-      setLoading(false)
-      return
-    }
+      if (chatError || !chatData) {
+        return
+      }
 
-    // Step 3: Get all members of these chats with their profiles
-    const { data: allMembers } = await supabase
-      .from('chat_members')
-      .select('chat_id, user_id')
-      .in('chat_id', chatIds)
+      // Step 3: Get all members of these chats with their profiles
+      const { data: allMembers } = await supabase
+        .from('chat_members')
+        .select('chat_id, user_id')
+        .in('chat_id', chatIds)
 
-    // Step 4: Get all unique user IDs and fetch their profiles
-    const allUserIds = [...new Set((allMembers || []).map(m => m.user_id))]
-    const { data: allProfiles } = await supabase
-      .from('profiles')
-      .select('id, name, email, avatar_url, status, last_seen')
-      .in('id', allUserIds)
+      // Step 4: Get all unique user IDs and fetch their profiles
+      const allUserIds = [...new Set((allMembers || []).map(m => m.user_id))].filter(Boolean)
+      let allProfiles = []
+      
+      if (allUserIds.length > 0) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, name, email, avatar_url, status, last_seen, availability_status, role')
+          .in('id', allUserIds)
+        if (data) allProfiles = data
+      }
 
-    const profileMap = new Map((allProfiles || []).map(p => [p.id, p]))
+      const profileMap = new Map(allProfiles.map(p => [p.id, p]))
 
-    // Step 5: Get recent messages for each chat
-    const { data: recentMessages } = await supabase
-      .from('messages')
-      .select('chat_id, content, created_at, sender_id, status')
-      .in('chat_id', chatIds)
-      .order('created_at', { ascending: false })
+      // Step 5: Get recent messages for each chat
+      const { data: recentMessages } = await supabase
+        .from('messages')
+        .select('chat_id, content, created_at, sender_id, status')
+        .in('chat_id', chatIds)
+        .order('created_at', { ascending: false })
 
-    // Group messages by chat
-    const messagesByChatId = new Map<string, any[]>()
-    for (const msg of (recentMessages || [])) {
-      if (!messagesByChatId.has(msg.chat_id)) messagesByChatId.set(msg.chat_id, [])
-      messagesByChatId.get(msg.chat_id)!.push(msg)
-    }
+      // Group messages by chat
+      const messagesByChatId = new Map<string, any[]>()
+      for (const msg of (recentMessages || [])) {
+        if (!messagesByChatId.has(msg.chat_id)) messagesByChatId.set(msg.chat_id, [])
+        messagesByChatId.get(msg.chat_id)!.push(msg)
+      }
 
-    // Step 6: Build the final chat list
-    const formattedChats = chatData.map((chat) => {
-      // Find the OTHER person in 1-on-1 chats
-      const chatMembers = (allMembers || []).filter(m => m.chat_id === chat.id)
-      const otherMemberId = chatMembers.find(m => m.user_id !== user.id)?.user_id
-      const otherProfile = otherMemberId ? profileMap.get(otherMemberId) : null
+      // Step 6: Build the final chat list
+      const formattedChats = chatData.map((chat) => {
+        // Find the OTHER person in 1-on-1 chats
+        const chatMembers = (allMembers || []).filter(m => m.chat_id === chat.id)
+        const otherMemberId = chatMembers.find(m => m.user_id !== user.id)?.user_id
+        const otherProfile = otherMemberId ? profileMap.get(otherMemberId) : null
 
-      // Messages
-      const msgs = messagesByChatId.get(chat.id) || []
-      const lastMsg = msgs[0]
+        // Messages
+        const msgs = messagesByChatId.get(chat.id) || []
+        const lastMsg = msgs[0]
 
-      // Unread count
-      const unreadCount = msgs.filter(
-        m => m.sender_id !== user.id && m.status !== 'seen'
-      ).length
+        // Unread count
+        const unreadCount = msgs.filter(
+          m => m.sender_id !== user.id && m.status !== 'seen'
+        ).length
 
-      // Format time
-      let lastTime = ''
-      if (lastMsg?.created_at) {
-        const date = new Date(lastMsg.created_at)
-        const now = new Date()
-        if (date.toDateString() === now.toDateString()) {
-          lastTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        } else {
-          const yesterday = new Date(now)
-          yesterday.setDate(yesterday.getDate() - 1)
-          lastTime = date.toDateString() === yesterday.toDateString() ? 'Yesterday' : date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+        // Format time
+        let lastTime = ''
+        if (lastMsg?.created_at) {
+          const date = new Date(lastMsg.created_at)
+          const now = new Date()
+          if (date.toDateString() === now.toDateString()) {
+            lastTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          } else {
+            const yesterday = new Date(now)
+            yesterday.setDate(yesterday.getDate() - 1)
+            lastTime = date.toDateString() === yesterday.toDateString() ? 'Yesterday' : date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+          }
         }
-      }
 
-      return {
-        id: chat.id,
-        is_group: chat.is_group,
-        display_name: chat.is_group ? (chat.name || 'Group') : (otherProfile?.name || 'Unknown User'),
-        display_email: chat.is_group ? '' : (otherProfile?.email || ''),
-        display_avatar: chat.is_group ? chat.avatar_url : otherProfile?.avatar_url,
-        other_profile: otherProfile,
-        unread_count: unreadCount,
-        last_message: lastMsg?.content || 'No messages yet',
-        last_time: lastTime || 'Now',
-        last_msg_time: lastMsg?.created_at || '',
-      }
-    })
+        return {
+          id: chat.id,
+          is_group: chat.is_group,
+          display_name: chat.is_group ? (chat.name || 'Group') : (otherProfile?.name || 'Unknown User'),
+          display_email: chat.is_group ? '' : (otherProfile?.email || ''),
+          display_avatar: chat.is_group ? chat.avatar_url : otherProfile?.avatar_url,
+          other_profile: otherProfile,
+          unread_count: unreadCount,
+          last_message: lastMsg?.content || 'No messages yet',
+          last_time: lastTime || 'Now',
+          last_msg_time: lastMsg?.created_at || '',
+        }
+      })
 
-    // Sort by most recent message
-    formattedChats.sort((a, b) => (b.last_msg_time || '').localeCompare(a.last_msg_time || ''))
-    setChats(formattedChats)
-    setLoading(false)
+      // Sort by most recent message
+      formattedChats.sort((a, b) => (b.last_msg_time || '').localeCompare(a.last_msg_time || ''))
+      setChats(formattedChats)
+    } catch (err) {
+      console.error('Fetch chats error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -266,15 +272,18 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
                         </div>
                       )}
                     </div>
-                    {chat.other_profile && isUserOnline(chat.other_profile) && (
+                    {chat.other_profile && isUserOnline(chat.other_profile) && chat.other_profile?.availability_status !== false && (
                       <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#25d366] rounded-full border-2 border-[#111b21] shadow-[0_0_6px_rgba(37,211,102,0.6)]"></div>
                     )}
                   </div>
 
                   <div className="flex-1 min-w-0 pr-2">
                     <div className="flex items-center justify-between gap-1 mb-0.5">
-                      <h3 className={`${textSizeClass} font-medium truncate leading-tight ${activeChatId === chat.id ? 'text-[#00a884]' : 'text-[#e9edef]'}`}>
+                      <h3 className={`${textSizeClass} font-medium truncate leading-tight flex items-center gap-1.5 ${activeChatId === chat.id ? 'text-[#00a884]' : 'text-[#e9edef]'}`}>
                         {chat.display_name}
+                        {chat.other_profile?.role === 'professional' && chat.other_profile?.availability_status === false && (
+                          <span className="text-[10px] bg-[#374248] text-[#8696a0] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">Unavailable</span>
+                        )}
                       </h3>
                       <span className={`text-xs whitespace-nowrap shrink-0 ${chat.unread_count > 0 ? 'text-[#25d366]' : 'text-[#e9edef]/80 drop-shadow-md'}`}>
                         {chat.last_time}

@@ -12,7 +12,7 @@ interface StatusTabProps {
 }
 
 export default function StatusTab({ onStatusClick }: StatusTabProps) {
-  const { myStatuses, partnerStatuses, loading, uploadStatus } = useStatuses()
+  const { myStatuses, partnerStatuses, loading, uploadStatus, refresh } = useStatuses()
   const { settings } = useSettings()
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -33,6 +33,7 @@ export default function StatusTab({ onStatusClick }: StatusTabProps) {
     if (res?.success) {
       setSelectedFile(null)
       setCaption('')
+      if (refresh) refresh()
       alert('Status uploaded successfully! 🚀')
     }
   }
@@ -57,8 +58,17 @@ export default function StatusTab({ onStatusClick }: StatusTabProps) {
             <div className="relative mr-4" onClick={() => myStatuses.length > 0 && onStatusClick(myStatuses)}>
               <div className="w-14 h-14 rounded-full border-2 border-[#00a884] p-0.5 group-hover:scale-105 transition-transform">
                 {myStatuses.length > 0 ? (
-                  <div className="w-full h-full rounded-full overflow-hidden bg-[#2a3942]">
-                    <Image src={myStatuses[0].content_url} alt="My Status" width={56} height={56} unoptimized className="object-cover h-full" />
+                  <div className="w-full h-full rounded-full overflow-hidden bg-[#2a3942] relative group">
+                    {myStatuses[0].content_type === 'video' ? (
+                      <div className="relative w-full h-full">
+                        <video src={myStatuses[0].content_url} muted className="w-full h-full object-cover blur-[2px]" />
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                          <Play className="w-4 h-4 text-white fill-white opacity-80" />
+                        </div>
+                      </div>
+                    ) : (
+                      <Image src={myStatuses[0].content_url} alt="My Status" width={56} height={56} unoptimized className="object-cover h-full" />
+                    )}
                   </div>
                 ) : (
                   <div className="w-full h-full rounded-full bg-[#374248] flex items-center justify-center">
@@ -101,8 +111,17 @@ export default function StatusTab({ onStatusClick }: StatusTabProps) {
                 >
                   <div className="relative mr-4">
                     <div className="w-14 h-14 rounded-full border-2 border-[#00a884] p-0.5 group-hover:scale-105 transition-transform">
-                      <div className="w-full h-full rounded-full overflow-hidden bg-[#2a3942]">
-                        <Image src={userStatuses[0].content_url} alt="Status" width={56} height={56} unoptimized className="object-cover h-full" />
+                      <div className="w-full h-full rounded-full overflow-hidden bg-[#2a3942] relative group">
+                        {userStatuses[0].content_type === 'video' ? (
+                          <div className="relative w-full h-full">
+                            <video src={userStatuses[0].content_url} muted className="w-full h-full object-cover blur-[2px]" />
+                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                              <Play className="w-4 h-4 text-white fill-white opacity-80" />
+                            </div>
+                          </div>
+                        ) : (
+                          <Image src={userStatuses[0].content_url} alt="Status" width={56} height={56} unoptimized className="object-cover h-full" />
+                        )}
                       </div>
                     </div>
                   </div>
