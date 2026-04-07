@@ -1,10 +1,14 @@
 import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.RESEND_API_KEY) {
+      console.warn('RESEND_API_KEY is not defined. Email skip.');
+      return NextResponse.json({ success: true, message: 'Saved to DB, email skipped (key missing)' });
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const { reporterName, reportedName, reason, description, reporterEmail } = await req.json();
 
     const { data, error } = await resend.emails.send({

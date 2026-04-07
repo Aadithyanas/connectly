@@ -43,9 +43,16 @@ export function useMessages(chatId?: string) {
   }, [chatId])
 
   useEffect(() => {
-    if (!chatId) return
+    let isMounted = true
+    setMessages([])
+    
+    if (!chatId) {
+      setLoading(false)
+      return
+    }
 
     const fetchMessages = async () => {
+      if (!isMounted) return
       setLoading(true)
       try {
         const { data, error } = await supabase
@@ -54,14 +61,20 @@ export function useMessages(chatId?: string) {
           .eq('chat_id', chatId)
           .order('created_at', { ascending: true })
           
+        if (!isMounted) return
+        
         if (!error) {
           setMessages(data || [])
           markAsSeen()
+        } else {
+          console.error("fetchMessages error:", error)
         }
       } catch (err: any) {
         console.error(err)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
@@ -126,6 +139,7 @@ export function useMessages(chatId?: string) {
       .subscribe()
 
     return () => { 
+      isMounted = false
       supabase.removeChannel(channel)
       channelRef.current = null
     }

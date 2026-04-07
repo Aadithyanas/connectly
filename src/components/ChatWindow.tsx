@@ -34,6 +34,10 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
 
   // Fetch other user's profile
   useEffect(() => {
+    setOtherUser(null)
+    setReplyingTo(null)
+    setForwardingMessage(null)
+    
     if (!chatId || !user) return
 
     const fetchOtherUser = async () => {
