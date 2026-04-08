@@ -68,8 +68,11 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
   }
 
   useEffect(() => {
-    // Basic guards
-    if (isPaused || isWaiting || (currentStatus.content_type === 'video' && isLoadingMetadata)) return
+    // Basic guards: Pause if isPaused OR if the video is truly stuck
+    // Note: We don't block the interval purely on isWaiting if readyState is sufficient
+    const isActuallyStuck = isWaiting && videoRef.current && videoRef.current.readyState < 3
+    
+    if (isPaused || (currentStatus.content_type === 'video' && (isLoadingMetadata || isActuallyStuck))) return
 
     const intervalTime = 50 
     
@@ -176,7 +179,8 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
 
         {currentStatus.content_type === 'video' ? (
           <div className="relative w-full h-full flex items-center justify-center">
-            {(isWaiting || isLoadingMetadata) && (
+            {/* Show loading only if metadata missing or we are truly stuck (low readyState) */}
+            {(isLoadingMetadata || (isWaiting && (!videoRef.current || videoRef.current.readyState < 3))) && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
                 <Loader2 className="w-12 h-12 text-white animate-spin opacity-80" />
               </div>
@@ -190,8 +194,8 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
               loop={false}
               onLoadedMetadata={handleLoadedMetadata}
               onWaiting={() => setIsWaiting(true)}
-              onStalled={() => setIsWaiting(true)}
-              onSuspend={() => setIsWaiting(true)}
+              onCanPlay={() => setIsWaiting(false)}
+              onCanPlayThrough={() => setIsWaiting(false)}
               onPlaying={() => {
                 setIsWaiting(false)
                 setIsLoadingMetadata(false)

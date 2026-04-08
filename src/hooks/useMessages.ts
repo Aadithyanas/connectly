@@ -44,41 +44,76 @@ export function useMessages(chatId?: string) {
 
   useEffect(() => {
     let isMounted = true
-    setMessages([])
+    const abortController = new AbortController()
+    // 1. Try to load from cache immediately for instant UI
+    const cached = localStorage.getItem(`messages_${chatId}`)
+    if (cached) {
+      const parsed = JSON.parse(cached)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setMessages(parsed)
+      }
+    } else {
+      setMessages([])
+    }
     
     if (!chatId) {
       setLoading(false)
       return
     }
 
-    const fetchMessages = async () => {
+    const fetchMessages = async (isBackgroundRefresh = false) => {
       if (!isMounted) return
-      setLoading(true)
+      
+      // 2. Only show skeleton if we have NO messages at all (no cache)
+      const hasNoMessages = !cached
+      if (!isBackgroundRefresh && hasNoMessages) setLoading(true)
+      
       try {
         const { data, error } = await supabase
           .from('messages')
           .select('*, reply:reply_to(id, content, sender_id)')
           .eq('chat_id', chatId)
           .order('created_at', { ascending: true })
+          .abortSignal(abortController.signal)
           
+        console.log("Supabase Action: Fetch Messages for Chat ID:", chatId)
+        console.log("Supabase Response Error:", error)
+
         if (!isMounted) return
         
         if (!error) {
-          setMessages(data || [])
-          markAsSeen()
+           const freshMessages = data || []
+           setMessages(freshMessages)
+           
+           // 3. Cache the fresh data (limit to last 100 messages for storage efficiency)
+           if (freshMessages.length > 0) {
+             localStorage.setItem(`messages_${chatId}`, JSON.stringify(freshMessages.slice(-100)))
+           }
+           
+           markAsSeen()
         } else {
+          // If aborted, error.message usually contains "AbortError"
           console.error("fetchMessages error:", error)
         }
       } catch (err: any) {
-        console.error(err)
+        if (err.name !== 'AbortError') console.error(err)
       } finally {
-        if (isMounted) {
+        if (isMounted && !isBackgroundRefresh) {
           setLoading(false)
         }
       }
     }
 
     fetchMessages()
+
+    // When returning to the app, the tab wakes up. 
+    // We fetch missing messages silently in background to repair the connection state.
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && isMounted) {
+        fetchMessages(true)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
 
     const channel = supabase.channel(`chat:${chatId}`)
     channelRef.current = channel
@@ -140,6 +175,8 @@ export function useMessages(chatId?: string) {
 
     return () => { 
       isMounted = false
+      abortController.abort()
+      document.removeEventListener('visibilitychange', handleVisibility)
       supabase.removeChannel(channel)
       channelRef.current = null
     }

@@ -70,7 +70,7 @@ export function useStatuses() {
     fetchStatuses()
 
     // Real-time subscription for statuses, privacy settings, and allowed users
-    const channel = supabase.channel('status-system-sync')
+    const channel = supabase.channel(`status-system-sync-${Math.random()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'statuses' }, () => {
         fetchStatuses()
       })

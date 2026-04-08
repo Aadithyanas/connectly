@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { User } from '@supabase/supabase-js'
 import { createClient } from '@/utils/supabase/client'
 
@@ -33,16 +33,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) await fetchProfile(user.id)
   }
 
+  const initLock = useRef(false)
+
   useEffect(() => {
+    // Only run once even in React 18 Strict Mode
+    if (initLock.current) return
+    initLock.current = true
+
     // Initial fetch
     const initAuth = async () => {
       try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser()
-        setUser(currentUser)
+        // Use getUser() as the primary source of truth, but with a timeout logic
+        // or prioritize getSession if getUser is known to be slow in specific environments.
+        const { data: { session } } = await supabase.auth.getSession()
+        const currentUser = session?.user ?? null
+        
         if (currentUser) {
-          await fetchProfile(currentUser.id)
+          setUser(currentUser)
+          // Fetch profile in background without blocking initial user state
+          fetchProfile(currentUser.id)
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Auth check failed:', err)
       } finally {
         setLoading(false)
@@ -65,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       subscription.unsubscribe()
+      // We don't reset initLock here so StrictMode remounts don't trigger dual fetching
     }
   }, [supabase])
 

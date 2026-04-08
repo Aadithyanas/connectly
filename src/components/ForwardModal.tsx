@@ -129,7 +129,7 @@ export default function ForwardModal({ isOpen, onClose, message, onForward }: Fo
                   >
                     <div className="w-10 h-10 rounded-full bg-[#374248] flex items-center justify-center mr-3 overflow-hidden">
                       {chat.avatar ? (
-                        <Image src={chat.avatar} alt={chat.name} width={40} height={40} sizes="40px" className="object-cover rounded-full" />
+                        <img src={chat.avatar} alt={chat.name} className="w-10 h-10 object-cover rounded-full" />
                       ) : (
                         <div className="w-full h-full bg-[#00a884] flex items-center justify-center text-white font-bold uppercase">{chat.initial}</div>
                       )}

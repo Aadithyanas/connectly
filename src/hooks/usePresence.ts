@@ -60,7 +60,7 @@ export function usePresence(channelName: string = 'global') {
     return () => {
       isMounted = false
       if (channel) {
-        channel.unsubscribe()
+        supabase.removeChannel(channel)
       }
     }
   }, [channelName, user]) // Add user to dependencies

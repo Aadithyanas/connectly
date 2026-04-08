@@ -34,7 +34,15 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
 
   // Fetch other user's profile
   useEffect(() => {
-    setOtherUser(null)
+    // Try cache first for instant header
+    if (chatId) {
+      const cached = localStorage.getItem(`profile_${chatId}`)
+      if (cached) setOtherUser(JSON.parse(cached))
+      else setOtherUser(null)
+    } else {
+      setOtherUser(null)
+    }
+    
     setReplyingTo(null)
     setForwardingMessage(null)
     
@@ -57,11 +65,13 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
             .eq('id', members.user_id)
             .single()
           
-          if (profile) setOtherUser(profile)
+          if (profile) {
+            setOtherUser(profile)
+            localStorage.setItem(`profile_${chatId}`, JSON.stringify(profile))
+          }
         }
       } catch (err: any) {
         console.error("fetchOtherUser error:", err)
-        setOtherUser({ name: "Error Loading" })
       }
     }
     fetchOtherUser()
@@ -143,7 +153,10 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
     <div className="flex-1 flex flex-col bg-[#0b141a] h-full overflow-hidden">
       {/* Header */}
       <div className="h-[60px] bg-[#202c33] flex items-center justify-between px-4 sticky top-0 z-10 border-b border-[#222e35] shrink-0">
-        <div className="flex items-center gap-3 cursor-pointer group min-w-0">
+        <div 
+          className="flex items-center gap-3 cursor-pointer group min-w-0 flex-1 h-full"
+          onClick={onOpenInfo}
+        >
           {onBack && (
             <button 
               onClick={(e) => { e.stopPropagation(); onBack(); }}
@@ -152,34 +165,34 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
               <ChevronLeft className="w-6 h-6" />
             </button>
           )}
-          <div className="flex items-center gap-3 min-w-0" onClick={onOpenInfo}>
+          <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
-              <div className="w-10 h-10 rounded-full bg-[#374248] flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
-              {otherUser?.avatar_url ? (
-                <Image src={otherUser.avatar_url} alt={otherUser.name || ''} width={40} height={40} sizes="40px" className="object-cover rounded-full" />
-              ) : (
-                <div className="w-full h-full bg-[#00a884] flex items-center justify-center text-white font-bold uppercase">{otherUser?.name?.[0] || 'C'}</div>
+              <div className="w-10 h-10 rounded-full bg-[#374248] flex items-center justify-center overflow-hidden group-hover:ring-2 group-hover:ring-[#00a884] transition-all">
+                {otherUser?.avatar_url ? (
+                  <img src={otherUser.avatar_url} alt={otherUser.name || ''} className="w-10 h-10 object-cover rounded-full" />
+                ) : (
+                  <div className="w-full h-full bg-[#00a884] flex items-center justify-center text-white font-bold uppercase">{otherUser?.name?.[0] || 'C'}</div>
+                )}
+              </div>
+              {isOtherOnline && otherUser?.availability_status !== false && (
+                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#25d366] rounded-full border-2 border-[#202c33]"></div>
               )}
             </div>
-            {isOtherOnline && otherUser?.availability_status !== false && (
-              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#25d366] rounded-full border-2 border-[#202c33]"></div>
-            )}
-          </div>
-          <div className="flex flex-col">
-            <h3 className="text-[#e9edef] text-[15.5px] font-medium leading-none mb-1 group-hover:text-[#00c99e] transition-colors">{otherUser?.name || 'Loading...'}</h3>
-            <span className="text-[12px] font-medium">
-              {otherUser?.role === 'professional' && otherUser?.availability_status === false ? (
-                <span className="text-[#8696a0] italic flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-[#8696a0] rounded-full"></span>
-                  unavailable
-                </span>
-              ) : (
-                isOtherTyping ? <span className="text-[#25d366]">typing...</span> : isOtherOnline ? <span className="text-[#00a884]">online</span> : <span className="text-[#8696a0]">offline</span>
-              )}
-            </span>
+            <div className="flex flex-col min-w-0">
+              <h3 className="text-[#e9edef] text-[15.5px] font-medium leading-none mb-1 group-hover:text-[#00c99e] transition-colors truncate">{otherUser?.name || 'Loading...'}</h3>
+              <span className="text-[12px] font-medium truncate">
+                {otherUser?.role === 'professional' && otherUser?.availability_status === false ? (
+                  <span className="text-[#8696a0] italic flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-[#8696a0] rounded-full"></span>
+                    unavailable
+                  </span>
+                ) : (
+                  isOtherTyping ? <span className="text-[#25d366]">typing...</span> : isOtherOnline ? <span className="text-[#00a884]">online</span> : <span className="text-[#8696a0]">offline</span>
+                )}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
         <div className="flex items-center gap-4 text-[#aebac1]">
           <Search className="w-5 h-5 cursor-pointer hover:text-[#e9edef]" />
           <MoreVertical onClick={() => setShowSettingsModal(true)} className="w-5 h-5 cursor-pointer hover:text-[#e9edef] active:opacity-50" />

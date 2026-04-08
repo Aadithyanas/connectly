@@ -238,12 +238,10 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
                             >
                               <div className="relative w-12 h-12 rounded-full bg-[#374248] mr-3 overflow-hidden group-hover:scale-105 transition-all">
                                 {profile.avatar_url ? (
-                                  <Image 
+                                  <img 
                                     src={profile.avatar_url} 
                                     alt={profile.name} 
-                                    fill 
-                                    sizes="48px"
-                                    className="object-cover" 
+                                    className="w-full h-full object-cover" 
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center font-bold text-lg uppercase bg-[#00a884]/20 text-[#00a884]">

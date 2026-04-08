@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { X, Camera, Edit2, Check, User, Users, ShieldCheck, LogOut, Trash2, Mail, Info, Briefcase, GraduationCap, Globe, Link, Signal, Building2, BookOpen } from 'lucide-react'
+import { X, Camera, Edit2, Check, User, Users, ShieldCheck, LogOut, Trash2, Mail, Info, Briefcase, GraduationCap, Globe, Link, Signal, Building2, BookOpen, Rocket } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useIsUserOnline } from '@/hooks/useOnlineStatus'
@@ -13,9 +13,10 @@ interface InfoSidebarProps {
   onClose: () => void
   type: 'profile' | 'contact' | 'group'
   data?: any
+  onViewPosts?: (userId: string) => void
 }
 
-export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebarProps) {
+export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }: InfoSidebarProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(data?.name || '')
   const [bio, setBio] = useState(data?.bio || '')
@@ -24,6 +25,17 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
   const [loading, setLoading] = useState(false)
   const [isTogglingAvailability, setIsTogglingAvailability] = useState(false)
   const [companyName, setCompanyName] = useState<string | null>(null)
+  
+  // New States for Editing
+  const [linkedin, setLinkedin] = useState(data?.linkedin || '')
+  const [github, setGithub] = useState(data?.github || '')
+  const [portfolio, setPortfolio] = useState(data?.portfolio || '')
+  const [collegeName, setCollegeName] = useState(data?.college_name || '')
+  const [course, setCourse] = useState(data?.course || '')
+  const [jobRole, setJobRole] = useState(data?.job_role || '')
+  const [experienceYears, setExperienceYears] = useState(data?.experience_years || '')
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState(data?.avatar_url || '')
+
   const { user, profile, refreshProfile } = useAuth()
   const supabase = createClient()
 
@@ -39,6 +51,15 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
       setNickname(saved || '')
     }
 
+    setLinkedin(data?.linkedin || '')
+    setGithub(data?.github || '')
+    setPortfolio(data?.portfolio || '')
+    setCollegeName(data?.college_name || '')
+    setCourse(data?.course || '')
+    setJobRole(data?.job_role || '')
+    setExperienceYears(data?.experience_years || '')
+    setCurrentAvatarUrl(data?.avatar_url || '')
+
     // Fetch company name whenever a professional's card opens
     if (data?.company_id) {
       supabase
@@ -53,17 +74,83 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
   }, [data, type])
 
   const handleUpdateProfile = async () => {
+    // Optimistic Update: Close editor immediately to feel fast
+    setIsEditing(false)
     setLoading(true)
-    if (!user) return
-    const { error } = await supabase
-      .from('profiles')
-      .update({ name, bio })
-      .eq('id', user.id)
-    if (!error) {
-      setIsEditing(false)
-      await refreshProfile()
+    
+    if (!user) {
+      setLoading(false)
+      return
     }
-    setLoading(false)
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          name, 
+          bio,
+          linkedin,
+          github,
+          portfolio,
+          college_name: collegeName,
+          course,
+          job_role: jobRole,
+          experience_years: experienceYears,
+          avatar_url: currentAvatarUrl
+        })
+        .eq('id', user.id)
+
+      if (error) throw error
+      
+      // Refresh in background
+      refreshProfile()
+    } catch (error: any) {
+      alert(`Error updating profile: ${error.message}`)
+      setIsEditing(true) // Re-open if failed
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    setLoading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random()}.${fileExt}`
+      const filePath = `${user.id}/${fileName}` // Corrected for RLS: folder must be User ID
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      setCurrentAvatarUrl(publicUrl)
+      
+      // Auto-save to profile
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id)
+
+      // ALSO update Auth metadata so the sidebar refreshes instantly
+      await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      })
+        
+      refreshProfile()
+    } catch (error: any) {
+      alert(`Error uploading avatar: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleToggleAvailability = async () => {
@@ -139,25 +226,58 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              <h2 className="text-[#e9edef] text-xl font-bold">{getTitle()}</h2>
+              <div className="flex-1 flex justify-between items-end">
+                <h2 className="text-[#e9edef] text-xl font-bold">{getTitle()}</h2>
+                {type === 'profile' && !isEditing && (
+                  <button 
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-[#00a884] hover:bg-[#00c99e] text-[#111b21] rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 mb-0.5"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    Edit Profile
+                  </button>
+                )}
+                {type === 'profile' && isEditing && (
+                  <button 
+                    onClick={() => setIsEditing(false)}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-[#374248] hover:bg-[#4a555c] text-[#e9edef] rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 mb-0.5"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 bg-[#111b21]">
               {/* Avatar */}
               <div className="flex flex-col items-center gap-4">
-                <div className="relative group cursor-pointer">
+                <div className="relative group cursor-pointer" onClick={() => type === 'profile' && document.getElementById('avatar-upload')?.click()}>
                   <div className="w-48 h-48 rounded-full bg-[#374248] flex items-center justify-center overflow-hidden border-4 border-[#111b21] shadow-xl group-hover:scale-[1.02] transition-transform relative">
-                    {data?.avatar_url ? (
-                      <Image src={data.avatar_url} alt="Profile" fill sizes="192px" className="object-cover" />
+                    {currentAvatarUrl ? (
+                      <img src={currentAvatarUrl} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
                       <User className="w-24 h-24 text-[#8696a0]" />
                     )}
+                    {loading && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="w-8 h-8 border-4 border-[#00a884] border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
                   </div>
                   {type === 'profile' && (
-                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Camera className="w-10 h-10 text-white" />
-                    </div>
+                    <>
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="w-10 h-10 text-white" />
+                      </div>
+                      <input 
+                        type="file" 
+                        id="avatar-upload" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={handleUploadAvatar}
+                      />
+                    </>
                   )}
                   {type === 'contact' && isContactOnline && data?.availability_status !== false && (
                     <div className="absolute bottom-2 right-2 w-5 h-5 bg-[#25d366] rounded-full border-[3px] border-[#111b21] shadow-[0_0_8px_rgba(37,211,102,0.6)]" />
@@ -226,8 +346,8 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
                         ) : (
                           <span className="text-[#e9edef] text-lg font-medium">{name || 'Add a name'}</span>
                         )}
-                        {!isEditing && (
-                          <button onClick={() => setIsEditing(true)} className="p-2 text-[#8696a0] hover:text-[#e9edef] opacity-0 group-hover:opacity-100 transition-opacity">
+                        {type === 'profile' && !isEditing && (
+                          <button onClick={() => setIsEditing(true)} className="p-2 text-[#00a884] hover:text-[#e9edef] transition-colors">
                             <Edit2 className="w-5 h-5" />
                           </button>
                         )}
@@ -235,41 +355,71 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
                     </div>
 
                     {/* Student: college + course */}
-                    {data?.role === 'student' && data?.college_name && (
-                      <div className="space-y-1">
-                        <label className="text-[#00a884] text-sm font-medium uppercase tracking-wider">College</label>
-                        <div className="flex items-center gap-2">
-                          <GraduationCap className="w-4 h-4 text-[#8696a0]" />
-                          <p className="text-[#e9edef]">{data.college_name}</p>
+                    {data?.role === 'student' && (
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <label className="text-[#00a884] text-sm font-medium uppercase tracking-wider">College</label>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              className="w-full bg-transparent border-b-2 border-[#00a884] py-1 text-[#e9edef] text-sm focus:ring-0 outline-none"
+                              value={collegeName}
+                              onChange={(e) => setCollegeName(e.target.value)}
+                            />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <GraduationCap className="w-4 h-4 text-[#8696a0]" />
+                              <p className="text-[#e9edef] font-medium">{collegeName || 'Add college'}</p>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
-                    {data?.role === 'student' && data?.course && (
-                      <div className="space-y-1">
-                        <label className="text-[#00a884] text-sm font-medium uppercase tracking-wider">Course</label>
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="w-4 h-4 text-[#8696a0]" />
-                          <p className="text-[#e9edef]">{data.course}</p>
+                        <div className="space-y-1">
+                          <label className="text-[#00a884] text-sm font-medium uppercase tracking-wider">Course</label>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              className="w-full bg-transparent border-b-2 border-[#00a884] py-1 text-[#e9edef] text-sm focus:ring-0 outline-none"
+                              value={course}
+                              onChange={(e) => setCourse(e.target.value)}
+                            />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="w-4 h-4 text-[#8696a0]" />
+                              <p className="text-[#e9edef] font-medium">{course || 'Add course'}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
 
                     {/* Professional: company + job role */}
-                    {data?.role === 'professional' && companyName && (
-                      <div className="space-y-1">
-                        <label className="text-[#00a884] text-sm font-medium uppercase tracking-wider">Company</label>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-[#8696a0]" />
-                          <p className="text-[#e9edef]">{companyName}</p>
-                        </div>
-                      </div>
-                    )}
-                    {data?.role === 'professional' && data?.job_role && (
-                      <div className="space-y-1">
-                        <label className="text-[#00a884] text-sm font-medium uppercase tracking-wider">Job Role</label>
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="w-4 h-4 text-[#8696a0]" />
-                          <p className="text-[#e9edef]">{data.job_role}{data.experience_years ? ` · ${data.experience_years} yrs` : ''}</p>
+                    {data?.role === 'professional' && (
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <label className="text-[#00a884] text-sm font-medium uppercase tracking-wider">Job Role</label>
+                          {isEditing ? (
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                className="flex-1 bg-transparent border-b-2 border-[#00a884] py-1 text-[#e9edef] text-sm focus:ring-0 outline-none"
+                                value={jobRole}
+                                onChange={(e) => setJobRole(e.target.value)}
+                                placeholder="Job Role"
+                              />
+                               <input
+                                type="text"
+                                className="w-20 bg-transparent border-b-2 border-[#00a884] py-1 text-[#e9edef] text-sm focus:ring-0 outline-none"
+                                value={experienceYears}
+                                onChange={(e) => setExperienceYears(e.target.value)}
+                                placeholder="Years"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Briefcase className="w-4 h-4 text-[#8696a0]" />
+                              <p className="text-[#e9edef] font-medium">{jobRole}{experienceYears ? ` · ${experienceYears} yrs` : 'Add role'}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -299,28 +449,65 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
                     </div>
 
                     {/* Social Links */}
-                    {(data?.linkedin || data?.github || data?.portfolio) && (
-                      <div className="space-y-2">
-                        <label className="text-[#00a884] text-sm font-medium uppercase tracking-wider">Links</label>
-                        <div className="flex flex-col gap-2">
-                          {data.linkedin && (
-                            <a href={data.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[#8696a0] hover:text-[#00a884] transition-colors">
-                              <Link className="w-4 h-4" /><span className="text-sm truncate">LinkedIn</span>
-                            </a>
-                          )}
-                          {data.github && (
-                            <a href={`https://github.com/${data.github}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[#8696a0] hover:text-[#00a884] transition-colors">
-                              <Globe className="w-4 h-4" /><span className="text-sm truncate">GitHub</span>
-                            </a>
-                          )}
-                          {data.portfolio && (
-                            <a href={data.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[#8696a0] hover:text-[#00a884] transition-colors">
-                              <Globe className="w-4 h-4" /><span className="text-sm truncate">Portfolio</span>
-                            </a>
-                          )}
+                    <div className="space-y-4">
+                      <label className="text-[#00a884] text-sm font-medium uppercase tracking-wider">Professional Links</label>
+                      {isEditing ? (
+                        <div className="space-y-4 pt-1">
+                          <div className="flex items-center gap-3 bg-[#202c33] rounded-xl p-3">
+                            <Link className="w-5 h-5 text-[#8696a0]" />
+                            <input 
+                              type="text" 
+                              placeholder="LinkedIn URL" 
+                              className="bg-transparent border-none text-sm text-[#e9edef] w-full p-0 focus:ring-0" 
+                              value={linkedin}
+                              onChange={(e) => setLinkedin(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex items-center gap-3 bg-[#202c33] rounded-xl p-3">
+                            <Globe className="w-5 h-5 text-[#8696a0]" />
+                            <input 
+                              type="text" 
+                              placeholder="Github Username" 
+                              className="bg-transparent border-none text-sm text-[#e9edef] w-full p-0 focus:ring-0" 
+                              value={github}
+                              onChange={(e) => setGithub(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex items-center gap-3 bg-[#202c33] rounded-xl p-3">
+                            <Globe className="w-5 h-5 text-[#8696a0]" />
+                            <input 
+                              type="text" 
+                              placeholder="Portfolio Link" 
+                              className="bg-transparent border-none text-sm text-[#e9edef] w-full p-0 focus:ring-0" 
+                              value={portfolio}
+                              onChange={(e) => setPortfolio(e.target.value)}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="flex flex-col gap-3 pt-1">
+                          {linkedin && (
+                            <a href={linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-[#202c33] hover:bg-[#374248] rounded-xl transition-all border border-white/5">
+                              <div className="flex items-center gap-3"><Link className="w-5 h-5 text-[#00a884]" /><span className="text-[#e9edef] text-[13.5px] font-medium">LinkedIn Profile</span></div>
+                              <Globe className="w-4 h-4 text-[#8696a0]" />
+                            </a>
+                          )}
+                          {github && (
+                            <a href={`https://github.com/${github}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-[#202c33] hover:bg-[#374248] rounded-xl transition-all border border-white/5">
+                              <div className="flex items-center gap-3"><Globe className="w-5 h-5 text-[#e9edef]" /><span className="text-[#e9edef] text-[13.5px] font-medium">GitHub Repository</span></div>
+                              <Globe className="w-4 h-4 text-[#8696a0]" />
+                            </a>
+                          )}
+                          {portfolio && (
+                            <a href={portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-[#202c33] hover:bg-[#374248] rounded-xl transition-all border border-white/5">
+                              <div className="flex items-center gap-3"><Link className="w-5 h-5 text-[#3b82f6]" /><span className="text-[#e9edef] text-[13.5px] font-medium">Personal Portfolio</span></div>
+                              <Globe className="w-4 h-4 text-[#8696a0]" />
+                            </a>
+                          )}
+                          {!linkedin && !github && !portfolio && <p className="text-[#8696a0] text-sm italic">No social links added yet.</p>}
+                        </div>
+                      )}
+                    </div>
 
                     {isEditing && (
                       <div className="flex justify-end gap-3 pt-4">
@@ -364,6 +551,25 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
                         )}
                       </div>
                     </div>
+
+                    {/* Activity Section */}
+                    {data?.id && (
+                      <div className="space-y-3 pt-2">
+                        <label className="text-[#00a884] text-xs font-medium uppercase tracking-wider">Activity</label>
+                        <button 
+                          onClick={() => onViewPosts?.(data.id)}
+                          className="w-full flex items-center justify-between p-3.5 bg-[#202c33] hover:bg-[#374248] rounded-xl transition-all group border border-white/5"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Rocket className="w-5 h-5 text-[#3b82f6] group-hover:scale-110 transition-transform" />
+                            <div className="text-left">
+                              <span className="text-[#e9edef] text-[15px] font-bold block">View Achievements</span>
+                              <span className="text-[#8696a0] text-[11px]">See all projects & workshops</span>
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    )}
 
                     {/* Verification Badge — uses .border from switch */}
                     {data?.verification_level !== undefined && (
@@ -441,25 +647,45 @@ export default function InfoSidebar({ isOpen, onClose, type, data }: InfoSidebar
                     {/* About */}
                     <div className="space-y-2">
                       <label className="text-[#00a884] text-xs font-medium uppercase tracking-wider">About</label>
-                      <div className="flex items-center gap-3">
-                        <Info className="w-5 h-5 text-[#8696a0] shrink-0" />
-                        <p className="text-[#8696a0]">{data?.bio || 'Hey there! I am using Connectly.'}</p>
+                      <div className="flex items-start gap-3">
+                        <Info className="w-5 h-5 text-[#8696a0] shrink-0 mt-0.5" />
+                        <p className="text-[#8696a0] text-sm leading-relaxed">{data?.bio || 'Hey there! I am using Connectly.'}</p>
                       </div>
                     </div>
 
-                    {/* Social Links */}
-                    {(data?.linkedin || data?.github) && (
-                      <div className="flex gap-3 pt-1">
-                        {data.linkedin && (
-                          <a href={data.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[#8696a0] hover:text-[#00a884] transition-colors text-sm">
-                            <Link className="w-4 h-4" /> LinkedIn
-                          </a>
-                        )}
-                        {data.github && (
-                          <a href={`https://github.com/${data.github}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[#8696a0] hover:text-[#00a884] transition-colors text-sm">
-                            <Globe className="w-4 h-4" /> GitHub
-                          </a>
-                        )}
+                    {/* Social Links (Always Visible) */}
+                    {(data?.linkedin || data?.github || data?.portfolio) && (
+                      <div className="space-y-3 pt-1">
+                        <label className="text-[#00a884] text-xs font-medium uppercase tracking-wider">Networking Links</label>
+                        <div className="flex flex-col gap-2">
+                          {data.linkedin && (
+                            <a href={data.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-[#2a3942] hover:bg-[#374248] rounded-xl transition-all border border-white/5">
+                              <div className="flex items-center gap-2.5">
+                                <Link className="w-4 h-4 text-[#00a884]" />
+                                <span className="text-[#e9edef] text-xs font-medium">LinkedIn Profile</span>
+                              </div>
+                              <Globe className="w-3.5 h-3.5 text-[#8696a0]" />
+                            </a>
+                          )}
+                          {data.github && (
+                            <a href={`https://github.com/${data.github}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-[#2a3942] hover:bg-[#374248] rounded-xl transition-all border border-white/5">
+                              <div className="flex items-center gap-2.5">
+                                <Globe className="w-4 h-4 text-white" />
+                                <span className="text-[#e9edef] text-xs font-medium">GitHub Repository</span>
+                              </div>
+                              <Globe className="w-3.5 h-3.5 text-[#8696a0]" />
+                            </a>
+                          )}
+                          {data.portfolio && (
+                            <a href={data.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-[#2a3942] hover:bg-[#374248] rounded-xl transition-all border border-white/5">
+                              <div className="flex items-center gap-2.5">
+                                <Link className="w-4 h-4 text-[#3b82f6]" />
+                                <span className="text-[#e9edef] text-xs font-medium">Personal Portfolio</span>
+                              </div>
+                              <Globe className="w-3.5 h-3.5 text-[#8696a0]" />
+                            </a>
+                          )}
+                        </div>
                       </div>
                     )}
                   </>
