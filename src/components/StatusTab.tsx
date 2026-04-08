@@ -21,9 +21,7 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
   const [caption, setCaption] = useState('')
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setSelectedFile(e.target.files[0])
-    }
+    if (e.target.files?.[0]) setSelectedFile(e.target.files[0])
   }
 
   const handleUpload = async () => {
@@ -35,39 +33,38 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
       setSelectedFile(null)
       setCaption('')
       if (refresh) refresh()
-      alert('Status uploaded successfully! 🚀')
+      alert('Status uploaded! 🚀')
     }
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#111b21] w-full">
-      {/* Header Actions */}
-      <div className="w-full h-[60px] flex items-center justify-between px-4 bg-[#202c33] text-[#e9edef] shrink-0 border-b border-white/5">
+    <div className="flex flex-col h-full bg-black w-full">
+      <div className="w-full h-[56px] flex items-center justify-between px-4 bg-[#0a0a0a] text-white shrink-0 border-b border-white/[0.04]">
         <div className="flex items-center gap-4">
           {onBack && (
-            <button onClick={onBack} className="md:hidden p-1 hover:bg-[#2a3942] rounded-full transition-colors">
-              <ChevronLeft className="w-6 h-6 text-[#8696a0]" />
+            <button onClick={onBack} className="md:hidden p-1 hover:bg-white/[0.06] rounded-full transition-colors">
+              <ChevronLeft className="w-5 h-5 text-zinc-500" />
             </button>
           )}
-          <h2 className="text-xl font-bold">Status</h2>
+          <h2 className="text-base font-bold">Status</h2>
         </div>
-        <div className="flex gap-4">
-          <button onClick={() => setIsPrivacyOpen(true)} className="p-2 hover:bg-[#2a3942] rounded-full transition-colors" title="Status Privacy">
-            <Settings className="w-5 h-5" />
+        <div className="flex gap-3">
+          <button onClick={() => setIsPrivacyOpen(true)} className="p-2 hover:bg-white/[0.06] rounded-full transition-colors text-zinc-500" title="Status Privacy">
+            <Settings className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar w-full">
         <div className="max-w-4xl mx-auto w-full p-4 md:p-6 space-y-8 pb-32">
-          {/* My Status Section */}
+          {/* My Status */}
           <div className="space-y-4">
-            <h3 className="text-[#00a884] text-sm font-semibold uppercase tracking-wider">My Status</h3>
+            <h3 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">My Status</h3>
             <div className="flex items-center group cursor-pointer">
               <div className="relative mr-4" onClick={() => myStatuses.length > 0 && onStatusClick(myStatuses)}>
-                <div className="w-14 h-14 rounded-full border-2 border-[#00a884] p-0.5 group-hover:scale-105 transition-transform">
+                <div className="w-14 h-14 rounded-full border-2 border-white/20 p-0.5 group-hover:scale-105 transition-transform">
                   {myStatuses.length > 0 ? (
-                    <div className="w-full h-full rounded-full overflow-hidden bg-[#2a3942] relative group">
+                    <div className="w-full h-full rounded-full overflow-hidden bg-white/[0.04] relative">
                       {myStatuses[0].content_type === 'video' ? (
                         <div className="relative w-full h-full">
                           <video src={myStatuses[0].content_url} muted className="w-full h-full object-cover blur-[2px]" />
@@ -80,47 +77,46 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
                       )}
                     </div>
                   ) : (
-                    <div className="w-full h-full rounded-full bg-[#374248] flex items-center justify-center">
-                      <UserCircle className="w-8 h-8 text-[#8696a0]" />
+                    <div className="w-full h-full rounded-full bg-white/[0.04] flex items-center justify-center">
+                      <UserCircle className="w-8 h-8 text-zinc-700" />
                     </div>
                   )}
                 </div>
                 <label 
-                  className="absolute bottom-0 right-0 w-5 h-5 bg-[#00a884] rounded-full flex items-center justify-center border-2 border-[#111b21] cursor-pointer hover:bg-[#06cf9c]"
+                  className="absolute bottom-0 right-0 w-5 h-5 bg-white rounded-full flex items-center justify-center border-2 border-black cursor-pointer hover:bg-zinc-200 transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <Plus className="w-3.5 h-3.5 text-white" />
+                  <Plus className="w-3.5 h-3.5 text-black" />
                   <input type="file" className="hidden" accept="image/*,video/*" onChange={handleFileSelect} />
                 </label>
               </div>
               <div className="flex-1 min-w-0" onClick={() => myStatuses.length > 0 && onStatusClick(myStatuses)}>
-                <p className="text-[#e9edef] font-medium">My Status</p>
-                <p className="text-[#8696a0] text-sm truncate">
-                  {myStatuses.length > 0 ? 'Tap to view your updates' : 'Add to my status'}
+                <p className="text-white font-medium text-sm">My Status</p>
+                <p className="text-zinc-600 text-xs truncate">
+                  {myStatuses.length > 0 ? 'Tap to view' : 'Add to my status'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Recent Updates Section */}
+          {/* Recent Updates */}
           <div className="space-y-4 pt-2">
-            <h3 className="text-[#00a884] text-sm font-semibold uppercase tracking-wider">Recent updates</h3>
-            
+            <h3 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Recent updates</h3>
             {loading ? (
-               <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 text-[#00a884] animate-spin" /></div>
+               <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>
             ) : Object.keys(partnerStatuses).length === 0 ? (
-               <p className="text-[#8696a0] text-sm italic text-center py-8 bg-[#202c33]/30 rounded-lg">No recent updates from your contacts.</p>
+               <p className="text-zinc-600 text-sm text-center py-8 bg-white/[0.02] rounded-lg">No recent updates.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {Object.entries(partnerStatuses).map(([userId, userStatuses]) => (
                   <div 
                     key={userId} 
-                    className="flex items-center p-3 -mx-2 hover:bg-[#202c33]/80 rounded-xl cursor-pointer transition-all group"
+                    className="flex items-center p-3 -mx-2 hover:bg-white/[0.03] rounded-xl cursor-pointer transition-all group"
                     onClick={() => onStatusClick(userStatuses)}
                   >
                     <div className="relative mr-4">
-                      <div className="w-14 h-14 rounded-full border-2 border-[#00a884] p-0.5 group-hover:scale-105 transition-transform">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-[#2a3942] relative group">
+                      <div className="w-14 h-14 rounded-full border-2 border-white/20 p-0.5 group-hover:scale-105 transition-transform">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-white/[0.04] relative">
                           {userStatuses[0].content_type === 'video' ? (
                             <div className="relative w-full h-full">
                               <video src={userStatuses[0].content_url} muted className="w-full h-full object-cover blur-[2px]" />
@@ -136,13 +132,13 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
                     </div>
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="flex justify-between items-start mb-0.5">
-                        <p className="text-[#e9edef] font-medium truncate">{userStatuses[0].user?.name || 'User'}</p>
-                        <span className="text-[#8696a0] text-[11px] whitespace-nowrap pt-0.5">
+                        <p className="text-white font-medium text-sm truncate">{userStatuses[0].user?.name || 'User'}</p>
+                        <span className="text-zinc-700 text-[11px] whitespace-nowrap pt-0.5">
                           {new Date(userStatuses[0].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <p className="text-[#8696a0] text-sm truncate uppercase font-bold tracking-tight text-[10px]">
-                        {userStatuses.length} New Update{userStatuses.length > 1 ? 's' : ''}
+                      <p className="text-zinc-600 text-[10px] uppercase font-bold tracking-tight">
+                        {userStatuses.length} Update{userStatuses.length > 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>
@@ -153,55 +149,41 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
         </div>
       </div>
 
-      {/* Upload Preview Modal */}
+      {/* Upload Preview */}
       {selectedFile && (
         <div className="absolute inset-0 z-[100] bg-black flex flex-col">
           <div className="p-4 flex items-center justify-between text-white bg-black/50 backdrop-blur-md">
-            <button onClick={() => setSelectedFile(null)} className="p-2 hover:bg-white/10 rounded-full"><X className="w-6 h-6" /></button>
-            <span className="font-medium">Send Status</span>
+            <button onClick={() => setSelectedFile(null)} className="p-2 hover:bg-white/[0.06] rounded-full"><X className="w-5 h-5" /></button>
+            <span className="font-medium text-sm">Send Status</span>
             <div className="w-10"></div>
           </div>
-          
           <div className="flex-1 min-h-0 relative flex items-center justify-center p-4 overflow-hidden">
             {selectedFile.type.startsWith('video') ? (
               <video src={URL.createObjectURL(selectedFile)} controls className="max-w-full max-h-full rounded-2xl shadow-2xl z-10" />
             ) : (
-            <div className="relative w-full h-full flex items-center justify-center">
-              {selectedFile.type.startsWith('image') && (
-                <Image 
-                  src={URL.createObjectURL(selectedFile)} 
-                  alt="Preview" 
-                  fill 
-                  unoptimized
-                  className="object-contain rounded-2xl shadow-2xl z-10" 
-                />
-              )}
-            </div>
+              <div className="relative w-full h-full flex items-center justify-center">
+                {selectedFile.type.startsWith('image') && (
+                  <Image src={URL.createObjectURL(selectedFile)} alt="Preview" fill unoptimized className="object-contain rounded-xl z-10" />
+                )}
+              </div>
             )}
-            
-            {/* Background blur for better aesthetic */}
             <div className="absolute inset-0 opacity-30 blur-2xl scale-110">
                {selectedFile.type.startsWith('image') && <Image src={URL.createObjectURL(selectedFile)} alt="Blur bg" fill className="object-cover" />}
             </div>
           </div>
-
-          <div className="p-4 pt-2 bg-[#111b21] border-t border-white/10 space-y-4 z-20">
+          <div className="p-4 pt-2 bg-[#0a0a0a] border-t border-white/[0.04] space-y-4 z-20">
             <div className="relative">
               <input 
-                type="text" 
-                placeholder="Add a caption..." 
-                autoFocus
-                className="w-full bg-[#202c33] border-none text-white rounded-xl py-3 pl-12 pr-4 focus:ring-1 focus:ring-[#00a884] shadow-inner text-sm"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
+                type="text" placeholder="Add a caption..." autoFocus
+                className="w-full bg-white/[0.03] border border-white/[0.04] text-white rounded-xl py-3 pl-12 pr-4 focus:ring-1 focus:ring-white/10 text-sm outline-none placeholder-zinc-700"
+                value={caption} onChange={(e) => setCaption(e.target.value)}
               />
-              <ImageIcon className="absolute left-4 top-3 w-5 h-5 text-[#8696a0]" />
+              <ImageIcon className="absolute left-4 top-3 w-5 h-5 text-zinc-600" />
             </div>
             <div className="flex justify-end pr-1">
               <button 
-                onClick={handleUpload}
-                disabled={isUploading}
-                className="bg-[#00a884] hover:bg-[#06cf9c] text-white p-3.5 rounded-full shadow-lg transform active:scale-95 transition-all disabled:opacity-50"
+                onClick={handleUpload} disabled={isUploading}
+                className="bg-white hover:bg-zinc-200 text-black p-3 rounded-full transition-all active:scale-95 disabled:opacity-50"
               >
                 {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </button>
@@ -210,7 +192,6 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
         </div>
       )}
 
-      {/* Privacy Settings Modal */}
       {isPrivacyOpen && <StatusPrivacyModal onClose={() => setIsPrivacyOpen(false)} />}
     </div>
   )

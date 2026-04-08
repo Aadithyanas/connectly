@@ -64,7 +64,7 @@ export function useStatuses() {
     setMyStatuses(mine)
     setPartnerStatuses(othersGrouped)
     setLoading(false)
-  }, [supabase])
+  }, [supabase, user])
 
   useEffect(() => {
     fetchStatuses()

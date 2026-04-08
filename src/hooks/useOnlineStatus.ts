@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/context/AuthContext'
 
 const HEARTBEAT_INTERVAL = 30000 // 30 seconds
-const OFFLINE_THRESHOLD = 60000  // 60 seconds without heartbeat = offline
+const OFFLINE_THRESHOLD = 180000 // 180 seconds without heartbeat = offline
 
 export function useOnlineStatus() {
   const supabase = createClient()

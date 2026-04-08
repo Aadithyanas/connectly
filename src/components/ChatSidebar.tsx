@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { Search, MoreVertical, MessageSquarePlus, UserCircle, LogOut, CircleDashed as StatusCircle, Compass } from 'lucide-react'
+import { Search, UserCircle, Home, Plus, Compass, CircleDashed } from 'lucide-react'
 import Image from 'next/image'
 import { isUserOnline } from '@/hooks/useOnlineStatus'
 
@@ -32,6 +32,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   const [myProfile, setMyProfile] = useState<any>(null)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [imageError, setImageError] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isMounted, setIsMounted] = useState(false)
   const supabase = createClient()
@@ -47,14 +48,27 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       return
     }
     
+    // Only show skeleton initially when chats is completely null
     if (!chats) setLoading(true)
     try {
+      // Always fetch the user's own profile directly first!
+      const { data: myProfileData } = await supabase
+        .from('profiles')
+        .select('id, name, email, avatar_url, status, last_seen, availability_status, role')
+        .eq('id', user.id)
+        .single()
+        
+      if (myProfileData) {
+        setMyProfile(myProfileData)
+      }
+
       const { data: memberOf, error: memberError } = await supabase
         .from('chat_members')
         .select('chat_id')
         .eq('user_id', user.id)
 
       if (memberError || !memberOf) {
+        setChats([])
         return
       }
       
@@ -70,6 +84,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         .in('id', chatIds)
 
       if (chatError || !chatData) {
+        setChats([])
         return
       }
 
@@ -88,8 +103,6 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
           .in('id', allUserIds)
         if (data) {
           allProfiles = data
-          const self = data.find((p: any) => p.id === user.id)
-          if (self) setMyProfile(self)
         }
       }
 
@@ -199,32 +212,54 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     }
   }, [user])
 
+  // Debounced fetch: prevents stacking 10+ simultaneous fetches when many events fire
+  const fetchTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const debouncedFetch = useCallback(() => {
+    if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
+    fetchTimerRef.current = setTimeout(() => fetchUserAndChats(), 300)
+  }, [user, authLoading])
+
   useEffect(() => {
     fetchUserAndChats()
 
     const channel = supabase.channel('sidebar-sync')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload: any) => {
-         fetchUserAndChats()
+         debouncedFetch()
+         // Use the RPC function which uses SECURITY DEFINER (bypasses RLS cleanly)
          if (payload.new && payload.new.sender_id !== user?.id && payload.new.status === 'sent') {
            try {
-             await supabase.from('messages').update({ status: 'delivered' }).eq('id', payload.new.id)
-           } catch (err) {}
+             await supabase.rpc('mark_messages_delivered', { cid: payload.new.chat_id })
+           } catch (err) {
+             console.warn('mark_messages_delivered failed:', err)
+           }
          }
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => fetchUserAndChats())
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, () => fetchUserAndChats())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchUserAndChats())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_members' }, () => fetchUserAndChats())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => debouncedFetch())
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, () => debouncedFetch())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
+         // Dynamically patch profile data in existing chats instead of sending 5 expensive DB queries!
+         setChats(prevChats => {
+           if (!prevChats) return prevChats
+           return prevChats.map(chat => {
+             if (chat.other_profile && chat.other_profile.id === payload.new.id) {
+               return { ...chat, other_profile: { ...chat.other_profile, ...payload.new } }
+             }
+             return chat
+           })
+         })
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_members' }, () => debouncedFetch())
       .subscribe()
 
-    const interval = setInterval(() => {
-      setChats(prev => prev ? [...prev] : null)
+    // Clock only - don't clone chats array every second
+    const clockInterval = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
 
     return () => { 
       supabase.removeChannel(channel)
-      clearInterval(interval)
+      clearInterval(clockInterval)
+      if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
     }
   }, [user, authLoading, supabase])
 
@@ -241,120 +276,151 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     (c.display_email?.toLowerCase() || '').includes(search.toLowerCase())
   ) : []
 
-  const isImg = isLoaded && (settings.sidebarBg.startsWith('http') || settings.sidebarBg.startsWith('/'))
-  const bgStyle = isLoaded ? (isImg ? { backgroundImage: `url('${settings.sidebarBg}')`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#111b21' } : { backgroundColor: settings.sidebarBg }) : { backgroundColor: '#111b21' }
-
   const textSizeClass = settings.textSize === 'small' ? 'text-sm' : settings.textSize === 'large' ? 'text-lg' : 'text-base'
+  const rawAvatarSrc = myProfile?.avatar_url || user?.user_metadata?.avatar_url || null
+  const avatarSource = imageError ? null : rawAvatarSrc
 
   return (
-    <div className="w-full flex flex-col border-r border-[#222e35] h-full shrink-0 relative transition-all" style={bgStyle}>
-      <div className="h-[64px] bg-[#202c33]/95 backdrop-blur-sm flex items-center justify-between px-4 sticky top-0 z-10 border-b border-white/5 shadow-lg">
+    <div className="w-full flex flex-col border-r border-white/[0.04] h-full shrink-0 relative transition-all bg-[#000]">
+      <div className="h-[60px] bg-[#0a0a0a] flex items-center justify-between px-4 sticky top-0 z-10 border-b border-white/[0.04]">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-3 cursor-pointer" onClick={onOpenProfile}>
-            {(myProfile?.avatar_url || user?.user_metadata?.avatar_url) ? (
-              <img src={myProfile?.avatar_url || user?.user_metadata?.avatar_url} alt="Profile" className="w-11 h-11 rounded-full hover:opacity-80 transition-opacity border-2 border-[#00a884]/20 object-cover shadow-inner" />
+            {avatarSource ? (
+              <img 
+                src={avatarSource} 
+                alt="Profile" 
+                onError={() => setImageError(true)}
+                className="w-10 h-10 rounded-full hover:opacity-80 transition-opacity border border-white/[0.08] object-cover" 
+              />
             ) : (
-              <UserCircle className="w-11 h-11 text-[#8696a0] cursor-pointer" />
+              <UserCircle className="w-10 h-10 text-zinc-600 cursor-pointer" />
             )}
           </div>
           <div className="flex flex-col">
-            <h2 className="text-[#e9edef] text-[12px] font-bold tracking-tight leading-tight">
+            <h2 className="text-zinc-500 text-[11px] font-medium tracking-tight leading-tight">
               {getGreeting()}
             </h2>
-            <span className="text-[#00a884] text-[14px] font-black drop-shadow-md">
+            <span className="text-white text-[14px] font-bold">
               {myProfile?.name || user?.user_metadata?.full_name || 'User'}
             </span>
           </div>
         </div>
 
         {isMounted && (
-          <div className="flex flex-col items-center min-w-[130px] group transition-all">
-            {/* Top Row: Date Data (Clean LCD Style) */}
-            <div className="flex items-center gap-1.5 text-[#e9edef]/40 text-[10px] font-mono font-black tracking-widest border-b border-white/5 pb-1 mb-1 w-full justify-center">
-              <span>{formatDateTime().day}</span>
-              <span className="opacity-20">.</span>
-              <span>{formatDateTime().month}</span>
-              <span className="opacity-20">.</span>
-              <span className="text-[#e9edef]/60">{formatDateTime().weekday}</span>
-            </div>
-            
-            {/* Bottom Row: Large LCD Clock */}
-            <div className="flex items-baseline gap-1">
-              <div className="text-[#e9edef] text-[20px] font-mono font-black tracking-[-0.1em] tabular-nums flex items-baseline">
-                {formatDateTime().hours}
-                <span className="mx-0.5 opacity-40">:</span>
-                {formatDateTime().minutes}
-                <span className="text-[14px] opacity-30 ml-1">.{formatDateTime().seconds}</span>
+          <>
+            <div className="flex md:hidden flex-col items-center min-w-[120px]">
+              <div className="flex items-center gap-1.5 text-zinc-600 text-[10px] font-mono font-bold tracking-widest border-b border-white/[0.04] pb-1 mb-1 w-full justify-center">
+                <span>{formatDateTime().day}</span>
+                <span className="opacity-30">.</span>
+                <span>{formatDateTime().month}</span>
+                <span className="opacity-30">.</span>
+                <span className="text-zinc-500">{formatDateTime().weekday}</span>
               </div>
-              <div className="text-[#e9edef] text-[9px] font-mono font-black opacity-40 uppercase ml-1">
-                {formatDateTime().ampm}
+              
+              <div className="flex items-baseline gap-1">
+                <div className="text-white text-[18px] font-mono font-black tracking-[-0.1em] tabular-nums flex items-baseline">
+                  {formatDateTime().hours}
+                  <span className="mx-0.5 opacity-30">:</span>
+                  {formatDateTime().minutes}
+                  <span className="text-[13px] opacity-20 ml-1">.{formatDateTime().seconds}</span>
+                </div>
+                <div className="text-zinc-600 text-[9px] font-mono font-bold uppercase ml-1">
+                  {formatDateTime().ampm}
+                </div>
               </div>
             </div>
+
+            <div className="hidden md:flex items-center gap-2">
+            <button 
+              onClick={() => onTabChange('chat')}
+              className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'chat' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+            >
+              <Home className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={onOpenNewChat}
+              className="p-2 rounded-full text-zinc-500 hover:text-white hover:bg-white/10 transition-all duration-300"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => onTabChange('feed')}
+              className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'feed' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+            >
+              <Compass className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => onTabChange('status')}
+              className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'status' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+            >
+              <CircleDashed className="w-4 h-4" />
+            </button>
           </div>
+          </>
         )}
       </div>
 
-      <div className="p-3 bg-[#111b21]/80 backdrop-blur-sm border-b border-[#222e35]">
+      <div className="p-3 bg-black/60 border-b border-white/[0.04]">
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8696a0]"><Search className="h-5 w-5" /></div>
-          <input type="text" placeholder="Search or start new chat" className="block w-full pl-10 pr-3 py-2 bg-[#202c33] border-none text-[#e9edef] rounded-xl focus:ring-0 text-sm placeholder-[#8696a0]" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-600"><Search className="h-4 w-4" /></div>
+          <input type="text" placeholder="Search or start new chat" className="block w-full pl-10 pr-3 py-2 bg-white/[0.03] border border-white/[0.04] text-white rounded-xl focus:ring-1 focus:ring-white/10 text-sm placeholder-zinc-700 outline-none transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/40 backdrop-blur-sm">
-        {(loading || authLoading) && (!chats || chats.length === 0) ? (
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {loading || authLoading ? (
           <div className="flex flex-col">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="flex items-center px-4 py-3 border-b border-[#222e35]/50 animate-pulse">
-                <div className="w-12 h-12 rounded-full bg-[#202c33] shrink-0 mr-3 animate-skeleton"></div>
+              <div key={i} className="flex items-center px-4 py-3 border-b border-white/[0.03] animate-pulse">
+                <div className="w-11 h-11 rounded-full bg-white/[0.04] shrink-0 mr-3 animate-skeleton"></div>
                 <div className="flex-1 min-w-0 pr-2">
-                  <div className="h-4 w-1/3 bg-[#202c33] rounded mb-2 animate-skeleton"></div>
-                  <div className="h-3 w-3/4 bg-[#202c33] rounded animate-skeleton"></div>
+                  <div className="h-3.5 w-1/3 bg-white/[0.04] rounded mb-2 animate-skeleton"></div>
+                  <div className="h-3 w-3/4 bg-white/[0.04] rounded animate-skeleton"></div>
                 </div>
               </div>
             ))}
           </div>
         ) : filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-            <p className="text-[#8696a0] text-sm italic bg-black/50 px-4 py-2 rounded-lg">{search ? 'No conversations matching your search.' : 'No chats yet. Click + to start.'}</p>
+            <p className="text-zinc-700 text-sm">{search ? 'No conversations found.' : 'No chats yet. Tap + to start.'}</p>
           </div>
         ) : (
           filteredChats.map((chat) => (
             <div key={chat.id} onClick={() => onSelectChat(chat.id)}
-              className={`group flex items-center px-4 py-3 cursor-pointer transition-all border-b border-[#222e35]/50 ${activeChatId === chat.id ? 'bg-[#2a3942]/90 backdrop-blur-sm' : 'hover:bg-[#202c33]/80'}`}>
+              className={`group flex items-center px-4 py-3 cursor-pointer transition-all duration-150 border-b border-white/[0.03] ${activeChatId === chat.id ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'}`}>
               
-              <div className="relative w-12 h-12 shrink-0 mr-3">
-                <div className="w-12 h-12 rounded-full bg-[#374248] flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+              <div className="relative w-11 h-11 shrink-0 mr-3">
+                <div className="w-11 h-11 rounded-full bg-white/[0.05] flex items-center justify-center overflow-hidden">
                   {chat.display_avatar ? (
                     <img src={chat.display_avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
                   ) : (
-                    <div className="w-full h-full bg-[#00a884] flex items-center justify-center text-white font-bold uppercase text-lg">
+                    <div className="w-full h-full bg-white/[0.08] flex items-center justify-center text-zinc-400 font-bold uppercase text-base">
                       {chat.display_name?.[0] || '?'}
                     </div>
                   )}
                 </div>
                 {chat.other_profile && isUserOnline(chat.other_profile) && chat.other_profile?.availability_status !== false && (
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#25d366] rounded-full border-2 border-[#111b21] shadow-[0_0_6px_rgba(37,211,102,0.6)]"></div>
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-white rounded-full border-2 border-black"></div>
                 )}
               </div>
 
               <div className="flex-1 min-w-0 pr-2">
                 <div className="flex items-center justify-between gap-1 mb-0.5">
-                  <h3 className={`${textSizeClass} font-medium truncate leading-tight flex items-center gap-1.5 ${activeChatId === chat.id ? 'text-[#00a884]' : 'text-[#e9edef]'}`}>
+                  <h3 className={`${textSizeClass} font-medium truncate leading-tight flex items-center gap-1.5 ${activeChatId === chat.id ? 'text-white' : 'text-zinc-200'}`}>
                     {chat.display_name}
                     {chat.other_profile?.role === 'professional' && chat.other_profile?.availability_status === false && (
-                      <span className="text-[10px] bg-[#374248] text-[#8696a0] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">Unavailable</span>
+                      <span className="text-[9px] bg-white/[0.06] text-zinc-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Away</span>
                     )}
                   </h3>
-                  <span className={`text-xs whitespace-nowrap shrink-0 ${chat.unread_count > 0 ? 'text-[#25d366]' : 'text-[#e9edef]/80 drop-shadow-md'}`}>
+                  <span className={`text-[11px] whitespace-nowrap shrink-0 ${chat.unread_count > 0 ? 'text-white font-bold' : 'text-zinc-600'}`}>
                     {chat.last_time}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[#e9edef]/70 drop-shadow-md text-sm truncate leading-tight flex-1">{chat.last_message}</p>
+                  <p className="text-zinc-500 text-sm truncate leading-tight flex-1">{chat.last_message}</p>
                   {chat.unread_count > 0 && (
-                    <div className="min-w-[20px] h-5 px-1.5 bg-[#25d366] rounded-full flex items-center justify-center shrink-0 shadow-[0_0_8px_rgba(37,211,102,0.4)]">
-                      <span className="text-[#111b21] text-[11px] font-bold">{chat.unread_count > 99 ? '99+' : chat.unread_count}</span>
+                    <div className="min-w-[18px] h-[18px] px-1.5 bg-white rounded-full flex items-center justify-center shrink-0">
+                      <span className="text-black text-[10px] font-bold">{chat.unread_count > 99 ? '99+' : chat.unread_count}</span>
                     </div>
                   )}
                 </div>

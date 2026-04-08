@@ -39,15 +39,12 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
     if (isOpen && user) {
       const fetchProfiles = async () => {
         if (!user) return
-
         const { data, error } = await supabase
           .from('profiles')
           .select('id, name, email, avatar_url, role, job_role, verification_level, availability_status, companies(name)')
           .neq('id', user.id)
         
         if (!error && data) {
-          // Filter logic: Show students OR (professionals who are available)
-          // Note: verification_level >= 0 allows seeing new pros immediately
           const visibleProfiles = data.filter((p: any) => 
             p.role === 'student' || 
             (p.role === 'professional' && p.availability_status !== false) ||
@@ -63,19 +60,13 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
   const handleCreateDM = async (otherUserId: string) => {
     setLoading(true)
     try {
-      // Use the database function to create/find chat (bypasses RLS)
-      const { data, error } = await supabase.rpc('create_dm_chat', {
-        other_user_id: otherUserId
-      })
-
+      const { data, error } = await supabase.rpc('create_dm_chat', { other_user_id: otherUserId })
       if (error) throw error
-
-      // data is the chat_id (UUID)
       onChatCreated(data)
       onClose()
     } catch (err) {
       console.error("Error creating chat:", err)
-      alert("Could not start chat. Please check your connection.")
+      alert("Could not start chat.")
     } finally {
       setLoading(false)
     }
@@ -84,16 +75,9 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
   const handleCreateGroup = async () => {
     if (!groupName.trim() || selectedUsers.length === 0) return
     setLoading(true)
-    
     try {
-      // Use the database function to create group (bypasses RLS)
-      const { data, error } = await supabase.rpc('create_group_chat', {
-        group_name: groupName,
-        member_ids: selectedUsers
-      })
-
+      const { data, error } = await supabase.rpc('create_group_chat', { group_name: groupName, member_ids: selectedUsers })
       if (error) throw error
-
       onChatCreated(data)
       onClose()
     } catch (err) {
@@ -108,69 +92,64 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
     ? [] 
     : profiles.filter(p => {
         const query = search.toLowerCase()
-        const matchesName = (p.name || '').toLowerCase().includes(query)
-        const matchesEmail = (p.email || '').toLowerCase().includes(query)
-        const matchesCompany = p.role === 'professional' && (p.companies?.name || '').toLowerCase().includes(query)
-        
-        return matchesName || matchesEmail || matchesCompany
+        return (p.name || '').toLowerCase().includes(query) || (p.email || '').toLowerCase().includes(query) || (p.role === 'professional' && (p.companies?.name || '').toLowerCase().includes(query))
       })
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-[#222e35] w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-white/5"
+            exit={{ opacity: 0, scale: 0.95, y: 16 }}
+            className="bg-[#0a0a0a] w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-white/[0.06]"
           >
             {/* Header */}
-            <div className="p-4 bg-[#202c33] flex items-center justify-between border-b border-[#2a3942]">
+            <div className="p-4 bg-[#0a0a0a] flex items-center justify-between border-b border-white/[0.04]">
               <div className="flex items-center gap-3">
                 <button 
                   onClick={isCreatingGroup ? () => setIsCreatingGroup(false) : selectedUsers.length > 0 ? () => setSelectedUsers([]) : onClose}
-                  className="p-1 hover:bg-[#374248] rounded-full transition-colors"
+                  className="p-1 hover:bg-white/[0.06] rounded-full transition-colors"
                 >
-                  <X className="w-6 h-6 text-[#8696a0]" />
+                  <X className="w-5 h-5 text-zinc-500" />
                 </button>
-                <h2 className="text-[#e9edef] font-bold text-lg">
+                <h2 className="text-white font-bold text-base">
                   {isCreatingGroup ? 'New Group' : selectedUsers.length > 0 ? 'Add Members' : 'New Chat'}
                 </h2>
               </div>
               {selectedUsers.length > 0 && !isCreatingGroup && (
                 <button 
                   onClick={() => setIsCreatingGroup(true)}
-                  className="text-[#00a884] font-bold py-1 px-3 rounded-lg hover:bg-[#00a884]/10 transition-colors"
+                  className="text-white font-bold py-1 px-3 rounded-lg hover:bg-white/[0.06] transition-colors text-sm"
                 >
                   Next
                 </button>
               )}
             </div>
 
-            {/* Mode: Create Group Info */}
             {isCreatingGroup ? (
               <div className="p-6 space-y-6">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-20 h-20 bg-[#374248] rounded-full flex items-center justify-center text-[#8696a0]">
-                    <Users className="w-10 h-10" />
+                  <div className="w-16 h-16 bg-white/[0.06] rounded-full flex items-center justify-center text-zinc-500">
+                    <Users className="w-8 h-8" />
                   </div>
                   <input 
                     type="text"
                     placeholder="Group Subject"
-                    className="w-full bg-[#202c33] border-b-2 border-[#00a884] px-2 py-3 text-[#e9edef] focus:ring-0 text-xl placeholder-[#8696a0] font-medium transition-all"
+                    className="w-full bg-transparent border-b border-white/[0.1] px-2 py-3 text-white focus:ring-0 focus:border-white/30 text-lg placeholder-zinc-700 font-medium transition-all outline-none"
                     autoFocus
                     value={groupName}
                     onChange={(e) => setGroupName(e.target.value)}
                   />
-                  <p className="text-[#8696a0] text-sm italic">Provide a group subject and optional group icon</p>
+                  <p className="text-zinc-600 text-sm">Provide a group subject</p>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <button onClick={() => setIsCreatingGroup(false)} className="px-4 py-2 text-[#8696a0] font-bold hover:bg-[#374248] rounded-lg">Back</button>
+                  <button onClick={() => setIsCreatingGroup(false)} className="px-4 py-2 text-zinc-500 font-bold hover:bg-white/[0.04] rounded-lg text-sm">Back</button>
                   <button 
                     onClick={handleCreateGroup}
                     disabled={loading || !groupName.trim()}
-                    className="px-6 py-2 bg-[#00a884] text-[#111b21] font-bold rounded-lg hover:bg-[#008f6f] disabled:opacity-50 transition-all flex items-center gap-2 shadow-lg"
+                    className="px-6 py-2 bg-white text-black font-bold rounded-lg hover:bg-zinc-200 disabled:opacity-50 transition-all flex items-center gap-2 text-sm"
                   >
                     {loading ? 'Creating...' : 'Create Group'}
                   </button>
@@ -178,47 +157,45 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
               </div>
             ) : (
               <>
-                {/* Search */}
-                <div className="p-3 bg-[#111b21]">
+                <div className="p-3 border-b border-white/[0.03]">
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                      <Search className="h-5 w-5 text-[#8696a0]" />
+                      <Search className="h-4 w-4 text-zinc-600" />
                     </div>
                     <input
                       type="text"
                       placeholder="Search by name, email or company..."
-                      className="block w-full pl-10 pr-3 py-2 bg-[#202c33] border-none text-[#e9edef] rounded-xl focus:ring-0 text-sm"
+                      className="block w-full pl-10 pr-3 py-2 bg-white/[0.03] border border-white/[0.04] text-white rounded-xl focus:ring-1 focus:ring-white/10 text-sm placeholder-zinc-700 outline-none"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
                   </div>
                 </div>
 
-                {/* User List */}
                 <div className="max-h-[400px] overflow-y-auto custom-scrollbar min-h-[100px] flex flex-col">
                   {search.trim() === '' ? (
                     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                      <div className="w-16 h-16 bg-[#00a884]/10 rounded-full flex items-center justify-center mb-3">
-                        <Search className="w-8 h-8 text-[#00a884] opacity-50" />
+                      <div className="w-14 h-14 bg-white/[0.04] rounded-full flex items-center justify-center mb-3">
+                        <Search className="w-7 h-7 text-zinc-700" />
                       </div>
-                      <p className="text-[#8696a0] text-sm">Type a name or email to find someone to chat with.</p>
+                      <p className="text-zinc-600 text-sm">Type a name or email to find someone.</p>
                     </div>
                   ) : (
                     <>
                       {selectedUsers.length === 0 && (
                         <div 
-                          className="flex items-center px-4 py-3 hover:bg-[#202c33] cursor-pointer group border-b border-[#2a3942] transition-colors"
+                          className="flex items-center px-4 py-3 hover:bg-white/[0.03] cursor-pointer group border-b border-white/[0.03] transition-colors"
                           onClick={() => setIsCreatingGroup(true)}
                         >
-                          <div className="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center mr-3 shadow-lg group-hover:scale-105 transition-transform">
-                            <Users className="w-6 h-6 text-white" />
+                          <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center mr-3 group-hover:scale-105 transition-transform">
+                            <Users className="w-5 h-5 text-black" />
                           </div>
-                          <span className="text-[#e9edef] font-medium text-[16px]">New Group</span>
+                          <span className="text-white font-medium text-sm">New Group</span>
                         </div>
                       )}
                       
                       {filteredProfiles.length === 0 ? (
-                        <div className="p-8 text-center text-[#8696a0] text-sm italic">
+                        <div className="p-8 text-center text-zinc-600 text-sm">
                           No users found matching &quot;{search}&quot;
                         </div>
                       ) : (
@@ -227,7 +204,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
                           return (
                             <div 
                               key={profile.id}
-                              className={`flex items-center px-4 py-3 cursor-pointer border-b border-[#2a3942] group transition-all duration-200 ${isSelected ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]'} ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+                              className={`flex items-center px-4 py-3 cursor-pointer border-b border-white/[0.03] group transition-all duration-150 ${isSelected ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'} ${loading ? 'opacity-50 pointer-events-none' : ''}`}
                               onClick={() => {
                                 if (selectedUsers.length > 0) {
                                   setSelectedUsers(prev => prev.includes(profile.id) ? prev.filter(id => id !== profile.id) : [...prev, profile.id])
@@ -236,34 +213,30 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
                                 }
                               }}
                             >
-                              <div className="relative w-12 h-12 rounded-full bg-[#374248] mr-3 overflow-hidden group-hover:scale-105 transition-all">
+                              <div className="relative w-11 h-11 rounded-full bg-white/[0.06] mr-3 overflow-hidden">
                                 {profile.avatar_url ? (
-                                  <img 
-                                    src={profile.avatar_url} 
-                                    alt={profile.name} 
-                                    className="w-full h-full object-cover" 
-                                  />
+                                  <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center font-bold text-lg uppercase bg-[#00a884]/20 text-[#00a884]">
+                                  <div className="w-full h-full flex items-center justify-center font-bold text-base uppercase bg-white/[0.06] text-zinc-400">
                                     {profile.name[0]}
                                   </div>
                                 )}
                                 {isSelected && (
-                                  <div className="absolute inset-0 bg-[#00a884]/80 flex items-center justify-center">
-                                    <Check className="w-6 h-6 text-white" />
+                                  <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                                    <Check className="w-5 h-5 text-black" />
                                   </div>
                                 )}
                               </div>
-                              <div className="flex-1">
-                                <div className="text-[#e9edef] font-medium flex items-center gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-white font-medium text-sm flex items-center gap-2">
                                   {profile.name}
                                   {profile.role === 'professional' && profile.verification_level >= 2 && (
-                                    <Check className="w-3 h-3 text-[#3b82f6] fill-[#3b82f6]" />
+                                    <Check className="w-3 h-3 text-zinc-400" />
                                   )}
                                 </div>
-                                <div className="text-[#8696a0] text-sm truncate">
+                                <div className="text-zinc-600 text-xs truncate">
                                   {profile.role === 'professional' ? (
-                                    <span className="text-[#00a884] font-medium">
+                                    <span className="text-zinc-400 font-medium">
                                       {profile.job_role || 'Professional'} @ {profile.companies?.name || 'Unknown'}
                                     </span>
                                   ) : (

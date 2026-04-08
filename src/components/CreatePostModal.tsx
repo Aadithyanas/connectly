@@ -200,21 +200,21 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
   const isCompany = user?.user_metadata?.role === 'company' || user?.user_metadata?.role === 'professional'
 
   return (
-    <div className="fixed inset-0 z-[300] bg-[#111b21]/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="bg-[#202c33] w-full max-w-xl rounded-[32px] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] relative border border-white/5 animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="bg-[#0a0a0a] w-full max-w-xl rounded-[32px] overflow-hidden shadow-2xl relative border border-white/[0.06] animate-in zoom-in-95 duration-300">
         
         {/* Header */}
-        <div className="px-8 py-5 flex items-center justify-between bg-gradient-to-r from-[#202c33] to-[#2a3942]/50 border-b border-white/5">
+        <div className="px-8 py-5 flex items-center justify-between bg-black/50 border-b border-white/[0.04]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#00a884]/20 rounded-xl text-[#00a884]">
+            <div className="p-2 bg-white/[0.06] rounded-xl text-white">
               <Rocket className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-[#e9edef] font-bold text-lg leading-none mb-1">Share Achievement</h2>
-              <p className="text-[#8696a0] text-[9px] uppercase tracking-widest font-black">Inspire the tech community</p>
+              <h2 className="text-white font-bold text-lg leading-none mb-1">Share Achievement</h2>
+              <p className="text-zinc-500 text-[9px] uppercase tracking-widest font-black">Inspire the tech community</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2.5 hover:bg-white/5 rounded-full transition-all text-[#8696a0] hover:text-[#e9edef] active:scale-90">
+          <button onClick={onClose} className="p-2.5 hover:bg-white/10 rounded-full transition-all text-zinc-500 hover:text-white active:scale-90">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -225,11 +225,11 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
             
             {/* Post Title */}
             <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-[#00a884] ml-1">Achievement Name</label>
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">Achievement Name</label>
               <input
                 type="text"
                 placeholder="e.g. My Next.js Dashboard v1.0"
-                className="w-full bg-[#2a3942]/50 text-[#e9edef] text-base font-bold px-5 py-3.5 rounded-2xl border-2 border-transparent focus:border-[#00a884]/50 outline-none transition-all placeholder:text-[#8696a0]/30"
+                className="w-full bg-white/[0.03] text-white text-base font-bold px-5 py-3.5 rounded-2xl border border-white/[0.06] focus:border-white/20 outline-none transition-all placeholder:text-zinc-700"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -237,7 +237,7 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
 
             {/* Carousel Upload Area */}
             <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-[#00a884] ml-1 flex justify-between items-center">
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1 flex justify-between items-center">
                 Visual Proof ({mediaFiles.length}/10)
               </label>
               
@@ -263,15 +263,15 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
                       </button>
                       
                       {uploadProgress[`${mediaFiles[idx].name}-${idx}`] === 100 ? (
-                        <div className="p-1.5 bg-[#00a884] text-[#111b21] rounded-full scale-90">
+                        <div className="p-1.5 bg-white text-black rounded-full scale-90">
                            <CheckCircle2 className="w-3.5 h-3.5" />
                         </div>
                       ) : uploadErrors[`${mediaFiles[idx].name}-${idx}`] ? (
-                        <div className="p-1.5 bg-[#ef4444] text-white rounded-full scale-90">
+                        <div className="p-1.5 bg-red-500 text-white rounded-full scale-90">
                            <X className="w-3.5 h-3.5" />
                         </div>
                       ) : (
-                        <div className="p-1.5 bg-[#111b21]/80 text-[#00a884] rounded-full scale-90">
+                        <div className="p-1.5 bg-black/80 text-white rounded-full scale-90">
                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         </div>
                       )}
@@ -281,7 +281,7 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
                     {uploadProgress[`${mediaFiles[idx].name}-${idx}`] < 100 && (
                       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
                          <div 
-                           className="h-full bg-[#00a884] transition-all duration-300"
+                           className="h-full bg-white transition-all duration-300"
                            style={{ width: `${uploadProgress[`${mediaFiles[idx].name}-${idx}`]}%` }}
                          />
                       </div>
@@ -293,12 +293,12 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="aspect-[4/5] h-64 rounded-[24px] border-2 border-dashed border-[#2a3942] hover:border-[#00a884]/50 bg-[#2a3942]/20 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group shrink-0 snap-center"
+                    className="aspect-[4/5] h-64 rounded-[24px] border-2 border-dashed border-white/10 hover:border-white/30 bg-white/[0.02] flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group shrink-0 snap-center"
                   >
-                    <div className="p-4 bg-[#2a3942] rounded-2xl group-hover:bg-[#00a884]/20 transition-colors">
-                      <Plus className="w-8 h-8 text-[#8696a0] group-hover:text-[#00a884]" />
+                    <div className="p-4 bg-white/[0.04] rounded-2xl group-hover:bg-white/[0.08] transition-colors">
+                      <Plus className="w-8 h-8 text-zinc-500 group-hover:text-white" />
                     </div>
-                    <span className="text-[#8696a0] text-[10px] font-black uppercase tracking-wider">Add More</span>
+                    <span className="text-zinc-500 text-[10px] font-black uppercase tracking-wider">Add More</span>
                   </button>
                 )}
               </div>
@@ -307,11 +307,11 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
 
             {/* Description */}
             <div className="space-y-2">
-               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-[#00a884] ml-1">The Story / Details</label>
+               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">The Story / Details</label>
                <textarea
                  required
                  placeholder="Share the journey..."
-                 className="w-full bg-[#2a3942]/50 text-[#e9edef] text-sm px-6 py-4 rounded-2xl border-2 border-transparent focus:border-[#00a884]/50 outline-none transition-all resize-none h-40 placeholder:text-[#8696a0]/30 custom-scrollbar leading-relaxed"
+                 className="w-full bg-white/[0.03] text-white text-sm px-6 py-4 rounded-2xl border border-white/[0.06] focus:border-white/20 outline-none transition-all resize-none h-40 placeholder:text-zinc-700 custom-scrollbar leading-relaxed"
                  value={content}
                  onChange={(e) => setContent(e.target.value)}
                />
@@ -319,7 +319,7 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
 
             {/* Category Grid */}
             <div className="space-y-3">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-[#00a884] ml-1">Label this achievement</label>
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">Label this achievement</label>
               <div className="grid grid-cols-2 gap-3">
                  {[
                    { id: 'project', label: 'Tech Project', icon: Rocket },
@@ -332,9 +332,9 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
                      type="button"
                      disabled={cat.disabled}
                      onClick={() => setCategory(cat.id)}
-                     className={`flex items-center gap-3 px-4 py-4 rounded-2xl border-2 transition-all
+                     className={`flex items-center gap-3 px-4 py-4 rounded-2xl border transition-all
                        ${cat.disabled ? 'opacity-20 cursor-not-allowed border-transparent grayscale' : 
-                         category === cat.id ? `bg-[#00a884]/10 border-[#00a884] text-[#e9edef]` : 'bg-[#2a3942]/40 border-transparent text-[#8696a0]'}`}
+                         category === cat.id ? `bg-white text-black border-white` : 'bg-transparent border-white/[0.06] text-zinc-500 hover:text-white hover:bg-white/[0.04]'}`}
                    >
                      <cat.icon className="w-4 h-4" />
                      <span className="text-sm font-bold">{cat.label}</span>
@@ -345,11 +345,11 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
           </div>
 
           {/* Footer Actions */}
-          <div className="px-8 py-5 bg-[#111b21]/50 border-t border-white/5 flex items-center justify-end">
+          <div className="px-8 py-5 bg-black/50 border-t border-white/[0.04] flex items-center justify-end">
             <button
               type="submit"
               disabled={!content.trim() || isFinalizing || (mediaFiles.length > 0 && uploadedUrls.filter(u => !!u).length !== mediaFiles.length)}
-              className="group relative flex items-center gap-2.5 bg-[#00a884] disabled:opacity-50 hover:bg-[#00c99e] text-[#111b21] px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95"
+              className="group relative flex items-center gap-2.5 bg-white disabled:opacity-50 hover:bg-zinc-200 text-black px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95"
             >
               {isFinalizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               {isFinalizing ? 'Launching...' : 'Release Post'}

@@ -27,34 +27,13 @@ export default function ForwardModal({ isOpen, onClose, message, onForward }: Fo
 
     const fetchChats = async () => {
       if (!user) return
-
-      // Get user's chat IDs
-      const { data: memberOf } = await supabase
-        .from('chat_members')
-        .select('chat_id')
-        .eq('user_id', user.id)
-
+      const { data: memberOf } = await supabase.from('chat_members').select('chat_id').eq('user_id', user.id)
       if (!memberOf) return
       const chatIds = memberOf.map((m: any) => m.chat_id)
-
-      // Get chat details
-      const { data: chatData } = await supabase
-        .from('chats')
-        .select('id, name, is_group')
-        .in('id', chatIds)
-
-      // Get other members' profiles for 1-on-1 chat names
-      const { data: allMembers } = await supabase
-        .from('chat_members')
-        .select('chat_id, user_id')
-        .in('chat_id', chatIds)
-
+      const { data: chatData } = await supabase.from('chats').select('id, name, is_group').in('id', chatIds)
+      const { data: allMembers } = await supabase.from('chat_members').select('chat_id, user_id').in('chat_id', chatIds)
       const otherUserIds = [...new Set((allMembers || []).filter((m: any) => m.user_id !== user.id).map((m: any) => m.user_id))]
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, name, avatar_url')
-        .in('id', otherUserIds)
-
+      const { data: profiles } = await supabase.from('profiles').select('id, name, avatar_url').in('id', otherUserIds)
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
 
       const formatted = (chatData || []).map((chat: any) => {
@@ -67,7 +46,6 @@ export default function ForwardModal({ isOpen, onClose, message, onForward }: Fo
           initial: (chat.is_group ? chat.name?.[0] : otherProfile?.name?.[0]) || '?',
         }
       })
-
       setChats(formatted)
     }
 
@@ -88,61 +66,57 @@ export default function ForwardModal({ isOpen, onClose, message, onForward }: Fo
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-[#222e35] w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-white/5"
+            className="bg-[#0a0a0a] w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-white/[0.06]"
           >
-            {/* Header */}
-            <div className="p-4 bg-[#202c33] flex items-center gap-3 border-b border-[#2a3942]">
-              <button onClick={onClose} className="p-1 hover:bg-[#374248] rounded-full">
-                <X className="w-6 h-6 text-[#8696a0]" />
+            <div className="p-4 flex items-center gap-3 border-b border-white/[0.04]">
+              <button onClick={onClose} className="p-1 hover:bg-white/[0.06] rounded-full">
+                <X className="w-5 h-5 text-zinc-500" />
               </button>
-              <h2 className="text-[#e9edef] font-bold text-lg">Forward Message</h2>
+              <h2 className="text-white font-bold text-base">Forward Message</h2>
             </div>
 
-            {/* Preview */}
-            <div className="px-4 py-3 bg-[#111b21] border-b border-[#2a3942]">
-              <div className="bg-[#005c4b] rounded-lg px-3 py-2 max-w-[80%]">
-                <p className="text-[#e9edef] text-sm truncate">{message?.content || '📎 Media'}</p>
+            <div className="px-4 py-3 border-b border-white/[0.04]">
+              <div className="bg-white/[0.04] rounded-lg px-3 py-2 max-w-[80%]">
+                <p className="text-zinc-300 text-sm truncate">{message?.content || '📎 Media'}</p>
               </div>
             </div>
 
-            {/* Search */}
-            <div className="p-3 bg-[#111b21]">
+            <div className="p-3 border-b border-white/[0.03]">
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center"><Search className="h-5 w-5 text-[#8696a0]" /></div>
-                <input type="text" placeholder="Search chats..." className="block w-full pl-10 pr-3 py-2 bg-[#202c33] border-none text-[#e9edef] rounded-xl focus:ring-0 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center"><Search className="h-4 w-4 text-zinc-600" /></div>
+                <input type="text" placeholder="Search chats..." className="block w-full pl-10 pr-3 py-2 bg-white/[0.03] border border-white/[0.04] text-white rounded-xl focus:ring-1 focus:ring-white/10 text-sm placeholder-zinc-700 outline-none" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
             </div>
 
-            {/* Chat List */}
             <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
               {filteredChats.map((chat: any) => {
                 const isSent = sent.includes(chat.id)
                 const isSending = sending === chat.id
                 return (
-                  <div key={chat.id} className="flex items-center px-4 py-3 hover:bg-[#202c33] cursor-pointer border-b border-[#2a3942] transition-colors"
+                  <div key={chat.id} className="flex items-center px-4 py-3 hover:bg-white/[0.03] cursor-pointer border-b border-white/[0.03] transition-colors"
                     onClick={() => !isSent && !isSending && handleForward(chat.id)}
                   >
-                    <div className="w-10 h-10 rounded-full bg-[#374248] flex items-center justify-center mr-3 overflow-hidden">
+                    <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center mr-3 overflow-hidden">
                       {chat.avatar ? (
                         <img src={chat.avatar} alt={chat.name} className="w-10 h-10 object-cover rounded-full" />
                       ) : (
-                        <div className="w-full h-full bg-[#00a884] flex items-center justify-center text-white font-bold uppercase">{chat.initial}</div>
+                        <div className="w-full h-full bg-white/[0.08] flex items-center justify-center text-zinc-400 font-bold uppercase">{chat.initial}</div>
                       )}
                     </div>
                     <div className="flex-1">
-                      <span className="text-[#e9edef] font-medium">{chat.name}</span>
+                      <span className="text-white font-medium text-sm">{chat.name}</span>
                     </div>
                     {isSending ? (
-                      <div className="w-5 h-5 border-2 border-[#00a884] border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : isSent ? (
-                      <Check className="w-5 h-5 text-[#25d366]" />
+                      <Check className="w-4 h-4 text-white" />
                     ) : (
-                      <Forward className="w-5 h-5 text-[#8696a0]" />
+                      <Forward className="w-4 h-4 text-zinc-600" />
                     )}
                   </div>
                 )

@@ -12,12 +12,12 @@ import { Status } from '@/hooks/useStatuses'
 import { createClient } from '@/utils/supabase/client'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import SettingsModal from '@/components/SettingsModal'
-import { Home, Compass, CircleDashed as StatusCircle, MessageSquarePlus, LogOut, Plus } from 'lucide-react'
+import { Home, Compass, CircleDashed as StatusCircle, Plus } from 'lucide-react'
 
 import { useAuth } from '@/context/AuthContext'
 
 export default function ChatPage() {
-  useOnlineStatus() // Start heartbeat
+  useOnlineStatus()
   const { user, signOut } = useAuth()
 
   const [activeChatId, setActiveChatId] = useState<string | undefined>(undefined)
@@ -43,10 +43,18 @@ export default function ChatPage() {
     fetchProfile()
   }, [user])
 
-  // GLOBAL LISTENER: Mark ALL incoming messages as "delivered" instantly
   useEffect(() => {
     if (!currentUser) return
 
+    // Mark all existing undelivered messages as delivered on mount
+    const markAllDelivered = async () => {
+      try {
+        await supabase.rpc('mark_all_messages_delivered')
+      } catch (e) {}
+    }
+    markAllDelivered()
+
+    // Listen for NEW messages and mark them delivered in real-time
     const globalChannel = supabase.channel('global-delivery')
       .on(
         'postgres_changes',
@@ -54,28 +62,18 @@ export default function ChatPage() {
         async (payload: any) => {
           const newMsg = payload.new as any
           if (newMsg.sender_id !== currentUser.id && newMsg.status === 'sent') {
-             try {
-               await supabase.rpc('mark_messages_delivered', { cid: newMsg.chat_id })
-             } catch (e) {
-               console.error("Marking message delivered failed:", e)
-             }
+            try {
+              await supabase.rpc('mark_messages_delivered', { cid: newMsg.chat_id })
+            } catch (e) {
+              console.warn("mark_messages_delivered failed:", e)
+            }
           }
         }
       )
       .subscribe()
 
-    // Highly optimized batch execution instead of the loop that crashed the browser
-    const markAllDelivered = async () => {
-      try {
-        await supabase.rpc('mark_all_messages_delivered')
-      } catch (e) {
-        // Silently fail if they haven't applied the SQL patch yet
-      }
-    }
-    markAllDelivered()
-
     return () => { supabase.removeChannel(globalChannel) }
-  }, [currentUser?.id, supabase])
+  }, [currentUser?.id])
 
   const handleSelectChat = (id: string) => {
     setActiveChatId(id)
@@ -88,41 +86,70 @@ export default function ChatPage() {
     setIsInfoSidebarOpen(true)
   }
 
-  const handleOpenChatInfo = async () => {
+  const handleOpenChatInfo = async (existingProfile?: any) => {
     if (!activeChatId || !currentUser) return
 
-    const { data: chat } = await supabase
-      .from('chats')
-      .select('id, name, is_group, avatar_url')
-      .eq('id', activeChatId)
-      .single()
+    if (existingProfile) {
+      setSidebarType('contact')
+      setSidebarData({ ...existingProfile, chat_id: activeChatId })
+      setIsInfoSidebarOpen(true)
+      return
+    }
 
-    if (!chat) return
-
-    if (chat.is_group) {
-      setSidebarType('group')
-      setSidebarData(chat)
-    } else {
-      const { data: members } = await supabase
-        .from('chat_members')
-        .select('user_id')
-        .eq('chat_id', activeChatId)
-        .neq('user_id', currentUser.id)
-        .limit(1)
+    try {
+      const { data: chat, error: chatError } = await supabase
+        .from('chats')
+        .select('id, name, is_group, avatar_url')
+        .eq('id', activeChatId)
         .single()
 
-      if (members) {
-        const { data: otherProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', members.user_id)
+      if (chatError) {
+        console.error("Failed to fetch chat:", chatError)
+      }
+
+      if (!chat) {
+         // Fallback if chat fetching fails for some RLS reason: just open the sidebar with the current activeChatId if we can grab member info.
+         const { data: members } = await supabase.from('chat_members').select('user_id').eq('chat_id', activeChatId).neq('user_id', currentUser.id).limit(1).single()
+         if (members) {
+            const { data: otherProfile } = await supabase.from('profiles').select('*').eq('id', members.user_id).single()
+            setSidebarType('contact')
+            setSidebarData({ ...otherProfile, chat_id: activeChatId })
+            setIsInfoSidebarOpen(true)
+         }
+         return
+      }
+
+      if (chat.is_group) {
+        setSidebarType('group')
+        setSidebarData(chat)
+      } else {
+        const { data: members, error: memErr } = await supabase
+          .from('chat_members')
+          .select('user_id')
+          .eq('chat_id', activeChatId)
+          .neq('user_id', currentUser.id)
+          .limit(1)
           .single()
 
-        setSidebarType('contact')
-        setSidebarData({ ...otherProfile, chat_id: activeChatId })
+        if (memErr) console.error("Failed to fetch members:", memErr)
+
+        if (members) {
+          const { data: otherProfile, error: profErr } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', members.user_id)
+            .single()
+
+          if (profErr) console.error("Failed to fetch profile:", profErr)
+
+          setSidebarType('contact')
+          setSidebarData({ ...otherProfile, chat_id: activeChatId })
+        }
       }
+      setIsInfoSidebarOpen(true)
+    } catch (err) {
+      console.error("Exception in handleOpenChatInfo:", err)
     }
-    setIsInfoSidebarOpen(true)
   }
 
   const handleStartDirectChat = async (otherUserId: string, post?: any) => {
@@ -134,7 +161,6 @@ export default function ChatPage() {
       if (error) throw error
 
       if (chatId) {
-        // If coming from a post, send an automated "Forward/Reference" message
         if (post && user) {
           const contextMsg = `📢 Context: Regarding your achievement "${post.title || 'Tech Post'}"\n\n${post.content || ''}`
           
@@ -171,7 +197,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex w-full h-full relative overflow-hidden bg-[#111b21]">
+    <div className="flex w-full h-full relative overflow-hidden bg-black">
       <div className={`${(activeChatId || activeTab !== 'chat') ? 'hidden md:flex' : 'flex'} w-full md:w-[30%] md:min-w-[320px] h-full transition-all`}>
         <ChatSidebar
           onSelectChat={handleSelectChat}
@@ -212,56 +238,39 @@ export default function ChatPage() {
         )}
       </div>
 
-      {/* Persistent Mobile Floating Navigation */}
-      {!activeChatId && (
-        <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center justify-between px-2 h-[56px] bg-[#1a2227]/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-[85%] max-w-[320px]">
+      {/* Mobile Floating Nav */}
+      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] items-center justify-between px-2 h-[52px] bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/[0.08] rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.6)] w-[80%] max-w-[280px] ${(!activeChatId && !isInfoSidebarOpen) ? 'flex md:hidden' : 'hidden'}`}>
           <button 
             onClick={() => setActiveTab('chat')}
-            className={`relative flex flex-col items-center justify-center w-12 h-12 transition-all duration-300 ${activeTab === 'chat' ? 'text-blue-400' : 'text-[#8696a0]'}`}
+            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'chat' ? 'text-white' : 'text-zinc-600'}`}
           >
-            {activeTab === 'chat' && (
-              <>
-                <div className="absolute top-[-8px] w-6 h-1 bg-blue-500 rounded-full shadow-[0_0_10px_#3b82f6]"></div>
-                <div className="absolute inset-0 bg-blue-500/10 rounded-full scale-75"></div>
-              </>
-            )}
-            <Home className="w-5 h-5 z-10" />
+            {activeTab === 'chat' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
+            <Home className="w-[18px] h-[18px]" />
           </button>
           
           <button 
             onClick={() => setIsNewChatModalOpen(true)}
-            className="flex flex-col items-center justify-center w-12 h-12 text-[#8696a0] hover:text-[#00a884] transition-colors"
+            className="flex items-center justify-center w-11 h-11 text-zinc-600 hover:text-white transition-colors"
           >
-            <Plus className="w-6 h-6" />
+            <Plus className="w-5 h-5" />
           </button>
 
           <button 
             onClick={() => setActiveTab('feed')}
-            className={`relative flex flex-col items-center justify-center w-12 h-12 transition-all duration-300 ${activeTab === 'feed' ? 'text-blue-400' : 'text-[#8696a0]'}`}
+            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'feed' ? 'text-white' : 'text-zinc-600'}`}
           >
-            {activeTab === 'feed' && (
-              <>
-                <div className="absolute top-[-8px] w-6 h-1 bg-blue-500 rounded-full shadow-[0_0_10px_#3b82f6]"></div>
-                <div className="absolute inset-0 bg-blue-500/10 rounded-full scale-75"></div>
-              </>
-            )}
-            <Compass className="w-5 h-5 z-10" />
+            {activeTab === 'feed' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
+            <Compass className="w-[18px] h-[18px]" />
           </button>
 
           <button 
             onClick={() => setActiveTab('status')}
-            className={`relative flex flex-col items-center justify-center w-12 h-12 transition-all duration-300 ${activeTab === 'status' ? 'text-blue-400' : 'text-[#8696a0]'}`}
+            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'status' ? 'text-white' : 'text-zinc-600'}`}
           >
-            {activeTab === 'status' && (
-              <>
-                <div className="absolute top-[-8px] w-6 h-1 bg-blue-500 rounded-full shadow-[0_0_10px_#3b82f6]"></div>
-                <div className="absolute inset-0 bg-blue-500/10 rounded-full scale-75"></div>
-              </>
-            )}
-            <StatusCircle className="w-5 h-5 z-10" />
+            {activeTab === 'status' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
+            <StatusCircle className="w-[18px] h-[18px]" />
           </button>
         </div>
-      )}
 
       {activeStatuses && (
         <StatusViewer statuses={activeStatuses} onClose={() => setActiveStatuses(null)} />

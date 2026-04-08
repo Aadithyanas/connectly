@@ -223,12 +223,16 @@ export function useMessages(chatId?: string) {
     }
 
     // 3. Broadcast (Receiver's UI)
-    if (channelRef.current) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'new_message',
-        payload: { ...msgData, media_url: finalMediaUrl, media_type: finalMediaType, status: 'sent' }
-      })
+    try {
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'new_message',
+          payload: { ...msgData, media_url: finalMediaUrl, media_type: finalMediaType, status: 'sent' }
+        })
+      }
+    } catch (broadcastErr) {
+      console.warn("Broadcast failed, continuing with insert:", broadcastErr)
     }
 
     // 4. Database Persistence
@@ -248,6 +252,7 @@ export function useMessages(chatId?: string) {
       .single()
 
     if (error) {
+      console.error("Insert error:", error)
       setMessages((prev) => prev.filter(m => m.id !== tempId))
       return { error }
     }

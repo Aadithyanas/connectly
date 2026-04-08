@@ -25,9 +25,9 @@ export default async function ChatLayout({
   }
 
   return (
-    <div className="h-dvh bg-[#111b21] text-[#e9edef] overflow-hidden selection:bg-[#00a884]/30 flex flex-col">
+    <div className="h-dvh bg-black text-white overflow-hidden selection:bg-white/20 flex flex-col">
       {/* Main App Container */}
-      <div className="flex-1 m-2 sm:m-4 border border-[#2a3942] rounded-xl overflow-hidden shadow-2xl bg-[#222e35]/50 backdrop-blur-xl border-opacity-50 flex overflow-hidden">
+      <div className="flex-1 m-1.5 sm:m-3 border border-white/[0.06] rounded-xl overflow-hidden shadow-2xl bg-[#0a0a0a] flex overflow-hidden">
         {children}
       </div>
     </div>

@@ -25,7 +25,6 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
   const [isUploading, setIsUploading] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   
-  // Recording states
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
 
@@ -37,7 +36,6 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
   const audioChunksRef = useRef<Blob[]>([])
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current)
@@ -62,27 +60,19 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    // Immediately send with local preview
     onSendMessage('', undefined, undefined, replyingTo?.id, file)
     onCancelReply?.()
-    
     setShowEmojiPicker(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setContent(e.target.value)
-
     if (!isTyping) {
       setIsTyping(true)
       onTyping(true)
     }
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current)
-    }
-
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false)
       onTyping(false)
@@ -101,9 +91,7 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
       mediaRecorderRef.current = mediaRecorder
       
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data)
       }
       
       mediaRecorder.start()
@@ -129,8 +117,6 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
         if (!discard) {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
           const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' })
-          
-          // Immediately send with local preview
           onSendMessage('', undefined, 'audio', replyingTo?.id, audioFile)
           onCancelReply?.()
         }
@@ -150,10 +136,10 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
   }
 
   return (
-    <div className="bg-[#202c33] border-t border-[#222e35] relative pb-2 sm:pb-0">
-      {/* Emoji Picker Popup */}
+    <div className="bg-[#0a0a0a] border-t border-white/[0.04] relative pb-2 sm:pb-0">
+      {/* Emoji Picker */}
       {showEmojiPicker && (
-        <div className="absolute bottom-[calc(100%+12px)] left-2 sm:left-4 z-[999] shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-[#222e35] origin-bottom-left animate-in zoom-in-95 duration-150">
+        <div className="absolute bottom-[calc(100%+8px)] left-2 sm:left-4 z-[999] shadow-2xl rounded-xl overflow-hidden border border-white/[0.06] origin-bottom-left">
           <EmojiPicker 
             onEmojiClick={onEmojiClick} 
             theme={Theme.DARK} 
@@ -170,48 +156,48 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
       {/* Reply Bar */}
       {replyingTo && !isRecording && (
         <div className="flex items-center gap-2 px-4 pt-2 pb-1">
-          <div className="flex-1 bg-[#1a2930] rounded-lg px-3 py-2 border-l-4 border-[#00a884]">
+          <div className="flex-1 bg-white/[0.03] rounded-lg px-3 py-2 border-l-2 border-zinc-500">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
-                <Reply className="w-3.5 h-3.5 text-[#00a884] shrink-0" />
-                <span className="text-[#00a884] text-xs font-bold">{replyingTo.senderName}</span>
+                <Reply className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                <span className="text-zinc-400 text-xs font-bold">{replyingTo.senderName}</span>
               </div>
-              <button onClick={onCancelReply} className="p-1 hover:bg-[#374248] rounded-full text-[#8696a0] shrink-0">
+              <button onClick={onCancelReply} className="p-1 hover:bg-white/[0.06] rounded-full text-zinc-600 shrink-0">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-[#e9edef]/60 text-[12px] truncate mt-0.5">{replyingTo.content || '📎 Media'}</p>
+            <p className="text-zinc-600 text-[12px] truncate mt-0.5">{replyingTo.content || '📎 Media'}</p>
           </div>
         </div>
       )}
 
       {/* Input Area */}
-      <div className="min-h-[56px] flex items-center px-4 py-1.5 gap-2">
+      <div className="min-h-[52px] flex items-center px-3 sm:px-4 py-1.5 gap-2">
         {isRecording ? (
-          <div className="flex-1 flex items-center justify-between bg-[#2a3942] rounded-full py-2 px-4 animate-in fade-in slide-in-from-right-8">
-            <div className="flex items-center gap-3 text-[#f15c6d]">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#f15c6d] animate-pulse"></div>
-              <span className="tabular-nums font-medium">{formatTime(recordingTime)}</span>
+          <div className="flex-1 flex items-center justify-between bg-white/[0.04] rounded-full py-2 px-4">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse"></div>
+              <span className="tabular-nums font-medium text-sm">{formatTime(recordingTime)}</span>
             </div>
-            <button onClick={() => stopRecording(true)} className="p-1.5 text-[#8696a0] hover:text-[#f15c6d] hover:bg-[#111b21] rounded-full transition-all">
-              <Trash2 className="w-5 h-5" />
+            <button onClick={() => stopRecording(true)} className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-white/[0.04] rounded-full transition-all">
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         ) : (
           <>
-            <div className="flex gap-2 text-[#8696a0] shrink-0">
+            <div className="flex gap-1 text-zinc-600 shrink-0">
               <button 
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
-                className={`p-2 hover:bg-[#374248] rounded-full transition-colors ${showEmojiPicker ? 'bg-[#374248] text-[#00a884]' : ''}`}
+                className={`p-2 hover:bg-white/[0.06] rounded-full transition-colors ${showEmojiPicker ? 'bg-white/[0.06] text-white' : ''}`}
               >
-                <Smile className="w-6 h-6" />
+                <Smile className="w-5 h-5" />
               </button>
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className={`p-2 hover:bg-[#374248] rounded-full transition-colors ${isUploading ? 'animate-pulse' : ''}`}
+                className={`p-2 hover:bg-white/[0.06] rounded-full transition-colors ${isUploading ? 'animate-pulse' : ''}`}
               >
-                <Plus className="w-6 h-6 hover:rotate-90 transition-transform" />
+                <Plus className="w-5 h-5 hover:rotate-90 transition-transform" />
               </button>
               <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*,video/*,application/pdf" />
             </div>
@@ -222,7 +208,7 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
                 type="text"
                 placeholder={isUploading ? "Uploading media..." : "Type a message"}
                 disabled={isUploading}
-                className="w-full bg-[#2a3942] text-[#e9edef] rounded-lg py-2 px-4 focus:ring-0 border-none placeholder-[#8696a0] text-[15px] disabled:opacity-50"
+                className="w-full bg-white/[0.04] text-white rounded-lg py-2 px-4 focus:ring-0 border border-white/[0.04] focus:border-white/[0.08] placeholder-zinc-700 text-[14px] disabled:opacity-50 outline-none transition-all"
                 value={content}
                 onChange={handleChange}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
@@ -232,18 +218,18 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
           </>
         )}
 
-        <div className="flex items-center text-[#8696a0] shrink-0 ml-1">
+        <div className="flex items-center text-zinc-500 shrink-0 ml-1">
           {content.trim() ? (
-            <button onClick={handleSend} className="p-2.5 bg-[#00a884] hover:bg-[#008f6f] text-[#111b21] rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-lg">
-              <Send className="w-5 h-5" />
+            <button onClick={handleSend} className="p-2.5 bg-white hover:bg-zinc-200 text-black rounded-full transition-all active:scale-95">
+              <Send className="w-4 h-4" />
             </button>
           ) : isRecording ? (
-            <button onClick={() => stopRecording(false)} className="p-2.5 bg-[#25d366] hover:bg-[#1ebb5a] text-[#111b21] rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-lg">
-              <Send className="w-5 h-5 pl-0.5" />
+            <button onClick={() => stopRecording(false)} className="p-2.5 bg-white hover:bg-zinc-200 text-black rounded-full transition-all active:scale-95">
+              <Send className="w-4 h-4 pl-0.5" />
             </button>
           ) : (
-            <button onClick={startRecording} className="p-2.5 bg-[#00a884]/10 hover:bg-[#00a884]/20 text-[#00a884] rounded-full transition-colors">
-              <Mic className="w-5 h-5" />
+            <button onClick={startRecording} className="p-2.5 bg-white/[0.06] hover:bg-white/[0.1] text-zinc-400 rounded-full transition-colors">
+              <Mic className="w-4 h-4" />
             </button>
           )}
         </div>

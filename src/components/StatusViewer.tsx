@@ -137,7 +137,7 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
              {currentStatus.user?.avatar_url ? (
                 <Image src={currentStatus.user.avatar_url} alt="Profile" width={40} height={40} className="object-cover" />
              ) : (
-                <div className="w-full h-full bg-[#00a884] flex items-center justify-center font-bold">{currentStatus.user?.name?.[0]}</div>
+                <div className="w-full h-full bg-white/[0.06] flex items-center justify-center font-bold text-zinc-400">{currentStatus.user?.name?.[0]}</div>
              )}
           </div>
           <div>

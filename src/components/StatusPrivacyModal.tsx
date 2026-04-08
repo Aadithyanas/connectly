@@ -133,7 +133,7 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
         <button 
             disabled={saving}
             onClick={handleSave} 
-            className="p-2 bg-[#00a884] hover:bg-[#06cf9c] rounded-full text-white shadow-lg disabled:opacity-50"
+            className="p-2 bg-white hover:bg-zinc-200 rounded-full text-black shadow-lg disabled:opacity-50 transition-colors"
         >
           {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
         </button>
@@ -141,13 +141,12 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
 
       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 space-y-8 pb-10">
         {loading ? (
-             <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 text-[#00a884] animate-spin" /></div>
+             <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 text-white animate-spin" /></div>
         ) : (
           <>
             {/* Visibility Options */}
             <div className="space-y-4">
-              <p className="text-[#8696a0] text-sm uppercase font-semibold tracking-wider">Who can see my status updates</p>
-              
+              <p className="text-zinc-500 text-sm uppercase font-semibold tracking-wider">Who can see my status updates</p>
               <div className="space-y-2">
                 {[
                   { id: 'everyone', label: 'Everyone', icon: Globe, desc: 'All registered Connectly members' },
@@ -156,18 +155,18 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
                 ].map((opt: any) => (
                   <label 
                     key={opt.id} 
-                    className={`flex items-center p-4 rounded-2xl cursor-pointer border-2 transition-all ${visibility === opt.id ? 'bg-[#00a884]/10 border-[#00a884]' : 'bg-[#202c33] border-transparent hover:bg-[#2a3942]'}`}
+                    className={`flex items-center p-4 rounded-2xl cursor-pointer border transition-all ${visibility === opt.id ? 'bg-white/[0.06] border-white/20' : 'bg-transparent border-transparent hover:bg-white/[0.04]'}`}
                     onClick={() => setVisibility(opt.id as any)}
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
-                        <opt.icon className={`w-5 h-5 ${visibility === opt.id ? 'text-[#00a884]' : 'text-[#8696a0]'}`} />
-                        <p className="text-[#e9edef] font-medium">{opt.label}</p>
+                        <opt.icon className={`w-5 h-5 ${visibility === opt.id ? 'text-white' : 'text-zinc-500'}`} />
+                        <p className="text-white font-medium">{opt.label}</p>
                       </div>
-                      <p className="text-[#8696a0] text-xs pl-8">{opt.desc}</p>
+                      <p className="text-zinc-500 text-xs pl-8">{opt.desc}</p>
                     </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${visibility === opt.id ? 'bg-[#00a884] border-[#00a884]' : 'border-[#8696a0]'}`}>
-                      {visibility === opt.id && <Check className="w-4 h-4 text-white" />}
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${visibility === opt.id ? 'bg-white border-white' : 'border-zinc-600'}`}>
+                      {visibility === opt.id && <Check className="w-4 h-4 text-black" />}
                     </div>
                   </label>
                 ))}
@@ -178,8 +177,8 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
             {visibility === 'selected' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-5 duration-300">
                 <div className="flex items-center justify-between">
-                    <p className="text-[#8696a0] text-sm uppercase font-semibold tracking-wider">Choose Members ({selectedMembers.size})</p>
-                    {selectedMembers.size > 0 && <button onClick={() => setSelectedMembers(new Set())} className="text-[#00a884] text-xs hover:underline">Clear all</button>}
+                    <p className="text-zinc-500 text-sm uppercase font-semibold tracking-wider">Choose Members ({selectedMembers.size})</p>
+                    {selectedMembers.size > 0 && <button onClick={() => setSelectedMembers(new Set())} className="text-white text-xs hover:underline">Clear all</button>}
                 </div>
 
                 <div className="relative">
@@ -188,31 +187,31 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
                     placeholder="Search people..." 
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full bg-[#202c33] border-none text-[#e9edef] rounded-xl py-3 pl-12 focus:ring-1 focus:ring-[#00a884] placeholder-[#8696a0]"
+                    className="w-full bg-white/[0.04] border border-white/[0.06] text-white rounded-xl py-3 pl-12 focus:outline-none focus:ring-1 focus:ring-white/20 placeholder-zinc-600"
                   />
-                  <Search className="absolute left-4 top-3.5 w-5 h-5 text-[#8696a0]" />
+                  <Search className="absolute left-4 top-3.5 w-5 h-5 text-zinc-500" />
                 </div>
 
                 <div className="space-y-1">
                   {filteredMembers.length === 0 ? (
-                    <p className="text-center py-10 text-[#8696a0] italic">No members found.</p>
+                    <p className="text-center py-10 text-zinc-500 italic">No members found.</p>
                   ) : (
                     filteredMembers.map(member => (
                       <div 
                         key={member.id} 
                         onClick={() => toggleMember(member.id)}
-                        className="flex items-center p-3 rounded-xl hover:bg-[#202c33] cursor-pointer transition-colors group"
+                        className="flex items-center p-3 rounded-xl hover:bg-white/[0.04] cursor-pointer transition-colors group"
                       >
                          <div className="w-10 h-10 rounded-full overflow-hidden mr-4 shadow-md group-hover:scale-105 transition-transform">
                            {member.avatar_url ? (
                               <Image src={member.avatar_url} alt={member.name} width={40} height={40} className="object-cover" />
                            ) : (
-                              <div className="w-full h-full bg-[#00a884] flex items-center justify-center text-white font-bold">{member.name[0]}</div>
+                              <div className="w-full h-full bg-white/[0.06] flex items-center justify-center text-zinc-400 font-bold">{member.name[0]}</div>
                            )}
                          </div>
-                         <p className="flex-1 text-[#e9edef] font-medium">{member.name}</p>
-                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${selectedMembers.has(member.id) ? 'bg-[#00a884] border-[#00a884]' : 'border-[#8696a0]'}`}>
-                           {selectedMembers.has(member.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                         <p className="flex-1 text-white font-medium">{member.name}</p>
+                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${selectedMembers.has(member.id) ? 'bg-white border-white' : 'border-zinc-600'}`}>
+                           {selectedMembers.has(member.id) && <Check className="w-3.5 h-3.5 text-black" />}
                          </div>
                       </div>
                     ))

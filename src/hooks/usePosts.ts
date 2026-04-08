@@ -259,11 +259,42 @@ export function usePosts(filterUserId?: string) {
     return { data, error }
   }
 
+  const updatePost = async (postId: string, payload: { title?: string, content: string }) => {
+    if (!user) return { error: 'Not authenticated' }
+
+    const { data, error } = await supabase
+      .from('posts')
+      .update(payload)
+      .eq('id', postId)
+      .eq('user_id', user.id) // Security check
+      .select()
+
+    if (!error) await fetchPosts(true)
+    return { data, error }
+  }
+
+  const deletePost = async (postId: string) => {
+    if (!user) return { error: 'Not authenticated' }
+
+    // RLS will ensure they only delete their own
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId)
+
+    if (!error) {
+      setPosts(prev => prev.filter(p => p.id !== postId))
+    }
+    return { error }
+  }
+
   return { 
     posts, 
     loading, 
     toggleLike, 
-    createPost, 
+    createPost,
+    updatePost,
+    deletePost,
     refresh: fetchPosts,
     fetchComments,
     addComment,

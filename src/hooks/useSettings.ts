@@ -9,10 +9,10 @@ export interface AppSettings {
 }
 
 const defaultSettings: AppSettings = {
-  sidebarBg: '#111b21',
-  chatBg: '#0b141a',
-  sentBubbleColor: '#005c4b',
-  receivedBubbleColor: '#202c33',
+  sidebarBg: '#000000',
+  chatBg: '#000000',
+  sentBubbleColor: '#1a1a1a',
+  receivedBubbleColor: '#0a0a0a',
   textSize: 'medium'
 }
 
@@ -21,20 +21,22 @@ export function useSettings() {
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    // Load from local storage on mount
     try {
-      const stored = localStorage.getItem('connectly_settings')
+      const stored = localStorage.getItem('connectly_settings_v2')
       if (stored) {
         setSettings({ ...defaultSettings, ...JSON.parse(stored) })
+      } else {
+        // Migration: If they have v1 settings (old green colors), we ignore them and use new black&white default
+        localStorage.setItem('connectly_settings_v2', JSON.stringify(defaultSettings))
+        setSettings(defaultSettings)
       }
     } catch (e) {
       console.error('Failed to load settings', e)
     }
     setIsLoaded(true)
 
-    // Setup listener for cross-tab sync if needed
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'connectly_settings' && e.newValue) {
+      if (e.key === 'connectly_settings_v2' && e.newValue) {
         setSettings({ ...defaultSettings, ...JSON.parse(e.newValue) })
       }
     }
@@ -45,18 +47,16 @@ export function useSettings() {
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     setSettings(prev => {
       const updated = { ...prev, ...newSettings }
-      localStorage.setItem('connectly_settings', JSON.stringify(updated))
-      // Dispatch a custom event so other components in the same tab can react immediately
+      localStorage.setItem('connectly_settings_v2', JSON.stringify(updated))
       window.dispatchEvent(new Event('connectly_settings_updated'))
       return updated
     })
   }
 
-  // Effect to listen for updates from other components in the same tab
   useEffect(() => {
     const handleLocalUpdate = () => {
       try {
-        const stored = localStorage.getItem('connectly_settings')
+        const stored = localStorage.getItem('connectly_settings_v2')
         if (stored) {
           setSettings({ ...defaultSettings, ...JSON.parse(stored) })
         }

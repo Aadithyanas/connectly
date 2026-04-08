@@ -24,8 +24,6 @@ function FlickerFreeMedia({ url, type, className, onClick, controls }: FlickerFr
   const nextUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
-    // If we're transitioning from a local BLOB to a remote URL, 
-    // we keep the BLOB visible until the remote one is fully ready.
     if (displayUrl.startsWith('blob:') && !url.startsWith('blob:')) {
       nextUrlRef.current = url
       const img = new window.Image()
@@ -43,8 +41,8 @@ function FlickerFreeMedia({ url, type, className, onClick, controls }: FlickerFr
 
   if (type === 'video') {
     return (
-      <div className="relative w-full h-full flex items-center justify-center bg-[#202c33]/50">
-        {!isLoaded && <div className="absolute inset-0 bg-[#202c33] animate-pulse" />}
+      <div className="relative w-full h-full flex items-center justify-center bg-white/[0.02]">
+        {!isLoaded && <div className="absolute inset-0 bg-white/[0.03] animate-pulse" />}
         <video 
           src={displayUrl} 
           onLoadedData={() => setIsLoaded(true)}
@@ -56,8 +54,8 @@ function FlickerFreeMedia({ url, type, className, onClick, controls }: FlickerFr
   }
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-[#202c33]/50">
-      {!isLoaded && <div className="absolute inset-0 bg-[#202c33] animate-pulse" />}
+    <div className="relative w-full h-full flex items-center justify-center bg-white/[0.02]">
+      {!isLoaded && <div className="absolute inset-0 bg-white/[0.03] animate-pulse" />}
       <img 
         src={displayUrl} 
         alt="Media" 
@@ -107,7 +105,6 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
     }
   }, [messages])
 
-  // Load downloaded media list from local storage on mount
   useEffect(() => {
     const saved = localStorage.getItem('connectly_downloaded_media')
     if (saved) {
@@ -138,12 +135,12 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
         <div className="flex flex-col gap-4 py-2">
           {[...Array(4)].map((_, i) => (
             <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'} animate-pulse`}>
-              <div className={`p-4 rounded-xl shadow-sm relative min-w-[120px] max-w-[200px] h-12 bg-[#202c33]/40 animate-skeleton ${i % 2 === 0 ? 'rounded-tr-none' : 'rounded-tl-none'}`}></div>
+              <div className={`p-4 rounded-xl relative min-w-[120px] max-w-[200px] h-12 bg-white/[0.03] animate-skeleton ${i % 2 === 0 ? 'rounded-tr-none' : 'rounded-tl-none'}`}></div>
             </div>
           ))}
         </div>
       ) : messages.length === 0 ? (
-        <div className="flex items-center justify-center h-full text-[#8696a0] text-sm italic">
+        <div className="flex items-center justify-center h-full text-zinc-700 text-sm">
           Start a conversation...
         </div>
       ) : (
@@ -158,57 +155,55 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
               onMouseLeave={() => setHoveredId(null)}
             >
               <div className={`relative max-w-[85%] sm:max-w-[75%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
-                {/* Hover Action Menu */}
-                <div className={`absolute ${isOwn ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'} top-1 flex items-center gap-0.5 px-1 transition-all duration-200 z-10 ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                {/* Hover Actions */}
+                <div className={`absolute ${isOwn ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'} top-1 flex items-center gap-0.5 px-1 transition-all duration-150 z-10 ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                   <button 
                     onClick={() => onReply(message)} 
-                    className="p-1.5 rounded-full bg-[#202c33] hover:bg-[#374248] text-[#8696a0] hover:text-[#e9edef] transition-colors shadow-lg"
+                    className="p-1.5 rounded-full bg-[#111] hover:bg-white/[0.08] text-zinc-600 hover:text-white transition-colors"
                     title="Reply"
                   >
-                    <Reply className="w-4 h-4" />
+                    <Reply className="w-3.5 h-3.5" />
                   </button>
                   <button 
                     onClick={() => onForward(message)} 
-                    className="p-1.5 rounded-full bg-[#202c33] hover:bg-[#374248] text-[#8696a0] hover:text-[#e9edef] transition-colors shadow-lg"
+                    className="p-1.5 rounded-full bg-[#111] hover:bg-white/[0.08] text-zinc-600 hover:text-white transition-colors"
                     title="Forward"
                   >
-                    <Forward className="w-4 h-4" />
+                    <Forward className="w-3.5 h-3.5" />
                   </button>
                 </div>
  
-                {/* Message Bubble */}
+                {/* Bubble */}
                 <div
-                   className={`p-1.5 rounded-xl shadow-sm relative w-fit min-w-[85px] will-change-transform ${
-                     isOwn ? 'text-[#e9edef] rounded-tr-none' : 'text-[#e9edef] rounded-tl-none'
+                   className={`p-2.5 rounded-2xl relative w-fit min-w-[85px] will-change-transform border ${
+                     isOwn ? 'bg-[#1a1a1a] text-white border-white/[0.06] rounded-br-[4px]' : 'bg-white/[0.04] text-white border-white/[0.04] rounded-bl-[4px]'
                    }`}
                   style={{ 
-                    backgroundColor: (message.media_url && !message.content) 
-                      ? 'transparent' 
-                      : (isLoaded ? (isOwn ? settings.sentBubbleColor : settings.receivedBubbleColor) : (isOwn ? '#005c4b' : '#202c33')),
+                    backgroundColor: (message.media_url && !message.content) ? 'transparent' : undefined,
                     backdropFilter: (message.media_url && message.content) ? 'blur(4px)' : 'none'
                   }}
                 >
-                  {/* Forwarded Label */}
+                  {/* Forwarded */}
                   {message.forwarded && (
                     <div className="flex items-center gap-1 px-1 pb-0.5">
-                      <Forward className="w-3 h-3 text-[#e9edef]/40" />
-                      <span className="text-[11px] text-[#e9edef]/40 italic">Forwarded</span>
+                      <Forward className="w-3 h-3 text-white/30" />
+                      <span className="text-[11px] text-white/30 italic">Forwarded</span>
                     </div>
                   )}
 
                   {/* Reply Preview */}
                   {message.reply && (
-                    <div className={`mx-1 mb-1 px-2.5 py-1.5 rounded-lg border-l-4 ${isOwn ? 'bg-[#025144] border-[#06cf9c]' : 'bg-[#1a2930] border-[#00a884]'}`}>
-                      <p className="text-[#06cf9c] text-[11px] font-bold mb-0.5">
+                    <div className={`mx-1 mb-1 px-2.5 py-1.5 rounded-lg border-l-2 ${isOwn ? 'bg-white/[0.06] border-zinc-500' : 'bg-white/[0.04] border-zinc-600'}`}>
+                      <p className="text-zinc-400 text-[11px] font-bold mb-0.5">
                         {message.reply.sender_id === currentUserId ? 'You' : 'Them'}
                       </p>
-                      <p className="text-[#e9edef]/70 text-[12px] truncate leading-tight">
+                      <p className="text-white/50 text-[12px] truncate leading-tight">
                         {message.reply.content || '📎 Media'}
                       </p>
                     </div>
                   )}
 
-                  {/* Media Rendering */}
+                  {/* Media */}
                   {message.media_url && (
                     <div className="mb-1">
                       {message.media_type === 'image' && (
@@ -227,7 +222,6 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                             }`} 
                           />
 
-                          {/* Sender Loading Spinner */}
                           {isOwn && message.status === 'sending' && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-10">
                               <div className="bg-black/60 p-3 rounded-full backdrop-blur-sm">
@@ -236,12 +230,11 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                             </div>
                           )}
 
-                          {/* Receiver Download Button Overlay */}
                           {!isOwn && !downloadedIds.has(message.id) && (
                             <div className="absolute inset-0 flex items-center justify-center z-10">
                               <button 
                                 onClick={(e) => { e.stopPropagation(); handleDownload(message.id); }}
-                                className="bg-black/60 hover:bg-black/80 p-5 rounded-full backdrop-blur-md border border-white/20 transition-all transform hover:scale-110 group-active/media:scale-95 shadow-2xl"
+                                className="bg-black/60 hover:bg-black/80 p-5 rounded-full backdrop-blur-md border border-white/20 transition-all transform hover:scale-110 shadow-2xl"
                               >
                                 <div className="flex flex-col items-center gap-1">
                                   <Download className="w-8 h-8 text-white" />
@@ -264,7 +257,6 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                             }`} 
                           />
 
-                          {/* Sender Loading Spinner */}
                           {isOwn && message.status === 'sending' && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-10">
                               <div className="bg-black/60 p-3 rounded-full backdrop-blur-sm">
@@ -273,12 +265,11 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                             </div>
                           )}
 
-                          {/* Receiver Download Button Overlay */}
                           {!isOwn && !downloadedIds.has(message.id) && (
                             <div className="absolute inset-0 flex items-center justify-center z-10">
                               <button 
                                 onClick={(e) => { e.stopPropagation(); handleDownload(message.id); }}
-                                className="bg-black/60 hover:bg-black/80 p-5 rounded-full backdrop-blur-md border border-white/20 transition-all transform hover:scale-110 group-active/media:scale-95 shadow-2xl"
+                                className="bg-black/60 hover:bg-black/80 p-5 rounded-full backdrop-blur-md border border-white/20 transition-all transform hover:scale-110 shadow-2xl"
                               >
                                 <div className="flex flex-col items-center gap-1">
                                   <Download className="w-8 h-8 text-white" />
@@ -292,8 +283,8 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                       {message.media_type === 'audio' && (
                         <div className="py-1 px-1 min-w-[200px] relative">
                           {message.status === 'sending' && (
-                            <div className="absolute inset-0 bg-[#202c33]/40 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-lg">
-                               <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
+                            <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[1px] flex items-center justify-center z-10 rounded-lg">
+                               <Loader2 className="w-6 h-6 text-white animate-spin" />
                             </div>
                           )}
                           <CustomAudioPlayer 
@@ -304,15 +295,15 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                         </div>
                       )}
                       {(!message.media_type || message.media_type === 'application') && (
-                        <div className="flex items-center gap-3 p-3 bg-[#111b21]/50 rounded-lg">
-                          <FileText className="w-8 h-8 text-[#00a884]" />
+                        <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-lg">
+                          <FileText className="w-8 h-8 text-zinc-500" />
                           <span className="text-sm font-medium truncate flex-1">Document File</span>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Content & Footer Area */}
+                  {/* Content & Footer */}
                   <div className="flex flex-col relative">
                     {message.content && (
                       <p className={`px-1 leading-relaxed whitespace-pre-wrap break-words pb-4 ${
@@ -322,36 +313,26 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                       </p>
                     )}
 
-                    {/* Footer: Time + Ticks */}
                     <div className={`flex items-center gap-1.5 absolute bottom-0 right-0 ${message.media_url && !message.content ? 'bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full ring-1 ring-white/10' : ''}`}>
-                      <span className="text-[10px] text-[#e9edef]/60 tabular-nums lowercase select-none whitespace-nowrap">
+                      <span className="text-[10px] text-white/40 tabular-nums lowercase select-none whitespace-nowrap">
                         {format(new Date(message.created_at), 'h:mm a')}
                       </span>
                       {isOwn && (
                         <div className="flex items-center">
                           {message.status === 'sending' ? (
-                            <Clock className="w-3 h-3 text-[#e9edef]/40 animate-pulse" />
+                            <Clock className="w-3 h-3 text-white/30 animate-pulse" />
                           ) : message.status === 'sent' ? (
-                            <Check className="w-3.5 h-3.5 text-[#e9edef]/40" />
+                            <Check className="w-3.5 h-3.5 text-white/30" />
                           ) : message.status === 'delivered' ? (
-                            <CheckCheck className="w-4 h-4 text-[#e9edef]/40" />
+                            <CheckCheck className="w-4 h-4 text-white/30" />
                           ) : (
-                            <CheckCheck className="w-4 h-4 text-[#53bdeb]" />
+                            <CheckCheck className="w-4 h-4 text-white" />
                           )}
                         </div>
                       )}
                     </div>
                   </div>
                   
-                  {/* Message Tail */}
-                  <div 
-                    className={`absolute top-0 w-2 h-2 ${
-                      isOwn ? '-right-2 [clip-path:polygon(0_0,0_100%,100%_0)]' : '-left-2 [clip-path:polygon(100%_0,100%_100%,0_0)]'
-                    } ${message.media_url && !message.content ? 'hidden' : ''}`}
-                    style={{ 
-                      backgroundColor: (isLoaded ? (isOwn ? settings.sentBubbleColor : settings.receivedBubbleColor) : (isOwn ? '#005c4b' : '#202c33'))
-                    }}
-                  />
                 </div>
               </div>
             </div>
@@ -359,14 +340,14 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
         })
       )}
 
-      {/* Fullscreen Image Lightbox */}
+      {/* Fullscreen Lightbox */}
       {fullscreenImage && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center cursor-zoom-out p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center cursor-zoom-out p-4 backdrop-blur-sm"
           onClick={() => setFullscreenImage(null)}
         >
            <button 
-             className="absolute top-6 right-6 p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black rounded-full transition-all shadow-lg"
+             className="absolute top-6 right-6 p-3 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all"
              onClick={() => setFullscreenImage(null)}
            >
              <X className="w-6 h-6" />
@@ -374,7 +355,7 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
            <img 
              src={fullscreenImage} 
              alt="Fullscreen media" 
-             className="max-w-[95vw] max-h-[95vh] object-contain select-none shadow-2xl rounded-sm animate-in zoom-in-95 duration-200"
+             className="max-w-[95vw] max-h-[95vh] object-contain select-none rounded-sm"
              onClick={(e) => e.stopPropagation()}
            />
         </div>,
