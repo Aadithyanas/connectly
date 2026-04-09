@@ -173,7 +173,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
 
   if (!chatId) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#0a0a0a] relative overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#0a0a0a] relative overflow-hidden min-w-0">
         <div className="max-w-md w-full text-center space-y-6 px-4">
           <div className="flex justify-center">
             <div className="w-20 h-20 bg-white/[0.04] rounded-full flex items-center justify-center">
@@ -192,7 +192,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-black h-full overflow-hidden">
+    <div className="flex-1 flex flex-col bg-black h-full overflow-hidden min-w-0">
       {/* Header */}
       <div className="h-[56px] bg-[#0a0a0a] flex items-center justify-between px-4 sticky top-0 z-10 border-b border-white/[0.04] shrink-0">
         <div 
@@ -220,18 +220,21 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
                 <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-white rounded-full border-2 border-[#0a0a0a]"></div>
               )}
             </div>
-            <div className="flex flex-col min-w-0">
-              <h3 className="text-white text-[14px] font-semibold leading-none mb-0.5 group-hover:text-zinc-300 transition-colors truncate">{otherUser?.name || 'Loading...'}</h3>
-              <span className="text-[11px] font-medium truncate">
-                {otherUser?.role === 'professional' && otherUser?.availability_status === false ? (
-                  <span className="text-zinc-600 italic flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-zinc-600 rounded-full"></span>
-                    unavailable
-                  </span>
-                ) : (
-                  isOtherTyping ? <span className="text-zinc-400">typing...</span> : isOtherOnline ? <span className="text-zinc-400">online</span> : <span className="text-zinc-600">offline</span>
-                )}
-              </span>
+            <div className="flex flex-col min-w-0 flex-1">
+              <h3 className="text-white text-[14px] font-semibold leading-none mb-1 group-hover:text-zinc-300 transition-colors truncate">{otherUser?.name || 'Loading...'}</h3>
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <span className="text-[10px] font-bold tracking-tighter uppercase whitespace-nowrap text-zinc-500">
+                  {otherUser?.role === 'professional' ? 'Professional' : 'Student'}
+                </span>
+                <span className="text-zinc-800">·</span>
+                <span className="text-[11px] font-medium truncate text-zinc-400">
+                  {otherUser?.role === 'professional' && otherUser?.availability_status === false ? (
+                    <span className="text-zinc-600 italic">unavailable</span>
+                  ) : (
+                    isOtherTyping ? <span>typing...</span> : isOtherOnline ? <span>online</span> : <span>offline</span>
+                  )}
+                </span>
+              </div>
             </div>
           </div>
         </div>

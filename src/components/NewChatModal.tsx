@@ -106,7 +106,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
             initial={{ opacity: 0, scale: 0.95, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 16 }}
-            className="bg-[#0a0a0a] w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-white/[0.06]"
+            className="bg-[#0a0a0a] w-full h-full md:h-auto md:max-w-md md:rounded-2xl overflow-hidden shadow-2xl border border-white/[0.06] flex flex-col"
           >
             {/* Header */}
             <div className="p-4 bg-[#0a0a0a] flex items-center justify-between border-b border-white/[0.04]">

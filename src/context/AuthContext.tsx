@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth()
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: any, session: any) => {
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (_event: any, session: any) => {
       const newUser = session?.user ?? null
       setUser(newUser)
       if (newUser) {
@@ -74,11 +74,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    return () => {
-      subscription.unsubscribe()
-      // We don't reset initLock here so StrictMode remounts don't trigger dual fetching
+    // Real-time profile updates
+    let profileSubscription: any = null
+    
+    const setupProfileSubscription = (userId: string) => {
+      if (profileSubscription) supabase.removeChannel(profileSubscription)
+      
+      profileSubscription = supabase.channel(`profile-sync:${userId}`)
+        .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'profiles', 
+          filter: `id=eq.${userId}` 
+        }, (payload: any) => {
+          setProfile(payload.new)
+        })
+        .subscribe()
     }
-  }, [supabase])
+
+    if (user?.id) setupProfileSubscription(user.id)
+
+    return () => {
+      authSubscription.unsubscribe()
+      if (profileSubscription) supabase.removeChannel(profileSubscription)
+    }
+  }, [supabase, user?.id])
 
   const signOut = async () => {
     await supabase.auth.signOut()

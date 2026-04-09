@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { X, Camera, Edit2, Check, User, Users, ShieldCheck, LogOut, Trash2, Mail, Info, Briefcase, GraduationCap, Globe, Link, Signal, Building2, BookOpen, Rocket, Play } from 'lucide-react'
+import { X, Camera, Edit2, Check, User, Users, ShieldCheck, LogOut, Trash2, Mail, Info, Briefcase, GraduationCap, Globe, Link, Signal, Building2, BookOpen, Rocket, Play, Plus, Trophy } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useIsUserOnline } from '@/hooks/useOnlineStatus'
 import { useAuth } from '@/context/AuthContext'
+import { useConnections } from '@/hooks/useConnections'
 
 interface InfoSidebarProps {
   isOpen: boolean
@@ -40,6 +41,23 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
 
   const { user, profile, refreshProfile, signOut } = useAuth()
   const supabase = createClient()
+  
+  const [challengeStats, setChallengeStats] = useState({ solved: 0, points: 0 })
+
+  const fetchChallengeStats = async () => {
+    const targetId = type === 'profile' ? user?.id : data?.id
+    if (!targetId) return
+    const { data: stats } = await supabase.rpc('get_user_challenge_stats', { p_user_id: targetId })
+    if (stats && stats.length > 0) {
+      setChallengeStats({
+        solved: Number(stats[0].solved_count),
+        points: Number(stats[0].total_points)
+      })
+    }
+  }
+  
+  const targetUserId = type === 'profile' ? user?.id : data?.id
+  const { followersCount, followingCount, isFollowing, toggleFollow, loading: connectionLoading } = useConnections(targetUserId)
 
   useEffect(() => {
     setName(data?.name || '')
@@ -61,6 +79,9 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
     setJobRole(data?.job_role || '')
     setExperienceYears(data?.experience_years || '')
     setCurrentAvatarUrl(data?.avatar_url || '')
+    if (isOpen) {
+      fetchChallengeStats()
+    }
 
     if (data?.company_id) {
       supabase.from('companies').select('name').eq('id', data.company_id).single()
@@ -68,7 +89,28 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
           if (company) setCompanyName(company.name)
         })
     }
-  }, [data, type])
+  }, [data, type, isOpen])
+
+  useEffect(() => {
+    const targetUserId = type === 'profile' ? user?.id : data?.id
+    if (!targetUserId) return
+
+    // Real-time listener for challenge solutions
+    const channel = supabase.channel(`solutions-sync:${targetUserId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'challenge_solutions', 
+        filter: `user_id=eq.${targetUserId}` 
+      }, () => {
+        fetchChallengeStats()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id, data?.id, type])
 
   useEffect(() => {
     const targetUserId = type === 'profile' ? user?.id : data?.id
@@ -237,7 +279,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="ml-auto w-full md:max-w-[400px] h-full bg-[#0a0a0a] border-l border-white/[0.04] flex flex-col shadow-2xl"
+            className="ml-auto w-full md:w-[400px] h-full bg-[#0a0a0a] border-l border-white/[0.04] flex flex-col shadow-2xl"
           >
             {/* Header */}
             <div className="h-[100px] bg-[#0a0a0a] flex items-end px-6 pb-4 relative border-b border-white/[0.04]">
@@ -301,10 +343,50 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                 {type === 'contact' && (
                   <div className="text-center">
                     <h3 className="text-white text-2xl font-bold">{nickname || data?.name || 'Unknown'}</h3>
-                    {isContactOnline ? (
-                      <span className="text-zinc-400 text-sm font-medium">online</span>
-                    ) : (
-                      <span className="text-zinc-600 text-sm">offline</span>
+                    <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                      {isContactOnline ? (
+                        <span className="text-zinc-400 text-sm font-medium">online</span>
+                      ) : (
+                        <span className="text-zinc-600 text-sm">offline</span>
+                      )}
+                      <span className="text-zinc-800">·</span>
+                      <span className="text-white font-bold text-sm tracking-tight">{followersCount}</span>
+                      <span className="text-zinc-500 text-[11px] font-bold uppercase tracking-wider">Connections</span>
+                      <span className="text-zinc-800">·</span>
+                      <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-400/10 rounded-full border border-amber-400/20">
+                        <Trophy className="w-2.5 h-2.5 text-amber-500" />
+                        <span className="text-amber-500 font-bold text-[10px] uppercase tracking-tighter">{challengeStats.solved} Solved</span>
+                      </div>
+                    </div>
+
+                    {/* Contact Connect Button */}
+                    {data?.id !== user?.id && (
+                      <div className="flex justify-center gap-2 mt-4">
+                        <button 
+                          onClick={toggleFollow}
+                          disabled={connectionLoading}
+                          className={`flex items-center justify-center gap-2 px-6 py-2 rounded-xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95 ${isFollowing ? 'bg-white/[0.06] text-white border border-white/10 hover:bg-white/10' : 'bg-white text-black hover:bg-zinc-200'}`}
+                        >
+                          {isFollowing ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Connected
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-4 h-4" />
+                              Connect
+                            </>
+                          )}
+                        </button>
+                        <button 
+                          onClick={() => onViewPosts?.(data?.id)}
+                          className="p-2.5 bg-white/[0.06] hover:bg-white/10 border border-white/10 rounded-xl text-white transition-all active:scale-95"
+                          title="View Posts"
+                        >
+                          <Rocket className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -352,7 +434,23 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                         {isEditing ? (
                           <input type="text" className="w-full bg-transparent border-b border-white/20 py-1 text-white text-lg focus:ring-0 outline-none focus:border-white/40" value={name} onChange={(e) => setName(e.target.value)} />
                         ) : (
-                          <span className="text-white text-lg font-medium">{name || 'Add a name'}</span>
+                          <div className="flex flex-col">
+                            <span className="text-white text-lg font-medium">{name || 'Add a name'}</span>
+                            <div className="flex items-center gap-4 mt-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-white font-bold text-sm">{followersCount}</span>
+                                <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-tight">Connections</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-white font-bold text-sm">{followingCount}</span>
+                                <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-tight">Following</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-400/10 rounded-full border border-amber-400/20">
+                                <Trophy className="w-2.5 h-2.5 text-amber-500" />
+                                <span className="text-amber-500 font-bold text-[10px] uppercase tracking-tighter">{challengeStats.solved} Solved</span>
+                              </div>
+                            </div>
+                          </div>
                         )}
                         {type === 'profile' && !isEditing && (
                           <button onClick={() => setIsEditing(true)} className="p-2 text-zinc-500 hover:text-white transition-colors">

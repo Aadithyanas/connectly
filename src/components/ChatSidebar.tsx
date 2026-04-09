@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { Search, UserCircle, Home, Plus, Compass, CircleDashed } from 'lucide-react'
+import { Search, UserCircle, Home, Plus, Compass, CircleDashed, Trophy } from 'lucide-react'
 import Image from 'next/image'
 import { isUserOnline } from '@/hooks/useOnlineStatus'
 
@@ -20,8 +20,8 @@ interface ChatSidebarProps {
   onOpenNewChat: () => void
   onOpenProfile: () => void
   onOpenSettings: () => void
-  activeTab: 'chat' | 'feed' | 'status'
-  onTabChange: (tab: 'chat' | 'feed' | 'status') => void
+  activeTab: 'chat' | 'feed' | 'status' | 'challenges'
+  onTabChange: (tab: 'chat' | 'feed' | 'status' | 'challenges') => void
 }
 
 export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat, onOpenProfile, onOpenSettings, activeTab, onTabChange }: ChatSidebarProps) {
@@ -29,8 +29,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   const [chats, setChats] = useState<any[] | null>(null)
   const [loading, setLoading] = useState(false) // Start as false to prevent immediate skeleton flash
   const [search, setSearch] = useState('')
-  const { user, signOut, loading: authLoading } = useAuth()
-  const [myProfile, setMyProfile] = useState<any>(null)
+  const { user, signOut, loading: authLoading, profile: authProfile } = useAuth()
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [imageError, setImageError] = useState(false)
@@ -52,16 +51,6 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     // Only show skeleton on first load, not on background refreshes
     if (showSkeleton) setLoading(true)
     try {
-      // Always fetch the user's own profile directly first!
-      const { data: myProfileData } = await supabase
-        .from('profiles')
-        .select('id, name, email, avatar_url, status, last_seen, availability_status, role')
-        .eq('id', user.id)
-        .single()
-        
-      if (myProfileData) {
-        setMyProfile(myProfileData)
-      }
 
       const { data: memberOf, error: memberError } = await supabase
         .from('chat_members')
@@ -341,11 +330,12 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   ) : []
 
   const textSizeClass = settings.textSize === 'small' ? 'text-sm' : settings.textSize === 'large' ? 'text-lg' : 'text-base'
-  const rawAvatarSrc = myProfile?.avatar_url || user?.user_metadata?.avatar_url || null
+  const rawAvatarSrc = authProfile?.avatar_url || user?.user_metadata?.avatar_url || null
   const avatarSource = imageError ? null : rawAvatarSrc
 
   return (
-    <div className="w-full flex flex-col border-r border-white/[0.04] h-full shrink-0 relative transition-all bg-[#000]">
+    <div className="w-full flex flex-col border-r border-white/[0.04] h-full shrink-0 relative transition-all bg-[#000] overflow-hidden min-w-0">
+
       <div className="h-[60px] bg-[#0a0a0a] flex items-center justify-between px-4 sticky top-0 z-10 border-b border-white/[0.04]">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-3 cursor-pointer" onClick={onOpenProfile}>
@@ -365,7 +355,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
               {getGreeting()}
             </h2>
             <span className="text-white text-[14px] font-bold">
-              {myProfile?.name || user?.user_metadata?.full_name || 'User'}
+              {authProfile?.name || user?.user_metadata?.full_name || 'User'}
             </span>
           </div>
         </div>
@@ -413,13 +403,20 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
             >
               <Compass className="w-4 h-4" />
             </button>
-            <button 
-              onClick={() => onTabChange('status')}
-              className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'status' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
-            >
-              <CircleDashed className="w-4 h-4" />
-            </button>
-          </div>
+              <button 
+                onClick={() => onTabChange('status')}
+                className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'status' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+              >
+                <CircleDashed className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => onTabChange('challenges')}
+                className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'challenges' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+                title="Connectly Challenges"
+              >
+                <Trophy className="w-4 h-4" />
+              </button>
+            </div>
           </>
         )}
       </div>

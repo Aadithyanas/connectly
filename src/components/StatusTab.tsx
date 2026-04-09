@@ -38,7 +38,7 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-black w-full">
+    <div className="flex flex-col h-full bg-black w-full min-w-0 overflow-hidden relative">
       <div className="w-full h-[56px] flex items-center justify-between px-4 bg-[#0a0a0a] text-white shrink-0 border-b border-white/[0.04]">
         <div className="flex items-center gap-4">
           {onBack && (

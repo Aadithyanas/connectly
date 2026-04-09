@@ -8,11 +8,12 @@ import InfoSidebar from '@/components/InfoSidebar'
 import DiscoveryFeed from '@/components/DiscoveryFeed'
 import StatusTab from '@/components/StatusTab'
 import StatusViewer from '@/components/StatusViewer'
+import ChallengesRoom from '@/components/ChallengesRoom'
 import { Status } from '@/hooks/useStatuses'
 import { createClient } from '@/utils/supabase/client'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import SettingsModal from '@/components/SettingsModal'
-import { Home, Compass, CircleDashed as StatusCircle, Plus } from 'lucide-react'
+import { Home, Compass, CircleDashed as StatusCircle, Plus, Trophy } from 'lucide-react'
 
 import { useAuth } from '@/context/AuthContext'
 
@@ -27,7 +28,7 @@ export default function ChatPage() {
   const [sidebarType, setSidebarType] = useState<'profile' | 'contact' | 'group'>('profile')
   const [sidebarData, setSidebarData] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState<'chat' | 'feed' | 'status'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'feed' | 'status' | 'challenges'>('chat')
   const [feedFilterUserId, setFeedFilterUserId] = useState<string | undefined>(undefined)
   const [activeStatuses, setActiveStatuses] = useState<Status[] | null>(null)
 
@@ -194,7 +195,7 @@ export default function ChatPage() {
         />
       </div>
 
-      <div className={`${(activeChatId || activeTab !== 'chat') ? 'flex' : 'hidden md:flex'} flex-1 h-full transition-all`}>
+      <div className={`${(activeChatId || activeTab !== 'chat') ? 'flex' : 'hidden md:flex'} flex-1 h-full min-w-0 overflow-hidden transition-all`}>
         {activeTab === 'feed' ? (
           <DiscoveryFeed 
             onStartChat={handleStartDirectChat} 
@@ -210,6 +211,8 @@ export default function ChatPage() {
             onStatusClick={(statuses: Status[]) => setActiveStatuses(statuses)} 
             onBack={() => setActiveTab('chat')}
           />
+        ) : activeTab === 'challenges' ? (
+          <ChallengesRoom />
         ) : (
           <ChatWindow
             chatId={activeChatId}
@@ -250,6 +253,14 @@ export default function ChatPage() {
           >
             {activeTab === 'status' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
             <StatusCircle className="w-[18px] h-[18px]" />
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('challenges')}
+            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'challenges' ? 'text-white' : 'text-zinc-600'}`}
+          >
+            {activeTab === 'challenges' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
+            <Trophy className="w-[18px] h-[18px]" />
           </button>
         </div>
 

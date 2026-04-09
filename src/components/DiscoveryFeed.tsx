@@ -15,7 +15,8 @@ interface DiscoveryFeedProps {
 }
 
 export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter, onBack }: DiscoveryFeedProps) {
-  const { posts, loading, toggleLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost } = usePosts(filterUserId)
+  const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'professional'>('all')
+  const { posts, loading, toggleLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost } = usePosts(filterUserId, roleFilter === 'all' ? undefined : roleFilter)
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   if (loading && posts.length === 0) {
@@ -28,7 +29,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-black relative w-full">
+    <div className="flex-1 flex flex-col h-full bg-black relative w-full min-w-0 overflow-hidden">
       {/* Header */}
       <div className="w-full h-[56px] px-4 md:px-6 bg-[#0a0a0a] border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0">
         <div className="flex items-center gap-4">
@@ -65,6 +66,31 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
           </button>
         )}
       </div>
+
+      {!filterUserId && (
+        <div className="w-full px-4 md:px-6 py-3 bg-[#0a0a0a] border-b border-white/[0.04] flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth shrink-0">
+          <button 
+            onClick={() => setRoleFilter('all')}
+            className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${roleFilter === 'all' ? 'bg-white text-black' : 'bg-white/[0.04] text-zinc-500 hover:text-white hover:bg-white/[0.08]'}`}
+          >
+            All Posts
+          </button>
+          <button 
+            onClick={() => setRoleFilter('professional')}
+            className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${roleFilter === 'professional' ? 'bg-blue-500 text-white' : 'bg-white/[0.04] text-zinc-500 hover:text-white hover:bg-white/[0.08]'}`}
+          >
+            <Briefcase className="w-3 h-3" />
+            Professionals
+          </button>
+          <button 
+            onClick={() => setRoleFilter('student')}
+            className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${roleFilter === 'student' ? 'bg-purple-500 text-white' : 'bg-white/[0.04] text-zinc-500 hover:text-white hover:bg-white/[0.08]'}`}
+          >
+            <GraduationCap className="w-3 h-3" />
+            Students
+          </button>
+        </div>
+      )}
 
       {filterUserId && posts.length > 0 && (
         <div className="w-full px-6 py-2.5 bg-white/[0.02] border-b border-white/[0.04] flex items-center gap-3 shrink-0">
@@ -141,6 +167,7 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
   const [editContent, setEditContent] = useState(post.content)
   const [editTitle, setEditTitle] = useState(post.title || '')
   const [isSaving, setIsSaving] = useState(false)
+  const [isMuted, setIsMuted] = useState(true)
 
   const isPostOwner = user?.id === post.user_id
   const isHiring = post.category === 'hiring'
@@ -195,7 +222,7 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
   }
 
   return (
-    <div className="relative group w-full max-w-2xl xl:max-w-3xl mx-auto bg-black md:bg-[#0a0a0a] md:border border-white/[0.04] md:rounded-2xl overflow-hidden shadow-none md:shadow-xl transition-all duration-300 pb-2 mb-8 md:mb-8">
+    <div className="relative group w-full max-w-2xl xl:max-w-3xl mx-auto bg-black md:bg-[#0a0a0a] md:border border-white/[0.04] md:rounded-2xl overflow-hidden shadow-none md:shadow-xl transition-all duration-300 pb-2 mb-2 md:mb-8">
       {fullscreenMedia && (
         <div 
           className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 md:p-12"
@@ -302,8 +329,26 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
               >
                 {post.media_types?.[idx] === 'video' ? (
                   <div className="relative w-full h-full flex items-center justify-center group/video">
-                    <video src={url} className="w-full h-auto max-h-[85vh] object-contain" />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover/video:bg-black/40 transition-all">
+                    <video 
+                      src={url} 
+                      autoPlay 
+                      muted={isMuted} 
+                      loop 
+                      playsInline 
+                      className="w-full h-auto max-h-[85vh] object-contain" 
+                    />
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                      className="absolute bottom-4 right-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-all z-20 shadow-xl border border-white/10 flex items-center justify-center"
+                      title={isMuted ? "Unmute" : "Mute"}
+                    >
+                      {isMuted ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                      )}
+                    </button>
+                    <div className="hidden absolute inset-0 flex items-center justify-center bg-black/10 group-hover/video:bg-black/40 transition-all">
                       <Play className="w-12 h-12 text-white/80 fill-white/20 drop-shadow-xl" />
                     </div>
                   </div>

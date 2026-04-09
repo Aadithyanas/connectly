@@ -42,7 +42,7 @@ export interface PostComment {
   }
 }
 
-export function usePosts(filterUserId?: string) {
+export function usePosts(filterUserId?: string, filterRole?: string) {
   const [posts, setPosts] = useState<Post[]>(() => {
     if (typeof window !== 'undefined' && !filterUserId) {
       const saved = localStorage.getItem('tech_feed_cache')
@@ -80,11 +80,15 @@ export function usePosts(filterUserId?: string) {
         .from('posts')
         .select(`
           *,
-          profiles:posts_user_id_fkey(name, avatar_url, role)
+          profiles:profiles!posts_user_id_fkey!inner(name, avatar_url, role)
         `)
 
       if (filterUserId) {
         query = query.eq('user_id', filterUserId)
+      }
+
+      if (filterRole === 'student' || filterRole === 'professional') {
+        query = query.eq('profiles.role', filterRole)
       }
 
       const { data, error } = await query.order('created_at', { ascending: false })
@@ -116,7 +120,7 @@ export function usePosts(filterUserId?: string) {
     } finally {
       setLoading(false)
     }
-  }, [user, authLoading, supabase, filterUserId])
+  }, [user, authLoading, supabase, filterUserId, filterRole])
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -138,7 +142,7 @@ export function usePosts(filterUserId?: string) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user, authLoading, supabase, fetchPosts])
+  }, [user, authLoading, supabase, fetchPosts, filterRole])
 
   const fetchComments = async (postId: string) => {
     setLoadingComments(prev => ({ ...prev, [postId]: true }))
