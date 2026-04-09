@@ -32,6 +32,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   const [myProfile, setMyProfile] = useState<any>(null)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [imageError, setImageError] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isMounted, setIsMounted] = useState(false)
@@ -39,7 +40,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   
   const { settings, isLoaded } = useSettings()
 
-  const fetchUserAndChats = async () => {
+  const fetchUserAndChats = useCallback(async (showSkeleton = false) => {
     if (!user) {
       if (!authLoading) {
         setChats([])
@@ -48,8 +49,8 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       return
     }
     
-    // Only show skeleton initially when chats is completely null
-    if (!chats) setLoading(true)
+    // Only show skeleton on first load, not on background refreshes
+    if (showSkeleton) setLoading(true)
     try {
       // Always fetch the user's own profile directly first!
       const { data: myProfileData } = await supabase
@@ -108,33 +109,22 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
 
       const profileMap = new Map(allProfiles.map((p: any) => [p.id, p]))
 
-      const { data: recentMessages } = await supabase
-        .from('messages')
-        .select('chat_id, content, created_at, sender_id, status')
-        .in('chat_id', chatIds)
-        .order('created_at', { ascending: false })
-
-      const messagesByChatId = new Map<string, any[]>()
-      for (const msg of (recentMessages || [])) {
-        if (!messagesByChatId.has(msg.chat_id)) messagesByChatId.set(msg.chat_id, [])
-        messagesByChatId.get(msg.chat_id)!.push(msg)
-      }
+      const { data: summaries } = await supabase.rpc('get_user_chat_summaries', { p_user_id: user.id })
+      const summaryMap = new Map((summaries as any[] || []).map((s: any) => [s.res_chat_id, s]))
 
       const formattedChats = chatData.map((chat: any) => {
         const chatMembers = (allMembers || []).filter((m: any) => m.chat_id === chat.id)
         const otherMemberId = chatMembers.find((m: any) => m.user_id !== user.id)?.user_id
         const otherProfile: any = otherMemberId ? profileMap.get(otherMemberId) : null
 
-        const msgs = messagesByChatId.get(chat.id) || []
-        const lastMsg = msgs[0]
-
-        const unreadCount = msgs.filter(
-          (m: any) => m.sender_id !== user.id && m.status !== 'seen'
-        ).length
+        const summary = summaryMap.get(chat.id)
+        const unreadCount = Number(summary?.res_unread_count) || 0
+        const lastMsgContent = summary?.res_last_message_content || (summary?.res_last_message_media_type ? '📎 Media' : 'No messages yet')
+        const lastMsgTime = summary?.res_last_message_created_at || ''
 
         let lastTime = ''
-        if (lastMsg?.created_at) {
-          const date = new Date(lastMsg.created_at)
+        if (lastMsgTime) {
+          const date = new Date(lastMsgTime)
           const now = new Date()
           if (date.toDateString() === now.toDateString()) {
             lastTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -153,9 +143,9 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
           display_avatar: chat.is_group ? chat.avatar_url : otherProfile?.avatar_url,
           other_profile: otherProfile,
           unread_count: unreadCount,
-          last_message: lastMsg?.content || 'No messages yet',
+          last_message: lastMsgContent,
           last_time: lastTime || 'Now',
-          last_msg_time: lastMsg?.created_at || '',
+          last_msg_time: lastMsgTime,
         }
       })
 
@@ -164,13 +154,23 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       
       if (user?.id) {
         localStorage.setItem(`chats_${user.id}`, JSON.stringify(formattedChats))
+        // Background: mark all messages as delivered since we just loaded the sidebar
+        // Avoid .catch() on the builder itself
+        const markDelivered = async () => {
+          try {
+            await supabase.rpc('mark_all_messages_delivered')
+          } catch (e) {
+            console.warn('mark_all_messages_delivered error', e)
+          }
+        }
+        markDelivered()
       }
     } catch (err) {
       console.error('Fetch chats error:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, authLoading])
 
   const getGreeting = () => {
     const hour = currentTime.getHours()
@@ -214,19 +214,39 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
 
   // Debounced fetch: prevents stacking 10+ simultaneous fetches when many events fire
   const fetchTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const fetchRef = useRef(fetchUserAndChats)
+  fetchRef.current = fetchUserAndChats
+
   const debouncedFetch = useCallback(() => {
     if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
-    fetchTimerRef.current = setTimeout(() => fetchUserAndChats(), 300)
-  }, [user, authLoading])
+    fetchTimerRef.current = setTimeout(() => fetchRef.current(), 400)
+  }, [])
+
+  const userIdRef = useRef(user?.id)
+  userIdRef.current = user?.id
 
   useEffect(() => {
-    fetchUserAndChats()
+    if (!user) {
+      if (!authLoading) {
+        setChats([])
+        setLoading(false)
+      }
+      return
+    }
+
+    // Show skeleton only if we have no cached data at all
+    fetchUserAndChats(chats === null)
+
+    // Safety timeout: never stay stuck in loading for more than 8 seconds
+    loadingTimeoutRef.current = setTimeout(() => {
+      setLoading(false)
+    }, 8000)
 
     const channel = supabase.channel('sidebar-sync')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload: any) => {
          debouncedFetch()
-         // Use the RPC function which uses SECURITY DEFINER (bypasses RLS cleanly)
-         if (payload.new && payload.new.sender_id !== user?.id && payload.new.status === 'sent') {
+         // Mark as delivered via RPC
+         if (payload.new && payload.new.sender_id !== userIdRef.current && payload.new.status === 'sent') {
            try {
              await supabase.rpc('mark_messages_delivered', { cid: payload.new.chat_id })
            } catch (err) {
@@ -237,7 +257,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => debouncedFetch())
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, () => debouncedFetch())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
-         // Dynamically patch profile data in existing chats instead of sending 5 expensive DB queries!
+         // Dynamically patch profile data in existing chats without re-fetching
          setChats(prevChats => {
            if (!prevChats) return prevChats
            return prevChats.map(chat => {
@@ -260,8 +280,9 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       supabase.removeChannel(channel)
       clearInterval(clockInterval)
       if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
     }
-  }, [user, authLoading, supabase])
+  }, [user?.id, authLoading])
 
   const handleLogout = async () => {
     if (user) {
@@ -419,8 +440,8 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-zinc-500 text-sm truncate leading-tight flex-1">{chat.last_message}</p>
                   {chat.unread_count > 0 && (
-                    <div className="min-w-[18px] h-[18px] px-1.5 bg-white rounded-full flex items-center justify-center shrink-0">
-                      <span className="text-black text-[10px] font-bold">{chat.unread_count > 99 ? '99+' : chat.unread_count}</span>
+                    <div className="min-w-[19px] h-[19px] px-1.5 bg-[#22c55e] rounded-full flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(34,197,94,0.3)]">
+                      <span className="text-white text-[10px] font-bold">{chat.unread_count > 99 ? '99+' : chat.unread_count}</span>
                     </div>
                   )}
                 </div>

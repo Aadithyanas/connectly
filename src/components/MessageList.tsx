@@ -326,7 +326,7 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                           ) : message.status === 'delivered' ? (
                             <CheckCheck className="w-4 h-4 text-white/30" />
                           ) : (
-                            <CheckCheck className="w-4 h-4 text-white" />
+                            <CheckCheck className="w-4 h-4 text-[#34B7F1]" />
                           )}
                         </div>
                       )}

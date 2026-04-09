@@ -3,6 +3,12 @@ import { createClient } from '@/utils/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { useAuth } from '@/context/AuthContext'
 
+const STATUS_ORDER: Record<string, number> = { sending: 0, sent: 1, delivered: 2, seen: 3 }
+
+function isStatusForward(oldStatus: string, newStatus: string): boolean {
+  return (STATUS_ORDER[newStatus] ?? 0) > (STATUS_ORDER[oldStatus] ?? 0)
+}
+
 export function useMessages(chatId?: string) {
   const [messages, setMessages] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -124,7 +130,6 @@ export function useMessages(chatId?: string) {
         if (newMessage.sender_id === currentUserRef.current?.id) return
 
         setMessages((prev) => {
-          // STRICT DEDUPLICATION: Check if this CLIENT_ID already exists
           const exists = prev.find(m => 
             (newMessage.client_id && m.client_id === newMessage.client_id) ||
             m.id === newMessage.id
@@ -137,25 +142,38 @@ export function useMessages(chatId?: string) {
         async (payload: any) => {
           setMessages((prev) => {
             // Check if this database ID is already in our state
-            const idExists = prev.some(m => m.id === payload.new.id);
-            if (idExists) return prev;
+            const existingById = prev.find(m => m.id === payload.new.id);
+            if (existingById) {
+              // Already exists — only update if status goes forward
+              if (isStatusForward(existingById.status, payload.new.status)) {
+                return prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m);
+              }
+              return prev;
+            }
 
-            // Use CLIENT_ID to match the optimistic message perfectly
+            // Match optimistic message by client_id
             const optimisticMatch = prev.find(m => 
               payload.new.client_id && m.client_id === payload.new.client_id
             );
 
             if (optimisticMatch) {
-              return prev.map(m => m.id === optimisticMatch.id ? { ...payload.new, status: 'sent' } : m);
+              // Replace optimistic with real DB record, ensure status is at least 'sent'
+              const newStatus = (STATUS_ORDER[payload.new.status] ?? 0) >= (STATUS_ORDER['sent'] ?? 0) 
+                ? payload.new.status 
+                : 'sent';
+              return prev.map(m => 
+                m.client_id === payload.new.client_id 
+                  ? { ...payload.new, status: newStatus } 
+                  : m
+              );
             }
 
-            // Finally, if it's new (not from us), append it
+            // New message from someone else
             return [...prev, payload.new];
           });
           
           if (payload.new.sender_id !== currentUserRef.current?.id) {
             playNotificationSound()
-            // Document hidden check...
             if (document.hidden && Notification.permission === "granted") {
                 new Notification("New Message", {
                     body: payload.new.content || "📎 Media attachment",
@@ -168,14 +186,42 @@ export function useMessages(chatId?: string) {
       )
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
         (payload: any) => {
-          setMessages((prev) => prev.map((msg) => (msg.id === payload.new.id ? { ...msg, ...payload.new } : msg)))
+          setMessages((prev) => prev.map((msg) => {
+            // Match by real DB id OR by the optimistic client_id if the HTTP response hasn't returned yet
+            if (msg.id === payload.new.id || (payload.new.client_id && msg.client_id === payload.new.client_id)) {
+              // Ensure we update to the real DB id if we matched by client_id
+              const realId = payload.new.id
+              
+              // Only apply update if status goes forward (never go backwards)
+              if (isStatusForward(msg.status, payload.new.status)) {
+                return { ...msg, ...payload.new, id: realId }
+              }
+              // Still merge non-status fields
+              const { status, ...rest } = payload.new
+              return { ...msg, ...rest, id: realId }
+            }
+            return msg
+          }))
         }
       )
-      .subscribe()
+      .subscribe((status: string, err: any) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`Realtime subscription ${status} for chat:${chatId}`, err)
+          // On error, do an immediate background fetch to catch missed messages
+          if (isMounted) fetchMessages(true)
+        }
+      })
+
+    // Background sync: poll every 10s to catch any messages or status changes missed by realtime.
+    // This is the PERMANENT reliability fix — even if WebSocket drops silently, messages still appear.
+    const syncInterval = setInterval(() => {
+      if (isMounted) fetchMessages(true)
+    }, 10000)
 
     return () => { 
       isMounted = false
       abortController.abort()
+      clearInterval(syncInterval)
       document.removeEventListener('visibilitychange', handleVisibility)
       supabase.removeChannel(channel)
       channelRef.current = null
@@ -236,6 +282,14 @@ export function useMessages(chatId?: string) {
     }
 
     // 4. Database Persistence
+    // Start a background timer: if DB hasn't responded in 5s, update UI to show 'sent' tick
+    // so the user doesn't see a stuck clock icon. The actual insert continues in background.
+    const uiTimeout = setTimeout(() => {
+      setMessages((prev) => prev.map(m => 
+        m.id === tempId && m.status === 'sending' ? { ...m, status: 'sent' } : m
+      ))
+    }, 5000)
+
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -251,6 +305,8 @@ export function useMessages(chatId?: string) {
       .select()
       .single()
 
+    clearTimeout(uiTimeout)
+
     if (error) {
       console.error("Insert error:", error)
       setMessages((prev) => prev.filter(m => m.id !== tempId))
@@ -259,7 +315,9 @@ export function useMessages(chatId?: string) {
 
     if (data) {
       setMessages((prev) => {
+        // If realtime already replaced the optimistic message with the real one, remove the temp
         if (prev.some(m => m.id === data.id)) return prev.filter(m => m.id !== tempId)
+        // Otherwise replace temp with real data
         return prev.map(m => m.id === tempId ? { ...data, client_id: tempId } : m)
       })
     }

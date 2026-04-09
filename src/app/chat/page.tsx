@@ -53,26 +53,7 @@ export default function ChatPage() {
       } catch (e) {}
     }
     markAllDelivered()
-
-    // Listen for NEW messages and mark them delivered in real-time
-    const globalChannel = supabase.channel('global-delivery')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        async (payload: any) => {
-          const newMsg = payload.new as any
-          if (newMsg.sender_id !== currentUser.id && newMsg.status === 'sent') {
-            try {
-              await supabase.rpc('mark_messages_delivered', { cid: newMsg.chat_id })
-            } catch (e) {
-              console.warn("mark_messages_delivered failed:", e)
-            }
-          }
-        }
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(globalChannel) }
+    // Note: Real-time delivery marking is handled by ChatSidebar to avoid duplicate listeners
   }, [currentUser?.id])
 
   const handleSelectChat = (id: string) => {

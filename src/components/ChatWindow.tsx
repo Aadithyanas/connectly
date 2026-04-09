@@ -37,8 +37,9 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
       const cached = localStorage.getItem(`profile_${chatId}`)
       if (cached) {
         const parsed = JSON.parse(cached)
-        // Don't use stale status/last_seen from cache - only use display fields
-        setOtherUser({ ...parsed, status: undefined, last_seen: undefined })
+        // Use cached profile as-is for instant display (including status/last_seen)
+        // The fresh fetch below will overwrite with latest data
+        setOtherUser(parsed)
       }
       else setOtherUser(null)
     } else {
@@ -104,8 +105,9 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
     fetchOtherUser()
 
     // Realtime profile updates (for instant status changes)
+    if (!otherUserId) return
     const channel = supabase.channel(`header-${chatId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${otherUserId}` }, (payload: any) => {
         setOtherUser((prev: any) => {
           if (prev && prev.id === payload.new.id) {
             return { ...prev, ...payload.new }
@@ -113,10 +115,14 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
           return prev
         })
       })
-      .subscribe()
+      .subscribe((status: string) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+           fetchOtherUser()
+        }
+      })
 
-    // Poll profile every 30s to match heartbeat cycle (failsafe if realtime misses an update)
-    const statusPoll = setInterval(() => fetchOtherUser(), 30000)
+    // Poll profile every 10s to match checking interval (failsafe if realtime drops)
+    const statusPoll = setInterval(() => fetchOtherUser(), 10000)
 
     // Also refresh when tab becomes visible
     const handleVisibility = () => {

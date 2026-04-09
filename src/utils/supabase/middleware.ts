@@ -30,7 +30,16 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (err) {
+    console.warn('Middleware auth fetch failed (network timeout/IPv6 issue):', err)
+    // If the network call to validate auth fails, treat as unauthenticated
+    user = null
+  }
 
   // -- Auth guard: unauthenticated users can only visit public pages --
   const isPublicPath = pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/auth')
@@ -38,30 +47,33 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // -- Onboarding guard: authenticated users without a role must go to /onboarding --
-  if (user && !isPublicPath && !pathname.startsWith('/onboarding')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+  // Only run database queries if authenticated and not on a public path (or if we need to check onboarding)
+  if (user && !isPublicPath) {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+        
+      if (error) {
+        console.warn('Middleware profile fetch error:', error)
+      }
 
-    if (!profile?.role) {
-      // Profile exists but role not set → needs onboarding
-      return NextResponse.redirect(new URL('/onboarding', request.url))
-    }
-  }
+      // -- Onboarding guard: authenticated users without a role must go to /onboarding --
+      const isTryingToAccessApp = !pathname.startsWith('/onboarding')
+      if (isTryingToAccessApp && !profile?.role) {
+        return NextResponse.redirect(new URL('/onboarding', request.url))
+      }
 
-  // -- Already onboarded users should not revisit onboarding --
-  if (user && pathname.startsWith('/onboarding')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role) {
-      return NextResponse.redirect(new URL('/chat', request.url))
+      // -- Already onboarded users should not revisit onboarding --
+      const isVisitingOnboarding = pathname.startsWith('/onboarding')
+      if (isVisitingOnboarding && profile?.role) {
+        return NextResponse.redirect(new URL('/chat', request.url))
+      }
+    } catch (err) {
+      console.warn('Middleware DB fetch failed:', err)
+      // On DB timeout, fallback to letting them proceed instead of breaking the app
     }
   }
 
