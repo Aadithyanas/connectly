@@ -172,6 +172,16 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     }
   }, [user, authLoading])
 
+  const userIdRef = useRef<string | null>(null)
+  const pendingBatchDelivered = useRef<Map<string, NodeJS.Timeout>>(new Map())
+  const fetchTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const fetchRef = useRef<any>(null)
+
+  useEffect(() => {
+    userIdRef.current = user?.id || null
+    fetchRef.current = fetchUserAndChats
+  }, [user, fetchUserAndChats])
+
   const getGreeting = () => {
     const hour = currentTime.getHours()
     if (hour < 12) return 'Good Morning'
@@ -213,8 +223,6 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   }, [user])
 
   // Debounced fetch: prevents stacking 10+ simultaneous fetches when many events fire
-  const fetchTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const fetchRef = useRef(fetchUserAndChats)
   fetchRef.current = fetchUserAndChats
 
   const debouncedFetch = useCallback(() => {
@@ -222,8 +230,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     fetchTimerRef.current = setTimeout(() => fetchRef.current(), 400)
   }, [])
 
-  const userIdRef = useRef(user?.id)
-  userIdRef.current = user?.id
+  userIdRef.current = user?.id || null
 
   useEffect(() => {
     if (!user) {
@@ -242,17 +249,39 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       setLoading(false)
     }, 8000)
 
-    const channel = supabase.channel('sidebar-sync')
+    // Unique channel per user to prevent cross-tab interference
+    const channelName = `sidebar-sync:${user.id}`
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload: any) => {
          debouncedFetch()
          // Mark as delivered via RPC
-         if (payload.new && payload.new.sender_id !== userIdRef.current && payload.new.status === 'sent') {
-           try {
-             await supabase.rpc('mark_messages_delivered', { cid: payload.new.chat_id })
-           } catch (err) {
-             console.warn('mark_messages_delivered failed:', err)
-           }
-         }
+          if (payload.new && payload.new.sender_id !== userIdRef.current && payload.new.status === 'sent') {
+            const chatId = payload.new.chat_id
+            
+            // If already scheduled for this chat, don't schedule again
+            if (pendingBatchDelivered.current.has(chatId)) return
+
+            const markWithRetry = async (retries = 0) => {
+              try {
+                const { error } = await supabase.rpc('mark_messages_delivered', { cid: chatId })
+                if (error && (error.message?.includes('Lock') || error.details?.includes('Lock')) && retries < 2) {
+                  throw error
+                }
+              } catch (err) {
+                if (retries < 2) {
+                  setTimeout(() => markWithRetry(retries + 1), 600)
+                } else {
+                  console.warn('mark_messages_delivered failed after retries:', err)
+                }
+              } finally {
+                pendingBatchDelivered.current.delete(chatId)
+              }
+            }
+
+            // Batch window: 1.2 seconds for sidebar updates
+            const timeout = setTimeout(() => markWithRetry(), 1200)
+            pendingBatchDelivered.current.set(chatId, timeout)
+          }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => debouncedFetch())
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, () => debouncedFetch())
@@ -269,16 +298,27 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
          })
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_members' }, () => debouncedFetch())
-      .subscribe()
+      .subscribe((status: string) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+           console.warn(`Sidebar Realtime ${status}, triggering fallback fetch...`)
+           debouncedFetch()
+        }
+      })
 
     // Clock only - don't clone chats array every second
     const clockInterval = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
 
+    // Periodic synchronization (fallback for silent WebSocket drop or lock recovery)
+    const syncInterval = setInterval(() => {
+      fetchUserAndChats(true)
+    }, 30000)
+
     return () => { 
       supabase.removeChannel(channel)
       clearInterval(clockInterval)
+      clearInterval(syncInterval)
       if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
       if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
     }

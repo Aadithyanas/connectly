@@ -16,6 +16,8 @@ export function useMessages(chatId?: string) {
   const supabase = createClient()
   const channelRef = useRef<RealtimeChannel | null>(null)
   const currentUserRef = useRef<any>(null)
+  const pendingDeliveredRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingSeenRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     currentUserRef.current = user
@@ -39,14 +41,53 @@ export function useMessages(chatId?: string) {
     }
   }, [])
 
-  const markAsSeen = useCallback(async () => {
-    if (!chatId) return
-    try {
-      await supabase.rpc('mark_messages_seen', { cid: chatId })
-    } catch (e) {
-      // Silently handle if function doesn't exist yet
+  const markAsSeen = useCallback(async (retries = 0) => {
+    if (!chatId || !user) return
+    if (pendingSeenRef.current && retries === 0) return // Already scheduled a batch update
+
+    const performAction = async (currRetries: number) => {
+      try {
+        const { error } = await supabase.rpc('mark_messages_seen', { cid: chatId })
+        if (error && (error.message?.includes('Lock') || error.details?.includes('Lock')) && currRetries < 2) {
+          throw error
+        }
+      } catch (e) {
+        if (currRetries < 2) setTimeout(() => performAction(currRetries + 1), 600)
+      } finally {
+        pendingSeenRef.current = null
+      }
     }
-  }, [chatId])
+
+    if (retries > 0) {
+      performAction(retries)
+    } else {
+      pendingSeenRef.current = setTimeout(() => performAction(0), 1000)
+    }
+  }, [chatId, user])
+
+  const markAsDelivered = useCallback(async (retries = 0) => {
+    if (!chatId || !user) return
+    if (pendingDeliveredRef.current && retries === 0) return // Already scheduled
+
+    const performAction = async (currRetries: number) => {
+      try {
+        const { error } = await supabase.rpc('mark_messages_delivered', { cid: chatId })
+        if (error && (error.message?.includes('Lock') || error.details?.includes('Lock')) && currRetries < 2) {
+          throw error
+        }
+      } catch (e) {
+        if (currRetries < 2) setTimeout(() => performAction(currRetries + 1), 600)
+      } finally {
+        pendingDeliveredRef.current = null
+      }
+    }
+
+    if (retries > 0) {
+      performAction(retries)
+    } else {
+      pendingDeliveredRef.current = setTimeout(() => performAction(0), 800)
+    }
+  }, [chatId, user])
 
   useEffect(() => {
     let isMounted = true
@@ -67,12 +108,12 @@ export function useMessages(chatId?: string) {
       return
     }
 
-    const fetchMessages = async (isBackgroundRefresh = false) => {
+    const fetchMessages = async (isBackgroundRefresh = false, retryCount = 0) => {
       if (!isMounted) return
       
       // 2. Only show skeleton if we have NO messages at all (no cache)
       const hasNoMessages = !cached
-      if (!isBackgroundRefresh && hasNoMessages) setLoading(true)
+      if (!isBackgroundRefresh && hasNoMessages && retryCount === 0) setLoading(true)
       
       try {
         const { data, error } = await supabase
@@ -82,9 +123,6 @@ export function useMessages(chatId?: string) {
           .order('created_at', { ascending: true })
           .abortSignal(abortController.signal)
           
-        console.log("Supabase Action: Fetch Messages for Chat ID:", chatId)
-        console.log("Supabase Response Error:", error)
-
         if (!isMounted) return
         
         if (!error) {
@@ -98,13 +136,18 @@ export function useMessages(chatId?: string) {
            
            markAsSeen()
         } else {
-          // If aborted, error.message usually contains "AbortError"
+          // If aborted by auth lock timeout, retry once after 500ms
+          if ((error.message?.includes('Lock broken') || error.details?.includes('Lock broken')) && retryCount < 2) {
+            console.warn(`Auth lock contention detected, retrying fetchMessages (${retryCount + 1})...`)
+            setTimeout(() => fetchMessages(isBackgroundRefresh, retryCount + 1), 500)
+            return
+          }
           console.error("fetchMessages error:", error)
         }
       } catch (err: any) {
         if (err.name !== 'AbortError') console.error(err)
       } finally {
-        if (isMounted && !isBackgroundRefresh) {
+        if (isMounted && !isBackgroundRefresh && retryCount === 0) {
           setLoading(false)
         }
       }
@@ -180,7 +223,10 @@ export function useMessages(chatId?: string) {
                     icon: "/next.svg"
                 });
             }
-            setTimeout(() => markAsSeen(), 200)
+            // 1. Mark as delivered immediately
+            markAsDelivered()
+            // 2. Mark as seen after a short delay (recipient is in chat)
+            setTimeout(() => markAsSeen(), 500)
           }
         }
       )

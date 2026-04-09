@@ -148,28 +148,32 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
 
   const handleToggleAvailability = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if ((type !== 'profile' && data?.id !== user?.id) || !user) return
-    if (isTogglingAvailability) return
+    // Simplified checks: allow toggle if viewing own profile
+    if (!user) return
+    const isOwner = type === 'profile' || data?.id === user?.id
+    if (!isOwner || isTogglingAvailability) return
     
+    // Check if the profile is actually a professional
+    const currentRole = type === 'profile' ? profile?.role : data?.role
+    if (currentRole !== 'professional') return
+
     const actualStatus = type === 'profile' ? profile?.availability_status : data?.availability_status
     const newStatus = !actualStatus
 
-    // Optimistic UI update via a local override (we can forcibly mutate the 'data' or 'profile' object temporarily, or use an overlay state. Here we'll rely on the Supabase update + refreshProfile, but prevent hanging)
     setIsTogglingAvailability(true)
     
     try {
-      const { error } = await supabase.from('profiles').update({ availability_status: newStatus }).eq('id', user.id)
+      // Trigger update
+      const { error } = await supabase
+        .from('profiles')
+        .update({ availability_status: newStatus })
+        .eq('id', user.id)
       
       if (error) {
         console.error('Failed to toggle availability:', error)
         alert(`Could not change availability: ${error.message}`)
       } else {
-        // Manually patch local object to ensure instantaneous visual update even before refreshProfile finishes
-        if (type === 'profile' && profile) {
-          profile.availability_status = newStatus
-        } else if (data) {
-          data.availability_status = newStatus
-        }
+        // Essential: call refreshProfile to update the global Auth state which triggers re-render
         await refreshProfile()
       }
     } catch (err: any) {

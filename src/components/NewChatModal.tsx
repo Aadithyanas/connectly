@@ -45,9 +45,12 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
           .neq('id', user.id)
         
         if (!error && data) {
+          // If the current user is a student, they see students AND available professionals.
+          // If the current user is a professional, they see students AND available professionals.
           const visibleProfiles = data.filter((p: any) => 
             p.role === 'student' || 
-            (p.role === 'professional' && p.availability_status !== false) ||
+            p.availability_status === true || 
+            p.availability_status === null ||
             !p.role
           )
           setProfiles(visibleProfiles)
