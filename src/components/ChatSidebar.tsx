@@ -27,11 +27,11 @@ interface ChatSidebarProps {
 export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat, onOpenProfile, onOpenSettings, activeTab, onTabChange }: ChatSidebarProps) {
   usePushNotifications()
   const [chats, setChats] = useState<any[] | null>(null)
+  const [loading, setLoading] = useState(false) // Start as false to prevent immediate skeleton flash
   const [search, setSearch] = useState('')
   const { user, signOut, loading: authLoading } = useAuth()
   const [myProfile, setMyProfile] = useState<any>(null)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [loading, setLoading] = useState(true)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [imageError, setImageError] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -227,7 +227,8 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
 
   const debouncedFetch = useCallback(() => {
     if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
-    fetchTimerRef.current = setTimeout(() => fetchRef.current(), 400)
+    // Always background refresh (false) when triggered by realtime events
+    fetchTimerRef.current = setTimeout(() => fetchRef.current(false), 400)
   }, [])
 
   userIdRef.current = user?.id || null
@@ -241,8 +242,10 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       return
     }
 
-    // Show skeleton only if we have no cached data at all
-    fetchUserAndChats(chats === null)
+    // Show skeleton only if we have NO messages and NO local state
+    // If we have data in state or cache, do a background refresh instead
+    const hasData = chats && chats.length > 0
+    fetchUserAndChats(!hasData)
 
     // Safety timeout: never stay stuck in loading for more than 8 seconds
     loadingTimeoutRef.current = setTimeout(() => {
@@ -312,8 +315,8 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
 
     // Periodic synchronization (fallback for silent WebSocket drop or lock recovery)
     const syncInterval = setInterval(() => {
-      fetchUserAndChats(true)
-    }, 30000)
+      fetchUserAndChats(false) // Background sync (no skeletons)
+    }, 45000) // Slightly longer window as we have multiple realtime triggers now
 
     return () => { 
       supabase.removeChannel(channel)
