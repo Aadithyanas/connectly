@@ -93,7 +93,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
 
     if (type === 'group' && data?.id) {
       supabase.from('chat_members').select('*', { count: 'exact', head: true }).eq('chat_id', data.id)
-        .then(({ count }) => {
+        .then(({ count }: any) => {
           if (count !== null) setGroupMemberCount(count)
         })
     }

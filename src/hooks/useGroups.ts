@@ -49,7 +49,7 @@ export function useGroups() {
           .select('id, role')
           .in('id', initialMemberIds)
         
-        const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+        const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.id, p]) || [])
 
         initialMemberIds.forEach(id => {
           if (id === user.id) return

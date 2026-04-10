@@ -223,7 +223,6 @@ export default function ChatPage() {
             chatId={activeChatId}
             onOpenInfo={handleOpenChatInfo}
             onBack={() => setActiveChatId(undefined)}
-            isGroupsTab={activeTab === 'groups'}
           />
         )}
       </div>

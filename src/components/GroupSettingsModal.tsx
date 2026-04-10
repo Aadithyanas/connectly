@@ -16,7 +16,7 @@ interface GroupSettingsModalProps {
 }
 
 export default function GroupSettingsModal({ isOpen, onClose, chatId, onDetailsUpdated }: GroupSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'requests'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'requests' | 'add'>('info')
   const [chat, setChat] = useState<any>(null)
   const [members, setMembers] = useState<any[]>([])
   const [profiles, setProfiles] = useState<any[]>([])

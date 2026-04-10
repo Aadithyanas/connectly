@@ -219,12 +219,16 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                   dragConstraints={{ left: 0, right: 100 }}
                   dragElastic={0.1}
                   onDrag={(e, info) => {
-                    if (info.offset.x > 10) {
-                      (e.currentTarget.parentElement as HTMLElement).classList.add('swiping')
+                    const target = e.currentTarget as HTMLElement | null;
+                    if (info.offset.x > 10 && target?.parentElement) {
+                      target.parentElement.classList.add('swiping')
                     }
                   }}
                   onDragEnd={(e, info) => {
-                    (e.currentTarget.parentElement as HTMLElement).classList.remove('swiping')
+                    const target = e.currentTarget as HTMLElement | null;
+                    if (target?.parentElement) {
+                      target.parentElement.classList.remove('swiping')
+                    }
                     if (info.offset.x > swipeThreshold) {
                       onReply(message)
                     }

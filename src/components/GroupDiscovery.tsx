@@ -29,13 +29,13 @@ export default function GroupDiscovery({ onSelectChat, currentUserId }: GroupDis
         if (error) throw error
 
         // Filter out groups where user is already a member (including Admin/Pending)
-        const formatted = (publicGroups || []).map(group => {
+        const formatted = (publicGroups || []).map((group: any) => {
           const myMembership = group.chat_members?.find((m: any) => m.user_id === currentUserId)
           return {
             ...group,
             myStatus: myMembership?.status || null
           }
-        }).filter(g => !g.myStatus) // Only show groups where I have NO status yet
+        }).filter((g: any) => !g.myStatus) // Only show groups where I have NO status yet
 
         setGroups(formatted)
       } catch (err) {

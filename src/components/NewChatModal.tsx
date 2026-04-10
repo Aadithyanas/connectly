@@ -31,6 +31,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNew
   const [search, setSearch] = useState('')
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)
+  const [groupName, setGroupName] = useState('')
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
   const supabase = createClient()
