@@ -94,6 +94,7 @@ export default function OnboardingPage() {
         if (sc && user.email?.endsWith(`@${sc.domain}`)) vl = 2
       }
       const p: Record<string, any> = {
+        id: user.id,
         name: formData.name, role, skills: formData.skills, verification_level: vl, availability_status: true,
         linkedin: formData.linkedin || null, github: formData.github || null, portfolio: formData.portfolio || null,
         company_id: role === 'professional' ? formData.company_id : null,
@@ -102,10 +103,17 @@ export default function OnboardingPage() {
         job_role: role === 'professional' ? formData.job_role : null,
         experience_years: role === 'professional' ? (formData.experience_years || null) : null,
       }
-      const { error } = await supabase.from('profiles').update(p).eq('id', user.id)
+      const { error } = await supabase.from('profiles').upsert(p)
       if (error) throw new Error(error.message)
-      await refreshProfile(); window.location.href = '/chat'
-    } catch (e: any) { alert(e.message || 'Failed.') } finally { setLoading(false) }
+      
+      console.log('Profile setup complete')
+      router.replace('/chat')
+    } catch (e: any) { 
+      console.error('Onboarding error:', e)
+      alert(e.message || 'Failed to complete setup. Please try again.') 
+    } finally { 
+      setLoading(false) 
+    }
   }
 
   const filtered = companies.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
