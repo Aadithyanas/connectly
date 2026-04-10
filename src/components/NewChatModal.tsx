@@ -23,14 +23,14 @@ interface NewChatModalProps {
   isOpen: boolean
   onClose: () => void
   onChatCreated: (chatId: string) => void
+  onOpenNewGroup: () => void
 }
 
-export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChatModalProps) {
+export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNewGroup }: NewChatModalProps) {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [search, setSearch] = useState('')
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)
-  const [groupName, setGroupName] = useState('')
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
   const supabase = createClient()
@@ -109,27 +109,17 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
             className="bg-[#0a0a0a] w-full h-full md:h-auto md:max-w-md md:rounded-2xl overflow-hidden shadow-2xl border border-white/[0.06] flex flex-col"
           >
             {/* Header */}
-            <div className="p-4 bg-[#0a0a0a] flex items-center justify-between border-b border-white/[0.04]">
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={isCreatingGroup ? () => setIsCreatingGroup(false) : selectedUsers.length > 0 ? () => setSelectedUsers([]) : onClose}
-                  className="p-1 hover:bg-white/[0.06] rounded-full transition-colors"
-                >
-                  <X className="w-5 h-5 text-zinc-500" />
-                </button>
-                <h2 className="text-white font-bold text-base">
-                  {isCreatingGroup ? 'New Group' : selectedUsers.length > 0 ? 'Add Members' : 'New Chat'}
-                </h2>
+              <div className="p-4 bg-[#0a0a0a] flex items-center justify-between border-b border-white/[0.04]">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={onClose}
+                    className="p-1 hover:bg-white/[0.06] rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-zinc-500" />
+                  </button>
+                  <h2 className="text-white font-bold text-base">New Chat</h2>
+                </div>
               </div>
-              {selectedUsers.length > 0 && !isCreatingGroup && (
-                <button 
-                  onClick={() => setIsCreatingGroup(true)}
-                  className="text-white font-bold py-1 px-3 rounded-lg hover:bg-white/[0.06] transition-colors text-sm"
-                >
-                  Next
-                </button>
-              )}
-            </div>
 
             {isCreatingGroup ? (
               <div className="p-6 space-y-6">
@@ -188,7 +178,10 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }: NewChat
                       {selectedUsers.length === 0 && (
                         <div 
                           className="flex items-center px-4 py-3 hover:bg-white/[0.03] cursor-pointer group border-b border-white/[0.03] transition-colors"
-                          onClick={() => setIsCreatingGroup(true)}
+                          onClick={() => {
+                            onClose()
+                            onOpenNewGroup()
+                          }}
                         >
                           <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center mr-3 group-hover:scale-105 transition-transform">
                             <Users className="w-5 h-5 text-black" />

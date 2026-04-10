@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, KeyboardEvent } from 'react'
+import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -42,6 +42,7 @@ function SkillTagInput({ skills, onChange }: { skills: string[]; onChange: (skil
 // ---------- Main ----------
 export default function OnboardingPage() {
   const { user, profile, refreshProfile } = useAuth()
+  const redirecting = useRef(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -60,7 +61,12 @@ export default function OnboardingPage() {
   })
 
   useEffect(() => {
-    if (profile?.role) { router.replace('/chat'); return }
+    if (profile?.role && !redirecting.current) {
+      console.log('Profile has role, redirecting to chat...')
+      redirecting.current = true
+      router.replace('/chat')
+      return 
+    }
     if (user?.user_metadata?.full_name && !formData.name) setFormData(p => ({ ...p, name: user.user_metadata.full_name }))
     else if (user?.email && !formData.name) setFormData(p => ({ ...p, name: user.email!.split('@')[0] }))
     const fetch = async () => { const { data } = await supabase.from('companies').select('*').order('name'); if (data) setCompanies(data) }
@@ -95,6 +101,7 @@ export default function OnboardingPage() {
       }
       const p: Record<string, any> = {
         id: user.id,
+        email: user.email,
         name: formData.name, role, skills: formData.skills, verification_level: vl, availability_status: true,
         linkedin: formData.linkedin || null, github: formData.github || null, portfolio: formData.portfolio || null,
         company_id: role === 'professional' ? formData.company_id : null,
@@ -103,14 +110,28 @@ export default function OnboardingPage() {
         job_role: role === 'professional' ? formData.job_role : null,
         experience_years: role === 'professional' ? (formData.experience_years || null) : null,
       }
-      const { error } = await supabase.from('profiles').upsert(p)
+      console.log('Attempting profile upsert with payload:', p)
+      
+      // Use a timeout to detect hangs
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Database operation timed out after 10 seconds.')), 10000)
+      })
+
+      const { error } = await Promise.race([
+        supabase.from('profiles').upsert(p),
+        timeoutPromise as Promise<any>
+      ])
+
       if (error) throw new Error(error.message)
       
-      console.log('Profile setup complete')
-      router.replace('/chat')
+      console.log('Profile setup successful, initiating redirect...')
+      if (!redirecting.current) {
+        redirecting.current = true
+        router.replace('/chat')
+      }
     } catch (e: any) { 
-      console.error('Onboarding error:', e)
-      alert(e.message || 'Failed to complete setup. Please try again.') 
+      console.error('Onboarding flow interrupted:', e)
+      alert(e.message || 'Failed to complete setup. Please check your connection and try again.') 
     } finally { 
       setLoading(false) 
     }

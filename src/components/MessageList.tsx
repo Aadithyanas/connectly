@@ -2,9 +2,10 @@
 
 import { format } from 'date-fns'
 import { Check, CheckCheck, FileText, PlayCircle, Reply, Forward, ChevronDown, X, Clock, Loader2, Download } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
+import { motion, AnimatePresence, useAnimation, PanInfo } from 'framer-motion'
 
 import CustomAudioPlayer from './CustomAudioPlayer'
 import { useSettings } from '@/hooks/useSettings'
@@ -79,6 +80,9 @@ interface Message {
   client_id?: string
   reply?: { id: string; content: string; sender_id: string } | null
   forwarded?: boolean
+  is_deleted_everyone?: boolean
+  deleted_for?: string[]
+  is_system?: boolean
 }
 
 interface MessageListProps {
@@ -89,21 +93,50 @@ interface MessageListProps {
   currentUserAvatar?: string
   onReply: (message: Message) => void
   onForward: (message: Message) => void
+  onDelete: (id: string, type: 'me' | 'everyone') => Promise<{ error: any }>
 }
 
-export default function MessageList({ messages, loading, currentUserId, otherUserAvatar, currentUserAvatar, onReply, onForward }: MessageListProps) {
+export default function MessageList({ messages, loading, currentUserId, otherUserAvatar, currentUserAvatar, onReply, onForward, onDelete }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const isAtBottomRef = useRef(true)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
   const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set())
+  const [menuAnchor, setMenuAnchor] = useState<{ id: string, x: number, y: number } | null>(null)
   
   const { settings, isLoaded } = useSettings()
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && isAtBottomRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+      // 100px threshold for "near bottom"
+      isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 100
+    }
+  }
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setMenuAnchor(null)
+  }
+
+  const handleOpenMenu = (e: React.MouseEvent | React.TouchEvent, id: string) => {
+    e.preventDefault()
+    let clientX, clientY
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX
+      clientY = e.touches[0].clientY
+    } else {
+      clientX = e.clientX
+      clientY = e.clientY
+    }
+    setMenuAnchor({ id, x: clientX, y: clientY })
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('connectly_downloaded_media')
@@ -130,7 +163,11 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
   }
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-1.5 custom-scrollbar bg-transparent">
+    <div 
+      ref={scrollRef} 
+      onScroll={handleScroll}
+      className="flex-1 overflow-y-auto p-4 space-y-1.5 custom-scrollbar bg-transparent"
+    >
       {loading ? (
         <div className="flex flex-col gap-4 py-2">
           {[...Array(4)].map((_, i) => (
@@ -147,44 +184,79 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
         messages.map((message) => {
           const isOwn = message.sender_id === currentUserId
           const isHovered = hoveredId === message.id
+          const swipeThreshold = 60
+
           return (
-            <div
+            <motion.div
               key={message.client_id || message.id}
-              className={`flex w-full mb-1 ${isOwn ? 'justify-end' : 'justify-start'} group items-start`}
-              onMouseEnter={() => setHoveredId(message.id)}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className={`flex w-full mb-1 ${message.is_system ? 'justify-center' : isOwn ? 'justify-end' : 'justify-start'} group items-start relative select-none`}
+              onMouseEnter={() => !message.is_system && setHoveredId(message.id)}
               onMouseLeave={() => setHoveredId(null)}
+              onContextMenu={(e) => !message.is_system && handleOpenMenu(e, message.id)}
             >
-              <div className={`relative max-w-[85%] sm:max-w-[75%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
-                {/* Hover Actions */}
-                <div className={`absolute ${isOwn ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'} top-1 flex items-center gap-0.5 px-1 transition-all duration-150 z-10 ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              {message.is_system ? (
+                <div className="my-4 px-4 py-1.5 bg-white/[0.03] border border-white/[0.04] rounded-full">
+                  <span className="text-zinc-500 text-[11px] font-bold tracking-wide uppercase">
+                    {message.content}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {/* Swipe to Reply Indicator */}
+                  <div className="absolute left-[-40px] top-1/2 -translate-y-1/2 opacity-0 group-[.swiping]:opacity-100 transition-opacity">
+                    <Reply className="w-5 h-5 text-zinc-500" />
+                  </div>
+                </>
+              )}
+
+              {!message.is_system && (
+                <motion.div 
+                  className={`relative max-w-[85%] sm:max-w-[75%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 100 }}
+                  dragElastic={0.1}
+                  onDrag={(e, info) => {
+                    if (info.offset.x > 10) {
+                      (e.currentTarget.parentElement as HTMLElement).classList.add('swiping')
+                    }
+                  }}
+                  onDragEnd={(e, info) => {
+                    (e.currentTarget.parentElement as HTMLElement).classList.remove('swiping')
+                    if (info.offset.x > swipeThreshold) {
+                      onReply(message)
+                    }
+                  }}
+                >
+                {/* Hover Actions (Desktop) */}
+                <div className={`hidden sm:flex absolute ${isOwn ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'} top-1 items-center gap-0.5 px-1 transition-all duration-150 z-10 ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                   <button 
                     onClick={() => onReply(message)} 
                     className="p-1.5 rounded-full bg-[#111] hover:bg-white/[0.08] text-zinc-600 hover:text-white transition-colors"
-                    title="Reply"
                   >
                     <Reply className="w-3.5 h-3.5" />
                   </button>
                   <button 
-                    onClick={() => onForward(message)} 
+                    onClick={(e) => handleOpenMenu(e, message.id)} 
                     className="p-1.5 rounded-full bg-[#111] hover:bg-white/[0.08] text-zinc-600 hover:text-white transition-colors"
-                    title="Forward"
                   >
-                    <Forward className="w-3.5 h-3.5" />
+                    <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                 </div>
  
                 {/* Bubble */}
                 <div
-                   className={`p-2.5 rounded-2xl relative w-fit min-w-[85px] will-change-transform border ${
-                     isOwn ? 'bg-[#1a1a1a] text-white border-white/[0.06] rounded-br-[4px]' : 'bg-white/[0.04] text-white border-white/[0.04] rounded-bl-[4px]'
+                  className={`p-2.5 rounded-2xl relative w-fit min-w-[85px] border ${
+                    message.is_deleted_everyone 
+                      ? 'bg-white/[0.02] border-white/[0.02] italic' 
+                      : isOwn ? 'bg-[#1a1a1a] text-white border-white/[0.06] rounded-br-[4px]' : 'bg-white/[0.04] text-white border-white/[0.04] rounded-bl-[4px]'
                    }`}
-                  style={{ 
-                    backgroundColor: (message.media_url && !message.content) ? 'transparent' : undefined,
-                    backdropFilter: (message.media_url && message.content) ? 'blur(4px)' : 'none'
-                  }}
+                   onContextMenu={(e) => handleOpenMenu(e, message.id)}
                 >
                   {/* Forwarded */}
-                  {message.forwarded && (
+                  {message.forwarded && !message.is_deleted_everyone && (
                     <div className="flex items-center gap-1 px-1 pb-0.5">
                       <Forward className="w-3 h-3 text-white/30" />
                       <span className="text-[11px] text-white/30 italic">Forwarded</span>
@@ -192,7 +264,7 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                   )}
 
                   {/* Reply Preview */}
-                  {message.reply && (
+                  {message.reply && !message.is_deleted_everyone && (
                     <div className={`mx-1 mb-1 px-2.5 py-1.5 rounded-lg border-l-2 ${isOwn ? 'bg-white/[0.06] border-zinc-500' : 'bg-white/[0.04] border-zinc-600'}`}>
                       <p className="text-zinc-400 text-[11px] font-bold mb-0.5">
                         {message.reply.sender_id === currentUserId ? 'You' : 'Them'}
@@ -204,7 +276,7 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                   )}
 
                   {/* Media */}
-                  {message.media_url && (
+                  {message.media_url && !message.is_deleted_everyone && (
                     <div className="mb-1">
                       {message.media_type === 'image' && (
                         <div className="relative rounded-lg overflow-hidden flex items-center justify-center bg-black/10 group/media">
@@ -294,19 +366,17 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                           />
                         </div>
                       )}
-                      {(!message.media_type || message.media_type === 'application') && (
-                        <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-lg">
-                          <FileText className="w-8 h-8 text-zinc-500" />
-                          <span className="text-sm font-medium truncate flex-1">Document File</span>
-                        </div>
-                      )}
                     </div>
                   )}
 
                   {/* Content & Footer */}
-                  <div className="flex flex-col relative">
-                    {message.content && (
-                      <p className={`px-1 leading-relaxed whitespace-pre-wrap break-words pb-4 ${
+                  <div className="flex flex-col relative min-w-0">
+                    {message.is_deleted_everyone ? (
+                      <p className="text-white/20 text-xs px-1 flex items-center gap-2 pb-1.5">
+                        <X className="w-3 h-3" /> This message was deleted
+                      </p>
+                    ) : message.content && (
+                      <p className={`px-1 leading-relaxed whitespace-pre-wrap break-all pb-4 overflow-hidden ${
                         !isLoaded || settings.textSize === 'medium' ? 'text-[14.5px]' : settings.textSize === 'small' ? 'text-[13px]' : 'text-[16px]'
                       }`}>
                         {message.content}
@@ -334,10 +404,78 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                   </div>
                   
                 </div>
-              </div>
-            </div>
+                </motion.div>
+              )}
+            </motion.div>
           )
         })
+      )}
+
+      {/* Message Action Menu */}
+      {menuAnchor && typeof document !== 'undefined' && createPortal(
+        <>
+          <div className="fixed inset-0 z-[1000]" onClick={() => setMenuAnchor(null)} />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="fixed z-[1001] bg-[#111] border border-white/10 rounded-xl shadow-2xl py-1.5 min-w-[170px] backdrop-blur-md"
+            style={{ 
+              top: Math.min(menuAnchor.y, typeof window !== 'undefined' ? window.innerHeight - 250 : menuAnchor.y), 
+              left: Math.min(menuAnchor.x, typeof window !== 'undefined' ? window.innerWidth - 180 : menuAnchor.x) 
+            }}
+          >
+            <button 
+              onClick={() => {
+                const msg = messages.find(m => m.id === menuAnchor.id)
+                if (msg) onReply(msg)
+                setMenuAnchor(null)
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-zinc-300 hover:bg-white/5 transition-colors"
+            >
+              <Reply className="w-4 h-4" /> Reply
+            </button>
+            <button 
+              onClick={() => {
+                const msg = messages.find(m => m.id === menuAnchor.id)
+                if (msg) handleCopy(msg.content)
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-zinc-300 hover:bg-white/5 transition-colors"
+            >
+              <Check className="w-4 h-4" /> Copy
+            </button>
+            <button 
+              onClick={() => {
+                const msg = messages.find(m => m.id === menuAnchor.id)
+                if (msg) { onForward(msg); setMenuAnchor(null); }
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-zinc-300 hover:bg-white/5 transition-colors"
+            >
+              <Forward className="w-4 h-4" /> Forward
+            </button>
+            <div className="h-[1px] bg-white/5 my-1" />
+            <button 
+              onClick={async () => {
+                await onDelete(menuAnchor.id, 'me')
+                setMenuAnchor(null)
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-red-400 hover:bg-red-400/5 transition-colors"
+            >
+              <X className="w-4 h-4" /> Delete for me
+            </button>
+            {messages.find(m => m.id === menuAnchor.id)?.sender_id === currentUserId && (
+              <button 
+                onClick={async () => {
+                  await onDelete(menuAnchor.id, 'everyone')
+                  setMenuAnchor(null)
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-red-400 hover:bg-red-400/5 transition-colors"
+              >
+                <X className="w-4 h-4" /> Delete for everyone
+              </button>
+            )}
+          </motion.div>
+        </>,
+        document.body
       )}
 
       {/* Fullscreen Lightbox */}

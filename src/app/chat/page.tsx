@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import ChatSidebar from '@/components/ChatSidebar'
 import ChatWindow from '@/components/ChatWindow'
 import NewChatModal from '@/components/NewChatModal'
+import NewGroupModal from '@/components/NewGroupModal'
 import InfoSidebar from '@/components/InfoSidebar'
 import DiscoveryFeed from '@/components/DiscoveryFeed'
 import StatusTab from '@/components/StatusTab'
@@ -13,7 +14,7 @@ import { Status } from '@/hooks/useStatuses'
 import { createClient } from '@/utils/supabase/client'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import SettingsModal from '@/components/SettingsModal'
-import { Home, Compass, CircleDashed as StatusCircle, Plus, Trophy } from 'lucide-react'
+import { Home, Compass, CircleDashed as StatusCircle, Plus, Trophy, Users } from 'lucide-react'
 
 import { useAuth } from '@/context/AuthContext'
 
@@ -23,12 +24,13 @@ export default function ChatPage() {
 
   const [activeChatId, setActiveChatId] = useState<string | undefined>(undefined)
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false)
+  const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState(false)
   const [isInfoSidebarOpen, setIsInfoSidebarOpen] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [sidebarType, setSidebarType] = useState<'profile' | 'contact' | 'group'>('profile')
   const [sidebarData, setSidebarData] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState<'chat' | 'feed' | 'status' | 'challenges'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'feed' | 'status' | 'challenges' | 'groups'>('chat')
   const [feedFilterUserId, setFeedFilterUserId] = useState<string | undefined>(undefined)
   const [activeStatuses, setActiveStatuses] = useState<Status[] | null>(null)
 
@@ -59,7 +61,10 @@ export default function ChatPage() {
 
   const handleSelectChat = (id: string) => {
     setActiveChatId(id)
-    setActiveTab('chat')
+    // Only switch to 'chat' tab if we are not already in 'groups' tab
+    if (activeTab !== 'groups') {
+      setActiveTab('chat')
+    }
   }
 
   const handleOpenProfile = () => {
@@ -180,7 +185,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex w-full h-full relative overflow-hidden bg-black">
-      <div className={`${(activeChatId || activeTab !== 'chat') ? 'hidden md:flex' : 'flex'} w-full md:w-[30%] md:min-w-[320px] h-full transition-all`}>
+      <div className={`${(activeChatId || (activeTab !== 'chat' && activeTab !== 'groups')) ? 'hidden md:flex' : 'flex'} w-full md:w-[30%] md:min-w-[320px] h-full transition-all`}>
         <ChatSidebar
           onSelectChat={handleSelectChat}
           activeChatId={activeChatId}
@@ -218,12 +223,13 @@ export default function ChatPage() {
             chatId={activeChatId}
             onOpenInfo={handleOpenChatInfo}
             onBack={() => setActiveChatId(undefined)}
+            isGroupsTab={activeTab === 'groups'}
           />
         )}
       </div>
 
       {/* Mobile Floating Nav */}
-      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] items-center justify-between px-2 h-[52px] bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/[0.08] rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.6)] w-[80%] max-w-[280px] ${(!activeChatId && !isInfoSidebarOpen) ? 'flex md:hidden' : 'hidden'}`}>
+      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] items-center justify-between px-1 h-[52px] bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/[0.08] rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.6)] w-[90%] max-w-[320px] ${(!activeChatId && !isInfoSidebarOpen) ? 'flex md:hidden' : 'hidden'}`}>
           <button 
             onClick={() => setActiveTab('chat')}
             className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'chat' ? 'text-white' : 'text-zinc-600'}`}
@@ -237,6 +243,14 @@ export default function ChatPage() {
             className="flex items-center justify-center w-11 h-11 text-zinc-600 hover:text-white transition-colors"
           >
             <Plus className="w-5 h-5" />
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('groups')}
+            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'groups' ? 'text-white' : 'text-zinc-600'}`}
+          >
+            {activeTab === 'groups' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
+            <Users className="w-[18px] h-[18px]" />
           </button>
 
           <button 
@@ -282,6 +296,16 @@ export default function ChatPage() {
         onChatCreated={(id) => {
           setActiveChatId(id)
           setIsNewChatModalOpen(false)
+        }}
+        onOpenNewGroup={() => setIsNewGroupModalOpen(true)}
+      />
+
+      <NewGroupModal
+        isOpen={isNewGroupModalOpen}
+        onClose={() => setIsNewGroupModalOpen(false)}
+        onGroupCreated={(id) => {
+          setActiveChatId(id)
+          setIsNewGroupModalOpen(false)
         }}
       />
 

@@ -2,17 +2,16 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { Search, UserCircle, Home, Plus, Compass, CircleDashed, Trophy } from 'lucide-react'
+import { Search, UserCircle, Home, Plus, Compass, CircleDashed, Trophy, Users, Globe } from 'lucide-react'
 import Image from 'next/image'
 import { isUserOnline } from '@/hooks/useOnlineStatus'
 
 import SettingsModal from './SettingsModal'
 import { useSettings } from '@/hooks/useSettings'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
-import StatusTab from './StatusTab'
-import StatusViewer from './StatusViewer'
 import { Status } from '@/hooks/useStatuses'
 import { useAuth } from '@/context/AuthContext'
+import GroupDiscovery from './GroupDiscovery'
 
 interface ChatSidebarProps {
   onSelectChat: (chatId: string) => void
@@ -20,13 +19,14 @@ interface ChatSidebarProps {
   onOpenNewChat: () => void
   onOpenProfile: () => void
   onOpenSettings: () => void
-  activeTab: 'chat' | 'feed' | 'status' | 'challenges'
-  onTabChange: (tab: 'chat' | 'feed' | 'status' | 'challenges') => void
+  activeTab: 'chat' | 'feed' | 'status' | 'challenges' | 'groups'
+  onTabChange: (tab: 'chat' | 'feed' | 'status' | 'challenges' | 'groups') => void
 }
 
 export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat, onOpenProfile, onOpenSettings, activeTab, onTabChange }: ChatSidebarProps) {
   usePushNotifications()
   const [chats, setChats] = useState<any[] | null>(null)
+  const [groupSubTab, setGroupSubTab] = useState<'my' | 'community'>('my')
   const [loading, setLoading] = useState(false) // Start as false to prevent immediate skeleton flash
   const [search, setSearch] = useState('')
   const { user, signOut, loading: authLoading, profile: authProfile } = useAuth()
@@ -127,7 +127,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         return {
           id: chat.id,
           is_group: chat.is_group,
-          display_name: chat.is_group ? (chat.name || 'Group') : (otherProfile?.name || 'Unknown User'),
+          display_name: chat.is_group ? (chat.name || 'Group') : (otherProfile?.name || 'Chat'),
           display_email: chat.is_group ? '' : (otherProfile?.email || ''),
           display_avatar: chat.is_group ? chat.avatar_url : otherProfile?.avatar_url,
           other_profile: otherProfile,
@@ -324,10 +324,15 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     window.location.href = '/login'
   }
 
-  const filteredChats = chats ? chats.filter((c: any) =>
-    (c.display_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-    (c.display_email?.toLowerCase() || '').includes(search.toLowerCase())
-  ) : []
+  const filteredChats = chats ? chats.filter((c: any) => {
+    const matchesSearch = (c.display_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+                         (c.display_email?.toLowerCase() || '').includes(search.toLowerCase())
+    
+    if (activeTab === 'chat') return matchesSearch && !c.is_group
+    if (activeTab === 'groups' && groupSubTab === 'my') return matchesSearch && c.is_group
+    
+    return false // Community tab handled separately
+  }) : []
 
   const textSizeClass = settings.textSize === 'small' ? 'text-sm' : settings.textSize === 'large' ? 'text-lg' : 'text-base'
   const rawAvatarSrc = authProfile?.avatar_url || user?.user_metadata?.avatar_url || null
@@ -388,24 +393,35 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
             <button 
               onClick={() => onTabChange('chat')}
               className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'chat' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+              title="Direct Messages"
             >
               <Home className="w-4 h-4" />
             </button>
             <button 
+              onClick={() => onTabChange('groups')}
+              className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'groups' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+              title="Group Communities"
+            >
+              <Users className="w-4 h-4" />
+            </button>
+            <button 
               onClick={onOpenNewChat}
               className="p-2 rounded-full text-zinc-500 hover:text-white hover:bg-white/10 transition-all duration-300"
+              title="New Conversation"
             >
               <Plus className="w-4 h-4" />
             </button>
             <button 
               onClick={() => onTabChange('feed')}
               className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'feed' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+              title="Discovery Feed"
             >
               <Compass className="w-4 h-4" />
             </button>
               <button 
                 onClick={() => onTabChange('status')}
                 className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'status' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+                title="Statuses"
               >
                 <CircleDashed className="w-4 h-4" />
               </button>
@@ -421,15 +437,36 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         )}
       </div>
 
-      <div className="p-3 bg-black/60 border-b border-white/[0.04]">
+      <div className="p-3 bg-black/60 border-b border-white/[0.04] space-y-3">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-600"><Search className="h-4 w-4" /></div>
-          <input type="text" placeholder="Search or start new chat" className="block w-full pl-10 pr-3 py-2 bg-white/[0.03] border border-white/[0.04] text-white rounded-xl focus:ring-1 focus:ring-white/10 text-sm placeholder-zinc-700 outline-none transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input type="text" placeholder={activeTab === 'groups' ? "Search for communities..." : "Search or start new chat"} className="block w-full pl-10 pr-3 py-2 bg-white/[0.03] border border-white/[0.04] text-white rounded-xl focus:ring-1 focus:ring-white/10 text-sm placeholder-zinc-700 outline-none transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+
+        {activeTab === 'groups' && (
+          <div className="flex bg-white/[0.03] p-1 rounded-lg border border-white/[0.04]">
+            <button 
+              onClick={() => setGroupSubTab('my')}
+              className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-[11px] font-bold rounded-md transition-all ${groupSubTab === 'my' ? 'bg-white/[0.08] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <Users className="w-3 h-3" />
+              My Groups
+            </button>
+            <button 
+              onClick={() => setGroupSubTab('community')}
+              className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-[11px] font-bold rounded-md transition-all ${groupSubTab === 'community' ? 'bg-white/[0.08] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <Globe className="w-3 h-3" />
+              Community
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {loading || authLoading ? (
+        {activeTab === 'groups' && groupSubTab === 'community' ? (
+          <GroupDiscovery currentUserId={user?.id || ''} onSelectChat={onSelectChat} />
+        ) : loading || authLoading ? (
           <div className="flex flex-col">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex items-center px-4 py-3 border-b border-white/[0.03] animate-pulse">

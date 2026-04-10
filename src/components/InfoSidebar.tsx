@@ -43,6 +43,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
   const supabase = createClient()
   
   const [challengeStats, setChallengeStats] = useState({ solved: 0, points: 0 })
+  const [groupMemberCount, setGroupMemberCount] = useState<number>(0)
 
   const fetchChallengeStats = async () => {
     const targetId = type === 'profile' ? user?.id : data?.id
@@ -87,6 +88,13 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
       supabase.from('companies').select('name').eq('id', data.company_id).single()
         .then(({ data: company }: { data: any }) => {
           if (company) setCompanyName(company.name)
+        })
+    }
+
+    if (type === 'group' && data?.id) {
+      supabase.from('chat_members').select('*', { count: 'exact', head: true }).eq('chat_id', data.id)
+        .then(({ count }) => {
+          if (count !== null) setGroupMemberCount(count)
         })
     }
   }, [data, type, isOpen])
@@ -760,7 +768,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                     </div>
                     <div className="space-y-4 pt-4 border-t border-white/[0.04]">
                       <div className="flex items-center justify-between text-zinc-500">
-                        <span className="text-sm font-medium">{data?.members?.length || 0} Members</span>
+                        <span className="text-sm font-medium">{groupMemberCount || data?.members?.length || 0} Members</span>
                         <Users className="w-5 h-5" />
                       </div>
                     </div>

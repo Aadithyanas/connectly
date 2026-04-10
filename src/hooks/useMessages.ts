@@ -173,16 +173,21 @@ export function useMessages(chatId?: string) {
         if (newMessage.sender_id === currentUserRef.current?.id) return
 
         setMessages((prev) => {
+          if (newMessage.is_deleted_everyone || (newMessage.deleted_for && newMessage.deleted_for.includes(currentUserRef.current?.id))) {
+             return prev.filter(m => m.id !== newMessage.id)
+          }
           const exists = prev.find(m => 
             (newMessage.client_id && m.client_id === newMessage.client_id) ||
             m.id === newMessage.id
           );
-          if (exists) return prev;
+          if (exists) return prev.map(m => m.id === newMessage.id ? newMessage : m);
           return [...prev, newMessage];
         });
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
         async (payload: any) => {
+          if (payload.new.deleted_for?.includes(currentUserRef.current?.id)) return;
+          
           setMessages((prev) => {
             // Check if this database ID is already in our state
             const existingById = prev.find(m => m.id === payload.new.id);
@@ -232,22 +237,31 @@ export function useMessages(chatId?: string) {
       )
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
         (payload: any) => {
-          setMessages((prev) => prev.map((msg) => {
-            // Match by real DB id OR by the optimistic client_id if the HTTP response hasn't returned yet
-            if (msg.id === payload.new.id || (payload.new.client_id && msg.client_id === payload.new.client_id)) {
-              // Ensure we update to the real DB id if we matched by client_id
-              const realId = payload.new.id
-              
-              // Only apply update if status goes forward (never go backwards)
-              if (isStatusForward(msg.status, payload.new.status)) {
-                return { ...msg, ...payload.new, id: realId }
-              }
-              // Still merge non-status fields
-              const { status, ...rest } = payload.new
-              return { ...msg, ...rest, id: realId }
+          setMessages((prev) => {
+            if (payload.new.is_deleted_everyone) {
+              return prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new, content: '', media_url: null } : m)
             }
-            return msg
-          }))
+            if (payload.new.deleted_for?.includes(currentUserRef.current?.id)) {
+              return prev.filter(m => m.id !== payload.new.id)
+            }
+
+            return prev.map((msg) => {
+              // Match by real DB id OR by the optimistic client_id if the HTTP response hasn't returned yet
+              if (msg.id === payload.new.id || (payload.new.client_id && msg.client_id === payload.new.client_id)) {
+                // Ensure we update to the real DB id if we matched by client_id
+                const realId = payload.new.id
+                
+                // Only apply update if status goes forward (never go backwards)
+                if (isStatusForward(msg.status, payload.new.status)) {
+                  return { ...msg, ...payload.new, id: realId }
+                }
+                // Still merge non-status fields
+                const { status, ...rest } = payload.new
+                return { ...msg, ...rest, id: realId }
+              }
+              return msg
+            })
+          })
         }
       )
       .subscribe((status: string, err: any) => {
@@ -386,6 +400,42 @@ export function useMessages(chatId?: string) {
     return { error }
   }
 
+  const deleteMessage = async (messageId: string, type: 'me' | 'everyone') => {
+    if (!user) return { error: 'Not authenticated' }
+
+    if (type === 'everyone') {
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          content: '', 
+          media_url: null, 
+          media_type: null,
+          is_deleted_everyone: true 
+        })
+        .eq('id', messageId)
+        .eq('sender_id', user.id) // Security: Only sender can delete for everyone
+      
+      if (error) return { error }
+    } else {
+      // Delete for me: append user ID to deleted_for array
+      // First get current array
+      const { data: msg } = await supabase.from('messages').select('deleted_for').eq('id', messageId).single()
+      const newDeletedFor = [...(msg?.deleted_for || []), user.id]
+      
+      const { error } = await supabase
+        .from('messages')
+        .update({ deleted_for: newDeletedFor })
+        .eq('id', messageId)
+      
+      if (error) return { error }
+      
+      // Update local state immediately for better UX
+      setMessages(prev => prev.filter(m => m.id !== messageId))
+    }
+
+    return { error: null }
+  }
+
   const uploadFile = async (file: File) => {
     if (!user) return { error: 'Not authenticated' }
 
@@ -400,5 +450,5 @@ export function useMessages(chatId?: string) {
     return { publicUrl, mediaType: file.type.split('/')[0] }
   }
 
-  return { messages, loading, sendMessage, uploadFile, markAsSeen, forwardMessage }
+  return { messages, loading, sendMessage, uploadFile, markAsSeen, forwardMessage, deleteMessage }
 }
