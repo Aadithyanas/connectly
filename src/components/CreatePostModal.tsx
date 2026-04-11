@@ -91,23 +91,31 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
     setUploadProgress(prev => ({ ...prev, [fileId]: 10 }))
     
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user?.id}/${Date.now()}-${index}.${fileExt}`
-      const filePath = `posts/${fileName}`
+      // 1. Get Signature via API
+      const signRes = await fetch('/api/cloudinary/sign', { method: 'POST', body: JSON.stringify({ folder: `posts/${user?.id || 'anonymous'}` }) })
+      const signData = await signRes.json()
+      if (!signRes.ok) throw new Error(signData.error || 'Failed to get signature')
 
-      const { error: uploadError } = await supabase.storage
-        .from('media')
-        .upload(filePath, file)
+      setUploadProgress(prev => ({ ...prev, [fileId]: 30 }))
 
-      if (uploadError) throw uploadError
+      // 2. Upload directly to Cloudinary
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('api_key', signData.apiKey)
+      formData.append('timestamp', signData.timestamp)
+      formData.append('signature', signData.signature)
+      formData.append('folder', `posts/${user?.id || 'anonymous'}`)
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('media')
-        .getPublicUrl(filePath)
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(uploadData.error?.message || 'Upload failed')
 
       setUploadedUrls(prev => {
         const next = [...prev]
-        next[index] = publicUrl
+        next[index] = uploadData.secure_url
         return next
       })
       setUploadProgress(prev => ({ ...prev, [fileId]: 100 }))

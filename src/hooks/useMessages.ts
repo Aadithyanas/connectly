@@ -342,62 +342,72 @@ export function useMessages(chatId?: string) {
     }
 
     // 4. Database Persistence
-    // Start a background timer: if DB hasn't responded in 5s, update UI to show 'sent' tick
-    // so the user doesn't see a stuck clock icon. The actual insert continues in background.
     const uiTimeout = setTimeout(() => {
       setMessages((prev) => prev.map(m => 
         m.id === tempId && m.status === 'sending' ? { ...m, status: 'sent' } : m
       ))
     }, 5000)
 
-    const { data, error } = await supabase
-      .from('messages')
-      .insert({
-        chat_id: chatId,
-        sender_id: user.id,
-        content,
-        media_url: finalMediaUrl,
-        media_type: finalMediaType,
-        status: 'sent',
-        reply_to: replyTo,
-        client_id: tempId
+    try {
+      const res = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          content,
+          media_url: finalMediaUrl,
+          media_type: finalMediaType,
+          reply_to: replyTo,
+          client_id: tempId
+        })
       })
-      .select()
-      .single()
+      const result = await res.json()
+      clearTimeout(uiTimeout)
 
-    clearTimeout(uiTimeout)
+      if (!res.ok || result.error) {
+        throw new Error(result.error || 'Send failed')
+      }
 
-    if (error) {
-      console.error("Insert error:", error)
+      const data = result.message
+      if (data) {
+        setMessages((prev) => {
+          // If realtime already replaced the optimistic message with the real one, remove the temp
+          if (prev.some(m => m.id === data.id)) return prev.filter(m => m.id !== tempId)
+          // Otherwise replace temp with real data
+          return prev.map(m => m.id === tempId ? { ...data, client_id: tempId } : m)
+        })
+      }
+
+      return { error: null }
+    } catch (err: any) {
+      clearTimeout(uiTimeout)
+      console.error("Insert error:", err)
       setMessages((prev) => prev.filter(m => m.id !== tempId))
-      return { error }
+      return { error: err.message }
     }
-
-    if (data) {
-      setMessages((prev) => {
-        // If realtime already replaced the optimistic message with the real one, remove the temp
-        if (prev.some(m => m.id === data.id)) return prev.filter(m => m.id !== tempId)
-        // Otherwise replace temp with real data
-        return prev.map(m => m.id === tempId ? { ...data, client_id: tempId } : m)
-      })
-    }
-
-    return { error: null }
   }
 
   const forwardMessage = async (messageContent: string, targetChatId: string, mediaUrl?: string, mediaType?: string) => {
     if (!user) return { error: 'Not authenticated' }
 
-    const { error } = await supabase.from('messages').insert({
-      chat_id: targetChatId,
-      sender_id: user.id,
-      content: messageContent,
-      media_url: mediaUrl,
-      media_type: mediaType,
-      status: 'sent',
-      forwarded: true,
-    })
-    return { error }
+    try {
+      const res = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: targetChatId,
+          content: messageContent,
+          media_url: mediaUrl,
+          media_type: mediaType,
+          forwarded: true
+        })
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Forward failed')
+      return { error: null }
+    } catch (err: any) {
+      return { error: err.message }
+    }
   }
 
   const deleteMessage = async (messageId: string, type: 'me' | 'everyone') => {
@@ -439,15 +449,32 @@ export function useMessages(chatId?: string) {
   const uploadFile = async (file: File) => {
     if (!user) return { error: 'Not authenticated' }
 
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Math.random()}-${Date.now()}.${fileExt}`
-    const filePath = `${user.id}/${fileName}`
+    try {
+      // 1. Get Signature via unified server API
+      const signRes = await fetch('/api/cloudinary/sign', { method: 'POST', body: JSON.stringify({ folder: `chat/${chatId || 'general'}` }) })
+      const signData = await signRes.json()
+      if (!signRes.ok) throw new Error(signData.error || 'Failed to get signature')
 
-    const { data, error } = await supabase.storage.from('media').upload(filePath, file)
-    if (error) return { error }
+      // 2. Upload to Cloudinary directly from Client
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('api_key', signData.apiKey)
+      formData.append('timestamp', signData.timestamp)
+      formData.append('signature', signData.signature)
+      formData.append('folder', `chat/${chatId || 'general'}`)
 
-    const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(filePath)
-    return { publicUrl, mediaType: file.type.split('/')[0] }
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(uploadData.error?.message || 'Upload failed')
+
+      return { publicUrl: uploadData.secure_url, mediaType: uploadData.resource_type === 'video' ? 'video' : 'image' }
+    } catch (err: any) {
+      console.error('Cloudinary upload error:', err)
+      return { error: err.message }
+    }
   }
 
   return { messages, loading, sendMessage, uploadFile, markAsSeen, forwardMessage, deleteMessage }

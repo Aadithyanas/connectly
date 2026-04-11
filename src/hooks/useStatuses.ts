@@ -91,31 +91,43 @@ export function useStatuses() {
     if (!user) return { error: 'Not authenticated' }
 
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}/${Math.random()}.${fileExt}`
-      const filePath = `statuses/${fileName}`
+      // 1. Get Signature via API
+      const signRes = await fetch('/api/cloudinary/sign', { method: 'POST', body: JSON.stringify({ folder: `statuses/${user.id}` }) })
+      const signData = await signRes.json()
+      if (!signRes.ok) throw new Error(signData.error || 'Failed to get signature')
 
-      // Upload to your existing 'media' bucket
-      const { error: uploadError } = await supabase.storage
-        .from('media')
-        .upload(filePath, file)
+      // 2. Upload directly to Cloudinary
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('api_key', signData.apiKey)
+      formData.append('timestamp', signData.timestamp)
+      formData.append('signature', signData.signature)
+      formData.append('folder', `statuses/${user.id}`)
 
-      if (uploadError) throw uploadError
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(uploadData.error?.message || 'Upload failed')
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('media')
-        .getPublicUrl(filePath)
+      const publicUrl = uploadData.secure_url;
+      const contentType = file.type.startsWith('video') ? 'video' : 'image';
 
-      const { error: dbError } = await supabase
-        .from('statuses')
-        .insert([{
-          user_id: user.id,
+      // 3. Create Status via API Route to protect DB
+      const dbRes = await fetch('/api/statuses/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           content_url: publicUrl,
-          content_type: file.type.startsWith('video') ? 'video' : 'image',
+          content_type: contentType,
           caption
-        }])
+        })
+      });
+      const dbResult = await dbRes.json();
 
-      if (dbError) throw dbError
+      if (!dbRes.ok) throw new Error(dbResult.error || 'Database insert failed');
+
       return { success: true }
     } catch (err: any) {
       console.error('Status upload failed:', err)

@@ -251,16 +251,19 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
   const createPost = async (payload: { title?: string, content: string, media_urls: string[], media_types: string[], category: string }) => {
     if (!user) return { error: 'Not authenticated' }
 
-    const { data, error } = await supabase
-      .from('posts')
-      .insert([{
-        user_id: user.id,
-        ...payload
-      }])
-      .select()
-      .single()
-
-    return { data, error }
+    try {
+      const res = await fetch('/api/posts/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const result = await res.json()
+      
+      if (!res.ok) throw new Error(result.error || 'Failed to create post')
+      return { data: result.post, error: null }
+    } catch (err: any) {
+      return { data: null, error: err.message }
+    }
   }
 
   const updatePost = async (postId: string, payload: { title?: string, content: string }) => {
