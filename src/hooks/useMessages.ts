@@ -43,13 +43,22 @@ export function useMessages(chatId?: string) {
 
   const markAsSeen = useCallback(async (retries = 0) => {
     if (!chatId || !user) return
-    if (pendingSeenRef.current && retries === 0) return // Already scheduled a batch update
+    if (pendingSeenRef.current && retries === 0) return
 
     const performAction = async (currRetries: number) => {
       try {
         const { error } = await supabase.rpc('mark_messages_seen', { cid: chatId })
         if (error && (error.message?.includes('Lock') || error.details?.includes('Lock')) && currRetries < 2) {
           throw error
+        }
+        // Broadcast "chat read" so sender gets INSTANT purple ticks
+        // No need to pass IDs — receiver marks all sender's messages, sender updates all own
+        if (channelRef.current) {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'chat_read',
+            payload: { readerId: user.id, status: 'seen' }
+          }).catch(() => {})
         }
       } catch (e) {
         if (currRetries < 2) setTimeout(() => performAction(currRetries + 1), 600)
@@ -61,19 +70,27 @@ export function useMessages(chatId?: string) {
     if (retries > 0) {
       performAction(retries)
     } else {
-      pendingSeenRef.current = setTimeout(() => performAction(0), 1000)
+      pendingSeenRef.current = setTimeout(() => performAction(0), 800)
     }
   }, [chatId, user])
 
   const markAsDelivered = useCallback(async (retries = 0) => {
     if (!chatId || !user) return
-    if (pendingDeliveredRef.current && retries === 0) return // Already scheduled
+    if (pendingDeliveredRef.current && retries === 0) return
 
     const performAction = async (currRetries: number) => {
       try {
         const { error } = await supabase.rpc('mark_messages_delivered', { cid: chatId })
         if (error && (error.message?.includes('Lock') || error.details?.includes('Lock')) && currRetries < 2) {
           throw error
+        }
+        // Broadcast "delivered" so sender gets instant double-tick
+        if (channelRef.current) {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'chat_read',
+            payload: { readerId: user.id, status: 'delivered' }
+          }).catch(() => {})
         }
       } catch (e) {
         if (currRetries < 2) setTimeout(() => performAction(currRetries + 1), 600)
@@ -85,7 +102,7 @@ export function useMessages(chatId?: string) {
     if (retries > 0) {
       performAction(retries)
     } else {
-      pendingDeliveredRef.current = setTimeout(() => performAction(0), 800)
+      pendingDeliveredRef.current = setTimeout(() => performAction(0), 600)
     }
   }, [chatId, user])
 
@@ -126,7 +143,12 @@ export function useMessages(chatId?: string) {
         if (!isMounted) return
         
         if (!error) {
-           const freshMessages = data || []
+           const currentId = currentUserRef.current?.id
+           const freshMessages = (data || []).filter((m: any) => {
+             // Don't show messages deleted for me
+             if (currentId && m.deleted_for?.includes(currentId)) return false
+             return true
+           })
            setMessages(freshMessages)
            
            // 3. Cache the fresh data (limit to last 100 messages for storage efficiency)
@@ -168,6 +190,39 @@ export function useMessages(chatId?: string) {
     channelRef.current = channel
 
     channel
+      // ── Instant status updates: receiver broadcasts "chat was read" ────────
+      // When receiver opens chat, they mark sender's messages as seen/delivered
+      // and broadcast here so sender's UI updates ticks IMMEDIATELY
+      .on('broadcast', { event: 'chat_read' }, (payload: any) => {
+        const { readerId, status: newStatus } = payload.payload as { readerId: string, status: string }
+        const me = currentUserRef.current
+        if (!me || readerId === me.id) return // ignore own reads
+        // Update all OWN messages (sender = me) to the new status
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.sender_id === me.id && isStatusForward(m.status, newStatus)
+              ? { ...m, status: newStatus }
+              : m
+          )
+        )
+      })
+      // ── Legacy status_update fallback (postgres_changes driven) ─────────────
+      .on('broadcast', { event: 'status_update' }, (payload: any) => {
+        const { ids, status: newStatus } = payload.payload as { ids: any[], status: string }
+        if (!ids?.length) return
+        // Extract UUID strings (SETOF uuid returns [{fn_name: 'uuid'}])
+        const idStrings: string[] = ids.map((d: any) =>
+          typeof d === 'string' ? d : (Object.values(d)[0] as string)
+        ).filter(Boolean)
+        setMessages((prev) =>
+          prev.map((m) =>
+            idStrings.includes(m.id) && isStatusForward(m.status, newStatus)
+              ? { ...m, status: newStatus }
+              : m
+          )
+        )
+      })
+      // ── New messages broadcast by sender ─────────────────────────────────────
       .on('broadcast', { event: 'new_message' }, (payload: any) => {
         const newMessage = payload.payload
         if (newMessage.sender_id === currentUserRef.current?.id) return
@@ -205,15 +260,17 @@ export function useMessages(chatId?: string) {
             );
 
             if (optimisticMatch) {
-              // Replace optimistic with real DB record, ensure status is at least 'sent'
-              const newStatus = (STATUS_ORDER[payload.new.status] ?? 0) >= (STATUS_ORDER['sent'] ?? 0) 
-                ? payload.new.status 
-                : 'sent';
-              return prev.map(m => 
-                m.client_id === payload.new.client_id 
-                  ? { ...payload.new, status: newStatus } 
-                  : m
-              );
+              // Replace optimistic with real DB record
+              // CRITICAL: preserve any forward-progressed local status (seen/delivered)
+              // set by the chat_read broadcast before DB insert fires
+              const dbStatus = (STATUS_ORDER[payload.new.status] ?? 0) >= (STATUS_ORDER['sent'] ?? 0)
+                ? payload.new.status : 'sent'
+              return prev.map(m => {
+                if (m.client_id !== payload.new.client_id) return m
+                // Keep local status if it's already ahead of db insert payload
+                const bestStatus = isStatusForward(dbStatus, m.status) ? m.status : dbStatus
+                return { ...payload.new, status: bestStatus }
+              })
             }
 
             // New message from someone else
@@ -266,14 +323,51 @@ export function useMessages(chatId?: string) {
       )
       .subscribe((status: string, err: any) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn(`Realtime subscription ${status} for chat:${chatId}`, err)
-          // On error, do an immediate background fetch to catch missed messages
-          if (isMounted) fetchMessages(true)
+          console.warn(`Realtime ${status} for chat:${chatId} — re-fetching & re-subscribing`, err)
+          if (isMounted) {
+            fetchMessages(true)
+            // Auto-reconnect after a brief pause
+            setTimeout(() => {
+              if (isMounted && channelRef.current) {
+                channelRef.current.subscribe()
+              }
+            }, 2000)
+          }
         }
       })
 
-    // Background sync: poll every 10s to catch any messages or status changes missed by realtime.
-    // This is the PERMANENT reliability fix — even if WebSocket drops silently, messages still appear.
+    // ── Lightweight status-only sync (2s) for own messages ───────────────────
+    // Only fetches id+status — tiny query, never overwrites message content
+    // This is the PRIMARY mechanism for showing blue ticks reliably
+    const statusSyncInterval = setInterval(async () => {
+      const meId = currentUserRef.current?.id
+      if (!isMounted || !meId) return
+      try {
+        const { data: statusRows } = await supabase
+          .from('messages')
+          .select('id, status')
+          .eq('chat_id', chatId)
+          .eq('sender_id', meId)
+
+        if (!statusRows?.length) return
+
+        setMessages((prev) => {
+          const map = new Map<string, string>(statusRows.map((r: any) => [r.id as string, r.status as string]))
+          let changed = false
+          const next = prev.map((m) => {
+            const freshStatus = map.get(m.id)
+            if (freshStatus && isStatusForward(m.status, freshStatus)) {
+              changed = true
+              return { ...m, status: freshStatus }
+            }
+            return m
+          })
+          return changed ? next : prev
+        })
+      } catch (_) {/* silently skip */}
+    }, 2000)
+
+    // ── Full message sync (10s) — catches missed inserts or deletes ───────────
     const syncInterval = setInterval(() => {
       if (isMounted) fetchMessages(true)
     }, 10000)
@@ -281,6 +375,7 @@ export function useMessages(chatId?: string) {
     return () => { 
       isMounted = false
       abortController.abort()
+      clearInterval(statusSyncInterval)
       clearInterval(syncInterval)
       document.removeEventListener('visibilitychange', handleVisibility)
       supabase.removeChannel(channel)
@@ -373,8 +468,13 @@ export function useMessages(chatId?: string) {
         setMessages((prev) => {
           // If realtime already replaced the optimistic message with the real one, remove the temp
           if (prev.some(m => m.id === data.id)) return prev.filter(m => m.id !== tempId)
-          // Otherwise replace temp with real data
-          return prev.map(m => m.id === tempId ? { ...data, client_id: tempId } : m)
+          // Replace temp with real data, but PRESERVE any forward-progressed local status
+          // (e.g. chat_read broadcast may have already set 'seen' before API responded)
+          const localMsg = prev.find(m => m.id === tempId)
+          const bestStatus = localMsg && isStatusForward(data.status, localMsg.status)
+            ? localMsg.status
+            : data.status
+          return prev.map(m => m.id === tempId ? { ...data, client_id: tempId, status: bestStatus } : m)
         })
       }
 

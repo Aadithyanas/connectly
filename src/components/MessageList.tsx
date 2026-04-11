@@ -181,8 +181,15 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
           Start a conversation...
         </div>
       ) : (
-        messages.map((message) => {
-          const isOwn = message.sender_id === currentUserId
+        messages
+          // Filter out messages soft-deleted for current user
+          .filter((message) => {
+            if (!currentUserId) return true // auth not ready yet, show all
+            if (message.deleted_for?.includes(currentUserId)) return false
+            return true
+          })
+          .map((message) => {
+          const isOwn = !!currentUserId && message.sender_id === currentUserId
           const isHovered = hoveredId === message.id
           const swipeThreshold = 60
 
@@ -409,13 +416,19 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                       {isOwn && (
                         <div className="flex items-center">
                           {message.status === 'sending' ? (
-                            <Clock className="w-3 h-3 text-white/40 animate-pulse" />
+                            <Clock className="w-3 h-3 text-white/30 animate-pulse" />
                           ) : message.status === 'sent' ? (
                             <Check className="w-3.5 h-3.5 text-white/40" />
                           ) : message.status === 'delivered' ? (
-                            <CheckCheck className="w-4 h-4 text-white/40" />
+                            <div className="flex -space-x-1.5">
+                              <Check className="w-3.5 h-3.5 text-white/50" />
+                              <Check className="w-3.5 h-3.5 text-white/50" />
+                            </div>
                           ) : (
-                            <CheckCheck className="w-4 h-4 text-[#bc9dff]" />
+                            <div className="flex -space-x-1.5">
+                              <Check className="w-3.5 h-3.5 text-[#bc9dff]" />
+                              <Check className="w-3.5 h-3.5 text-[#bc9dff]" />
+                            </div>
                           )}
                         </div>
                       )}

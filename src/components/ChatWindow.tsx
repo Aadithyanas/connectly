@@ -379,7 +379,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
           />
           {searchQuery && (
             <span className="text-[10px] text-[#555] whitespace-nowrap">
-              {messages.filter(m => m.content?.toLowerCase().includes(searchQuery.toLowerCase())).length} results
+              {messages.filter(m => m.content?.toLowerCase()?.includes(searchQuery.toLowerCase())).length} results
             </span>
           )}
           <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="text-[#666] hover:text-white transition-colors ml-1">
@@ -425,7 +425,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
           <>
             <div className="flex-1 relative bg-cover bg-center overflow-hidden flex flex-col bg-black">
               <MessageList 
-                messages={searchQuery ? messages.filter(m => m.content?.toLowerCase().includes(searchQuery.toLowerCase())) : messages} 
+                messages={searchQuery ? messages.filter(m => m.content?.toLowerCase()?.includes(searchQuery.toLowerCase())) : messages} 
                 loading={loading}
                 currentUserId={user?.id || ''} 
                 otherUserAvatar={otherUser?.avatar_url}
