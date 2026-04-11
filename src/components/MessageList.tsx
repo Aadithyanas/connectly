@@ -420,15 +420,9 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                           ) : message.status === 'sent' ? (
                             <Check className="w-3.5 h-3.5 text-white/40" />
                           ) : message.status === 'delivered' ? (
-                            <div className="flex -space-x-1.5">
-                              <Check className="w-3.5 h-3.5 text-white/50" />
-                              <Check className="w-3.5 h-3.5 text-white/50" />
-                            </div>
+                            <CheckCheck className="w-4 h-4 text-white/50" />
                           ) : (
-                            <div className="flex -space-x-1.5">
-                              <Check className="w-3.5 h-3.5 text-[#bc9dff]" />
-                              <Check className="w-3.5 h-3.5 text-[#bc9dff]" />
-                            </div>
+                            <CheckCheck className="w-4 h-4 text-[#3b82f6]" />
                           )}
                         </div>
                       )}

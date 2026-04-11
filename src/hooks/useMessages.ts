@@ -109,6 +109,20 @@ export function useMessages(chatId?: string) {
   useEffect(() => {
     let isMounted = true
     const abortController = new AbortController()
+
+    // FIX #1: Clear any stale pending timers from the previous chat.
+    // Without this, switching chats can leave pendingSeenRef set, causing
+    // markAsSeen() to return early (the `if (pendingSeenRef.current && retries === 0) return` guard)
+    // and the recipient never marks messages as seen in the new chat.
+    if (pendingDeliveredRef.current) {
+      clearTimeout(pendingDeliveredRef.current)
+      pendingDeliveredRef.current = null
+    }
+    if (pendingSeenRef.current) {
+      clearTimeout(pendingSeenRef.current)
+      pendingSeenRef.current = null
+    }
+
     // 1. Try to load from cache immediately for instant UI
     const cached = localStorage.getItem(`messages_${chatId}`)
     if (cached) {
@@ -196,7 +210,8 @@ export function useMessages(chatId?: string) {
       .on('broadcast', { event: 'chat_read' }, (payload: any) => {
         const { readerId, status: newStatus } = payload.payload as { readerId: string, status: string }
         const me = currentUserRef.current
-        if (!me || readerId === me.id) return // ignore own reads
+        // FIX #2: Guard against null user ref (auth not ready yet) AND own reads
+        if (!me?.id || readerId === me.id) return
         // Update all OWN messages (sender = me) to the new status
         setMessages((prev) =>
           prev.map((m) =>
@@ -249,7 +264,7 @@ export function useMessages(chatId?: string) {
             if (existingById) {
               // Already exists — only update if status goes forward
               if (isStatusForward(existingById.status, payload.new.status)) {
-                return prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m);
+                return prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new, client_id: m.client_id || payload.new.client_id } : m);
               }
               return prev;
             }
@@ -269,7 +284,7 @@ export function useMessages(chatId?: string) {
                 if (m.client_id !== payload.new.client_id) return m
                 // Keep local status if it's already ahead of db insert payload
                 const bestStatus = isStatusForward(dbStatus, m.status) ? m.status : dbStatus
-                return { ...payload.new, status: bestStatus }
+                return { ...payload.new, client_id: m.client_id, status: bestStatus }
               })
             }
 
@@ -310,11 +325,11 @@ export function useMessages(chatId?: string) {
                 
                 // Only apply update if status goes forward (never go backwards)
                 if (isStatusForward(msg.status, payload.new.status)) {
-                  return { ...msg, ...payload.new, id: realId }
+                  return { ...msg, ...payload.new, id: realId, client_id: msg.client_id }
                 }
                 // Still merge non-status fields
                 const { status, ...rest } = payload.new
-                return { ...msg, ...rest, id: realId }
+                return { ...msg, ...rest, id: realId, client_id: msg.client_id }
               }
               return msg
             })
@@ -341,7 +356,8 @@ export function useMessages(chatId?: string) {
     // This is the PRIMARY mechanism for showing blue ticks reliably
     const statusSyncInterval = setInterval(async () => {
       const meId = currentUserRef.current?.id
-      if (!isMounted || !meId) return
+      // FIX #3: Also guard against missing chatId to avoid querying wrong chat
+      if (!isMounted || !meId || !chatId) return
       try {
         const { data: statusRows } = await supabase
           .from('messages')

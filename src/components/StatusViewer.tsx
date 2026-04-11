@@ -26,6 +26,7 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
   useEffect(() => {
     setIsLoadingMetadata(true)
     setIsWaiting(false)
+    setIsPaused(false)
   }, [currentIndex])
 
   // Sync video play/pause with isPaused state
@@ -34,10 +35,13 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
       if (isPaused) {
         videoRef.current.pause()
       } else {
-        videoRef.current.play().catch(() => {})
+        // Only run play if the video is actually paused natively, to avoid AbortError spam which interrupts buffering
+        if (videoRef.current.paused && currentStatus.content_type === 'video') {
+          videoRef.current.play().catch(() => {})
+        }
       }
     }
-  }, [isPaused])
+  }, [isPaused, currentStatus.content_type])
 
   const goToNext = useCallback(() => {
     if (currentIndex < statuses.length - 1) {
@@ -179,9 +183,9 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
 
         {currentStatus.content_type === 'video' ? (
           <div className="relative w-full h-full flex items-center justify-center">
-            {/* Show loading only if metadata missing or we are truly stuck (low readyState) */}
-            {(isLoadingMetadata || (isWaiting && (!videoRef.current || videoRef.current.readyState < 3))) && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+            {/* Show loading only if metadata missing or we are actively buffering */}
+            {(isLoadingMetadata || isWaiting) && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-300">
                 <Loader2 className="w-12 h-12 text-white animate-spin opacity-80" />
               </div>
             )}
@@ -191,6 +195,7 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
               autoPlay 
               muted={isMuted}
               playsInline
+              preload="auto"
               loop={false}
               onLoadedMetadata={handleLoadedMetadata}
               onWaiting={() => setIsWaiting(true)}
@@ -200,8 +205,6 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
                 setIsWaiting(false)
                 setIsLoadingMetadata(false)
               }}
-              onPause={() => setIsPaused(true)}
-              onPlay={() => setIsPaused(false)}
               onEnded={goToNext}
               className="w-full h-full object-contain z-10"
             />

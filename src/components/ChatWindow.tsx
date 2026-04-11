@@ -55,65 +55,72 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
   }, [user?.id])
 
   useEffect(() => {
-    if (!chatId || !user) return
+    if (!chatId || !user) {
+      setChatDetails(null)
+      setOtherUser(null)
+      setMyMembership(null)
+      return
+    }
 
-    const fetchDetails = async () => {
-      // Fetch Chat Details
+    setReplyingTo(null)
+    setForwardingMessage(null)
+
+    const initChat = async () => {
+      // 1. Instantly restore from cache for immediate UI rendering
+      const cachedChat = localStorage.getItem(`chat_${chatId}`)
+      let isKnownGroup = false
+      if (cachedChat) {
+        try {
+          const parsed = JSON.parse(cachedChat)
+          setChatDetails(parsed)
+          isKnownGroup = parsed.is_group
+        } catch(e) {}
+      } else {
+        setChatDetails(null)
+      }
+
+      // ONLY load cached profile if it's NOT a known group (prevents DM header flashing in groups)
+      if (!isKnownGroup) {
+        const cachedProfile = localStorage.getItem(`profile_${chatId}`)
+        if (cachedProfile) {
+          try {
+            setOtherUser(JSON.parse(cachedProfile))
+          } catch(e) {}
+        } else {
+          setOtherUser(null)
+        }
+      } else {
+        setOtherUser(null)
+      }
+
+      // 2. Fetch fresh chat details (synchronizes our knowledge of is_group)
       const { data: chat } = await supabase
         .from('chats')
         .select('*')
         .eq('id', chatId)
         .single()
-      
-      if (chat) setChatDetails(chat)
 
-      // Fetch My Membership
-      const { data: member } = await supabase
-        .from('chat_members')
-        .select('*')
-        .eq('chat_id', chatId)
-        .eq('user_id', user.id)
-        .single()
-      
-      if (member) setMyMembership(member)
+      if (chat) {
+        setChatDetails(chat)
+        localStorage.setItem(`chat_${chatId}`, JSON.stringify(chat))
 
-      // Fetch Total Member Count for groups
-      if (chat?.is_group) {
-        const { count } = await supabase
-          .from('chat_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('chat_id', chatId)
-        if (count !== null) setGroupMemberCount(count)
-      }
-    }
+        if (chat.is_group) {
+          // It's a group: fetch members and membership details
+          const { count } = await supabase
+            .from('chat_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('chat_id', chatId)
+          if (count !== null) setGroupMemberCount(count)
 
-    fetchDetails()
-  }, [chatId, user, supabase])
-
-  useEffect(() => {
-    if (chatId) {
-      const cached = localStorage.getItem(`profile_${chatId}`)
-      if (cached) {
-        const parsed = JSON.parse(cached)
-        // Use cached profile as-is for instant display (including status/last_seen)
-        // The fresh fetch below will overwrite with latest data
-        setOtherUser(parsed)
-      }
-      else setOtherUser(null)
-    } else {
-      setOtherUser(null)
-    }
-    
-    setReplyingTo(null)
-    setForwardingMessage(null)
-    
-    if (!chatId || !user) return
-
-    let otherUserId: string | null = null
-
-    const fetchOtherUser = async () => {
-      try {
-        if (!otherUserId) {
+          const { data: member } = await supabase
+            .from('chat_members')
+            .select('*')
+            .eq('chat_id', chatId)
+            .eq('user_id', user.id)
+            .single()
+          if (member) setMyMembership(member)
+        } else {
+          // It's a DM: fetch the other user's profile
           const { data: members, error: membersError } = await supabase
             .from('chat_members')
             .select('user_id')
@@ -122,53 +129,57 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
             .limit(1)
 
           if (members && members.length > 0) {
-            otherUserId = members[0].user_id
-          } else if (membersError) {
-             console.error("Error fetching other member:", membersError)
-          }
-        }
-
-        if (otherUserId) {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('id, name, email, avatar_url, status, last_seen, availability_status, role')
-            .eq('id', otherUserId)
-            .maybeSingle()
-          
-          if (profile) {
-            setOtherUser(profile)
-            localStorage.setItem(`profile_${chatId}`, JSON.stringify(profile))
-            return
-          } else if (profileError) {
-             console.error("Error fetching profile:", profileError)
-          }
-        }
-        
-        // If no other member found, check if it's a self-chat
-        if (!otherUserId) {
-          const { data: selfMembers } = await supabase
-            .from('chat_members')
-            .select('user_id')
-            .eq('chat_id', chatId)
-            .eq('user_id', user.id)
-          
-          if (selfMembers && selfMembers.length > 0) {
-            setOtherUser({ name: 'Just You (Saved Messages)' })
+            const uid = members[0].user_id
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('id, name, email, avatar_url, status, last_seen, availability_status, role')
+              .eq('id', uid)
+              .maybeSingle()
+            
+            if (profile) {
+              setOtherUser(profile)
+              localStorage.setItem(`profile_${chatId}`, JSON.stringify(profile))
+            } else if (profileError) {
+              console.error("Error fetching profile:", profileError)
+            }
           } else {
-            setOtherUser({ name: 'Unknown Chat' })
+             // If no other member found, check if it's a self-chat
+             const { data: selfMembers } = await supabase
+               .from('chat_members')
+               .select('user_id')
+               .eq('chat_id', chatId)
+               .eq('user_id', user.id)
+             if (selfMembers && selfMembers.length > 0) {
+               setOtherUser({ id: user.id, name: 'Just You (Saved Messages)' })
+             } else {
+               setOtherUser({ name: 'Unknown Chat' })
+             }
           }
         }
-      } catch (err: any) {
-        console.error("fetchOtherUser error:", err)
-        setOtherUser({ name: 'Unknown User' })
       }
     }
-    fetchOtherUser()
 
+    initChat()
+  }, [chatId, user?.id, supabase])
+
+  useEffect(() => {
     // Realtime profile updates (for instant status changes)
-    if (!otherUserId) return
+    const targetUserId = otherUser?.id
+    if (!targetUserId || !chatId) return
+
+    const fetchProfileState = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('status, last_seen, availability_status')
+        .eq('id', targetUserId)
+        .maybeSingle()
+      if (data) {
+        setOtherUser((prev: any) => ({ ...prev, ...data }))
+      }
+    }
+
     const channel = supabase.channel(`header-${chatId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${otherUserId}` }, (payload: any) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${targetUserId}` }, (payload: any) => {
         setOtherUser((prev: any) => {
           if (prev && prev.id === payload.new.id) {
             return { ...prev, ...payload.new }
@@ -178,16 +189,16 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
       })
       .subscribe((status: string) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-           fetchOtherUser()
+           fetchProfileState()
         }
       })
 
     // Poll profile every 10s to match checking interval (failsafe if realtime drops)
-    const statusPoll = setInterval(() => fetchOtherUser(), 10000)
+    const statusPoll = setInterval(() => fetchProfileState(), 10000)
 
     // Also refresh when tab becomes visible
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') fetchOtherUser()
+      if (document.visibilityState === 'visible') fetchProfileState()
     }
     document.addEventListener('visibilitychange', handleVisibility)
 
@@ -196,7 +207,8 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
       clearInterval(statusPoll)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [chatId, user?.id])
+  }, [otherUser?.id, chatId, supabase])
+
 
   useEffect(() => {
     if (!chatId) return
