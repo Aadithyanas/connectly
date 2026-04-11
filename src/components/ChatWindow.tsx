@@ -37,8 +37,22 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
   const [showGroupSettings, setShowGroupSettings] = useState(false)
   const [groupMemberCount, setGroupMemberCount] = useState<number>(0)
   const [accepting, setAccepting] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const supabase = createClient()
   const { settings, isLoaded } = useSettings()
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null)
+
+  // Fetch current user's own profile from DB (auth metadata lags behind)
+  useEffect(() => {
+    if (!user?.id) return
+    supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }: { data: { avatar_url: string } | null }) => { if (data) setCurrentUserProfile(data) })
+  }, [user?.id])
 
   useEffect(() => {
     if (!chatId || !user) return
@@ -271,75 +285,108 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-black h-full overflow-hidden min-w-0">
-      {/* Header */}
-      <div className="h-[56px] bg-[#0a0a0a] flex items-center justify-between px-4 sticky top-0 z-20 border-b border-white/[0.04] shrink-0">
+    <div className="flex-1 flex flex-col bg-[#0e0e0e] h-full overflow-hidden min-w-0">
+      {/* Header — The Nocturnal style */}
+      <div className="glass-header flex items-center justify-between px-4 sticky top-0 z-20 border-b border-white/[0.04] shrink-0" style={{minHeight:'60px'}}>
         <div 
-          className="flex items-center gap-3 cursor-pointer group min-w-0 flex-1 h-full"
+          className="flex items-center gap-3 cursor-pointer group min-w-0 flex-1 h-full py-3"
           onClick={() => onOpenInfo?.()}
         >
           {onBack && (
             <button 
               onClick={(e) => { e.stopPropagation(); onBack(); }}
-              className="md:hidden p-1 mr-1 hover:bg-white/[0.06] rounded-full text-zinc-500"
+              className="md:hidden p-1.5 mr-1 hover:bg-white/[0.06] rounded-full text-[#adaaaa] transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
           )}
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
-              <div className="w-9 h-9 rounded-full bg-white/[0.06] flex items-center justify-center overflow-hidden group-hover:ring-1 group-hover:ring-white/20 transition-all">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden transition-all" style={{border:'1px solid rgba(188,157,255,0.2)'}}>
                 {headerDisplay.avatar ? (
-                  <img src={headerDisplay.avatar} alt="" className="w-9 h-9 object-cover rounded-full" />
+                  <img src={headerDisplay.avatar} alt="" className="w-10 h-10 object-cover rounded-full" />
                 ) : (
-                  <div className="w-full h-full bg-white/[0.08] flex items-center justify-center text-zinc-400 font-bold uppercase text-sm">
+                  <div className="w-full h-full primary-gradient flex items-center justify-center text-white font-bold uppercase text-sm">
                     {headerDisplay.isGroup ? <Users className="w-4 h-4" /> : headerDisplay.name[0]}
                   </div>
                 )}
               </div>
               {!headerDisplay.isGroup && isOtherOnline && otherUser?.availability_status !== false && (
-                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-white rounded-full border-2 border-[#0a0a0a]"></div>
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#bc9dff] rounded-full border-2 border-[#0e0e0e] animate-glow-pulse"></div>
               )}
             </div>
-            <div className="flex flex-col min-w-0 flex-1">
-              <h3 className="text-white text-[14px] font-semibold leading-none mb-1 group-hover:text-zinc-300 transition-colors truncate">{headerDisplay.name}</h3>
-              <div className="flex items-center gap-1.5 overflow-hidden">
-                {!headerDisplay.isGroup && (
-                  <>
-                    <span className="text-[10px] font-bold tracking-tighter uppercase whitespace-nowrap text-zinc-500">
-                      {otherUser?.role === 'professional' ? 'Professional' : 'Student'}
+              <div className="flex flex-col min-w-0 flex-1">
+                {/* Name + role badge on same row */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <h3 className="font-headline text-[#bc9dff] text-[15px] leading-none truncate">{headerDisplay.name}</h3>
+                  {!headerDisplay.isGroup && otherUser?.role && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 uppercase tracking-wider ${
+                      otherUser.role === 'professional'
+                        ? 'bg-[#bc9dff]/15 text-[#bc9dff]'
+                        : 'bg-white/[0.06] text-[#adaaaa]'
+                    }`}>
+                      {otherUser.role === 'professional' ? 'pro' : 'stu'}
                     </span>
-                    <span className="text-zinc-800">·</span>
-                  </>
-                )}
-                <span className={`text-[11px] font-medium truncate ${headerDisplay.status === 'online' || headerDisplay.status === 'typing...' ? 'text-[#22c55e]' : 'text-zinc-500'}`}>
+                  )}
+                </div>
+                {/* Status / last seen below name */}
+                <span className={`text-[11px] font-medium truncate mt-0.5 ${
+                  headerDisplay.status === 'online' || headerDisplay.status === 'typing...' 
+                    ? 'text-[#bc9dff]' 
+                    : 'text-[#666]'
+                }`}>
                   {headerDisplay.status}
                 </span>
               </div>
-            </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 px-1">
+        <div className="flex items-center gap-1 px-1">
           {headerDisplay.isGroup && myMembership?.role === 'admin' && (
             <button 
               onClick={(e) => { e.stopPropagation(); setShowGroupSettings(true); }}
-              className="p-2 text-zinc-500 hover:text-white transition-colors"
+              className="p-2 text-[#adaaaa] hover:text-[#bc9dff] transition-colors"
               title="Community Settings"
             >
               <Settings className="w-4 h-4" />
             </button>
           )}
-          <button className="p-2 text-zinc-500 hover:text-white transition-colors">
-            <Search className="w-4 h-4" />
-          </button>
+          <button 
+              className="p-2 text-[#adaaaa] hover:text-[#bc9dff] transition-colors"
+              onClick={(e) => { e.stopPropagation(); setIsSearchOpen(v => !v); setSearchQuery(''); }}
+            >
+              <Search className="w-4 h-4" />
+            </button>
           <button 
             onClick={() => setShowSettingsModal(true)}
-            className="p-2 text-zinc-500 hover:text-white transition-colors"
+            className="p-2 text-[#adaaaa] hover:text-[#bc9dff] transition-colors"
           >
             <MoreVertical className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Search Bar */}
+      {isSearchOpen && (
+        <div className="px-4 py-2 border-b border-white/[0.04] bg-[#0e0e0e] flex items-center gap-2 shrink-0">
+          <Search className="w-3.5 h-3.5 text-[#666] shrink-0" />
+          <input
+            autoFocus
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search messages…"
+            className="flex-1 bg-transparent text-white text-sm placeholder-[#444] outline-none"
+          />
+          {searchQuery && (
+            <span className="text-[10px] text-[#555] whitespace-nowrap">
+              {messages.filter(m => m.content?.toLowerCase().includes(searchQuery.toLowerCase())).length} results
+            </span>
+          )}
+          <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="text-[#666] hover:text-white transition-colors ml-1">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Invitation Banner */}
       {myMembership?.status === 'invited' && (
@@ -378,11 +425,11 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
           <>
             <div className="flex-1 relative bg-cover bg-center overflow-hidden flex flex-col bg-black">
               <MessageList 
-                messages={messages} 
+                messages={searchQuery ? messages.filter(m => m.content?.toLowerCase().includes(searchQuery.toLowerCase())) : messages} 
                 loading={loading}
                 currentUserId={user?.id || ''} 
                 otherUserAvatar={otherUser?.avatar_url}
-                currentUserAvatar={user?.user_metadata?.avatar_url}
+                currentUserAvatar={currentUserProfile?.avatar_url || user?.user_metadata?.avatar_url}
                 onReply={handleReply}
                 onForward={handleForward}
                 onDelete={deleteMessage}

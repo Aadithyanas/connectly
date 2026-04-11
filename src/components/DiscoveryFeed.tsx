@@ -1,7 +1,7 @@
 'use client'
 
 import { usePosts, Post, PostComment } from '@/hooks/usePosts'
-import { Heart, MessageCircle, Share2, Plus, Briefcase, Rocket, Lightbulb, GraduationCap, Clock, Send, Loader2, X, Play, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Plus, Briefcase, Rocket, Lightbulb, GraduationCap, Clock, Send, Loader2, X, Play, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
 import Image from 'next/image'
 import { useState, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
@@ -30,20 +30,20 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
 
   return (
     <div className="flex-1 flex flex-col h-full bg-black relative w-full min-w-0 overflow-hidden">
-      {/* Header */}
-      <div className="w-full h-[56px] px-4 md:px-6 bg-[#0a0a0a] border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0">
-        <div className="flex items-center gap-4">
+      {/* Header — The Nocturnal style */}
+      <div className="w-full px-4 md:px-6 py-3 glass-header border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0" style={{minHeight:'60px'}}>
+        <div className="flex items-center gap-3">
           {onBack && (
-            <button onClick={onBack} className="md:hidden p-1 hover:bg-white/[0.06] rounded-full text-zinc-500">
+            <button onClick={onBack} className="md:hidden p-1.5 hover:bg-white/[0.06] rounded-full text-[#adaaaa] transition-colors">
               <ChevronLeft className="w-5 h-5" />
             </button>
           )}
           <div>
-            <h1 className="text-white text-base md:text-lg font-bold tracking-tight flex items-center gap-2">
+            <h1 className="font-headline text-[#bc9dff] text-lg md:text-xl tracking-tight flex items-center gap-2">
               {filterUserId ? 'Achievements' : 'Discovery'}
-              <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#bc9dff] animate-pulse inline-block"></span>
             </h1>
-            <p className="text-zinc-600 text-[9px] uppercase font-bold tracking-widest mt-0.5">
+            <p className="text-[#adaaaa] text-[9px] uppercase font-bold tracking-widest mt-0.5">
               {filterUserId ? 'Individual Journey' : 'Community Feed'}
             </p>
           </div>
@@ -51,7 +51,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
         {filterUserId ? (
           <button 
             onClick={onClearFilter}
-            className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors font-bold text-xs uppercase cursor-pointer"
+            className="flex items-center gap-2 text-[#adaaaa] hover:text-white transition-colors font-bold text-xs uppercase cursor-pointer"
           >
             <X className="w-4 h-4" />
             Back
@@ -59,7 +59,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
         ) : (
           <button 
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-white hover:bg-zinc-200 text-black px-3 md:px-5 py-2 rounded-full font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95"
+            className="flex items-center gap-2 primary-gradient text-white px-4 py-2 rounded-full font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 primary-shadow hover:opacity-90"
           >
             <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Post</span>
@@ -68,23 +68,35 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
       </div>
 
       {!filterUserId && (
-        <div className="w-full px-4 md:px-6 py-3 bg-[#0a0a0a] border-b border-white/[0.04] flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth shrink-0">
+        <div className="w-full px-4 md:px-6 py-3 bg-[#0e0e0e] border-b border-white/[0.04] flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth shrink-0">
           <button 
             onClick={() => setRoleFilter('all')}
-            className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${roleFilter === 'all' ? 'bg-white text-black' : 'bg-white/[0.04] text-zinc-500 hover:text-white hover:bg-white/[0.08]'}`}
+            className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+              roleFilter === 'all' 
+                ? 'primary-gradient text-white primary-shadow' 
+                : 'bg-[#1a1a1a] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-[#20201f]'
+            }`}
           >
             All Posts
           </button>
           <button 
             onClick={() => setRoleFilter('professional')}
-            className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${roleFilter === 'professional' ? 'bg-blue-500 text-white' : 'bg-white/[0.04] text-zinc-500 hover:text-white hover:bg-white/[0.08]'}`}
+            className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${
+              roleFilter === 'professional' 
+                ? 'bg-[#5e289b] text-white' 
+                : 'bg-[#1a1a1a] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-[#20201f]'
+            }`}
           >
             <Briefcase className="w-3 h-3" />
             Professionals
           </button>
           <button 
             onClick={() => setRoleFilter('student')}
-            className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${roleFilter === 'student' ? 'bg-purple-500 text-white' : 'bg-white/[0.04] text-zinc-500 hover:text-white hover:bg-white/[0.08]'}`}
+            className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${
+              roleFilter === 'student' 
+                ? 'bg-[#5e289b] text-white' 
+                : 'bg-[#1a1a1a] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-[#20201f]'
+            }`}
           >
             <GraduationCap className="w-3 h-3" />
             Students
@@ -103,7 +115,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
 
       {/* Feed Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar w-full p-0 md:p-6 pb-32">
-        <div className="max-w-5xl mx-auto space-y-0 md:space-y-6 md:p-0">
+        <div className="w-full md:max-w-5xl md:mx-auto md:space-y-8 md:p-0">
           {posts.length === 0 && !loading ? (
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
               <div className="p-6 bg-white/[0.03] rounded-2xl border border-white/[0.04]">
@@ -222,7 +234,7 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
   }
 
   return (
-    <div className="relative group w-full max-w-2xl xl:max-w-3xl mx-auto bg-black md:bg-[#0a0a0a] md:border border-white/[0.04] md:rounded-2xl overflow-hidden shadow-none md:shadow-xl transition-all duration-300 pb-2 mb-2 md:mb-8">
+    <div className="relative group w-full md:max-w-2xl xl:max-w-3xl md:mx-auto bg-[#0e0e0e] md:border border-white/[0.03] md:rounded-[1.5rem] overflow-hidden transition-all duration-300 pb-2" style={{boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}}>
       {fullscreenMedia && (
         <div 
           className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 md:p-12"
@@ -244,27 +256,29 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
       )}
 
       {/* Header */}
-      <div className="px-3 py-3 flex items-center justify-between">
+      <div className="px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/[0.06] shrink-0">
-            {post.user?.avatar_url ? (
-              <img src={post.user.avatar_url} alt="User" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-600 flex items-center justify-center font-bold text-white uppercase text-xs">
-                {post.user?.name?.[0] || '?'}
-              </div>
+          <div className="relative shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-[#bc9dff]/20">
+              {post.user?.avatar_url ? (
+                <img src={post.user.avatar_url} alt="User" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full primary-gradient flex items-center justify-center font-bold text-white uppercase text-sm">
+                  {post.user?.name?.[0] || '?'}
+                </div>
+              )}
+            </div>
+            {post.user?.role === 'professional' && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#5e289b] rounded-full flex items-center justify-center text-[8px] text-white border border-[#0e0e0e]">✔</span>
             )}
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5 leading-tight">
-              <span className="text-white font-bold text-[13px] hover:underline cursor-pointer">{post.user?.name}</span>
-              {/* Fake verified badge for premium feel */}
-              {post.user?.role === 'professional' && <span className="text-blue-400 text-[10px]">✔</span>}
-              <span className="text-zinc-500 font-medium text-[11px] ml-1">· {new Date(post.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+              <span className="font-headline text-white text-sm hover:text-[#bc9dff] cursor-pointer transition-colors">{post.user?.name}</span>
+              <span className="text-[#adaaaa] text-[11px] ml-1">· {new Date(post.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
             </div>
-            {/* Category tag */}
             {post.category && (
-              <span className="text-[10px] text-zinc-500 font-medium">
+              <span className="text-[10px] text-[#bc9dff]/60 font-medium uppercase tracking-wider">
                 {post.category.replace('_', ' ')}
               </span>
             )}
@@ -315,9 +329,9 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
         </div>
       )}
 
-      {/* Media Carousel (Edge to Edge) */}
+      {/* Media Carousel — Nocturnal style */}
       {post.media_urls && post.media_urls.length > 0 && (
-        <div className="relative w-full bg-[#050505] flex items-center justify-center group/carousel border-y border-white/[0.02]">
+        <div className="relative w-full bg-[#0a0a0a] flex items-center justify-center group/carousel overflow-hidden md:rounded-[1.5rem] my-0 md:my-2">
           <div 
             ref={scrollRef} onScroll={handleScroll}
             className="w-full max-h-[85vh] overflow-x-auto overflow-y-hidden flex snap-x snap-mandatory no-scrollbar"
@@ -381,13 +395,13 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
 
       {/* Title & Description for Text-Only posts */}
       {(!post.media_urls || post.media_urls.length === 0) && !isEditingPost && (
-        <div className="px-4 py-6 bg-gradient-to-br from-zinc-900 to-black rounded-xl m-3 border border-white/[0.04]">
-          {post.title && <h3 className="text-white font-bold text-xl mb-3 leading-tight">{post.title}</h3>}
-          <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">
+        <div className="px-5 py-6 mx-3 my-2 rounded-[1.25rem]" style={{background:'linear-gradient(135deg, #1a1a1a 0%, #0e0e0e 100%)', border:'1px solid rgba(188,157,255,0.08)'}}>
+          {post.title && <h3 className="font-headline text-white text-xl mb-3 leading-tight">{post.title}</h3>}
+          <p className="text-[#adaaaa] text-sm leading-relaxed whitespace-pre-wrap">
             {!isExpanded && post.content && post.content.length > 200 ? (
               <>
                 {post.content.slice(0, 200)}...
-                <button onClick={() => setIsExpanded(true)} className="text-zinc-500 font-medium ml-1">more</button>
+                <button onClick={() => setIsExpanded(true)} className="text-[#bc9dff] font-medium ml-1">more</button>
               </>
             ) : (
               post.content
@@ -397,87 +411,112 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
       )}
 
       {/* Interaction Bar */}
-      <div className="px-3 pt-3 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-5">
           <button 
             onClick={(e) => { e.stopPropagation(); onLike(); }}
             className={`transition-all active:scale-90 group/btn`}
           >
-            <Heart className={`w-6 h-6 transition-colors ${post.is_liked ? 'fill-red-500 text-red-500' : 'text-white hover:text-zinc-400 group-hover/btn:text-zinc-300'}`} />
+            <Heart className={`w-6 h-6 transition-colors ${post.is_liked ? 'fill-[#ff97b8] text-[#ff97b8]' : 'text-[#adaaaa] hover:text-[#ff97b8] group-hover/btn:text-[#ff97b8]'}`} />
           </button>
           <button 
             onClick={toggleComments}
-            className={`transition-all active:scale-90 text-white hover:text-zinc-400`}
+            className="transition-all active:scale-90 text-[#adaaaa] hover:text-[#bc9dff]"
           >
             <MessageCircle className="w-6 h-6 -scale-x-100" />
           </button>
           {!isPostOwner && onStartChat && (
             <button 
               onClick={(e) => { e.stopPropagation(); onStartChat(post.user_id, post); }}
-              className="transition-all active:scale-90 text-white hover:text-zinc-400"
+              className="transition-all active:scale-90 text-[#adaaaa] hover:text-[#bc9dff]"
             >
               <Send className="w-[22px] h-[22px] -mt-0.5 -rotate-[20deg]" />
             </button>
           )}
         </div>
         <div className="flex justify-center flex-1">
-          {/* Pagination dots bottom */}
-          {post.media_urls && post.media_urls.length > 1 && (
-            <div className="flex gap-1.5 items-center">
-              {post.media_urls.map((_: string, idx: number) => (
-                <div key={idx} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === activeMediaIndex ? 'bg-blue-500' : 'bg-zinc-700'}`} />
-              ))}
-            </div>
-          )}
         </div>
-        <button className="text-white hover:text-zinc-400 active:scale-90 transition-all">
+        <button className="text-[#adaaaa] hover:text-[#bc9dff] active:scale-90 transition-all">
           <Share2 className="w-6 h-6" />
         </button>
       </div>
 
+      {/* Carousel dots — centered below media, Instagram style */}
+      {post.media_urls && post.media_urls.length > 1 && (
+        <div className="flex items-center justify-center gap-1.5 pb-1 -mt-1">
+          {post.media_urls.map((_: string, i: number) => {
+            const total = post.media_urls.length
+            const isActive = i === activeMediaIndex
+            // Instagram compact: show small dots for non-adjacent when > 5
+            const distFromActive = Math.abs(i - activeMediaIndex)
+            const isVisible = total <= 5 || distFromActive <= 2
+            const isTiny = total > 5 && distFromActive === 2
+            if (!isVisible) return null
+            return (
+              <div
+                key={i}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width: isActive ? '16px' : isTiny ? '4px' : '6px',
+                  height: isActive ? '6px' : isTiny ? '4px' : '6px',
+                  backgroundColor: isActive ? '#bc9dff' : '#484847',
+                  opacity: isTiny ? 0.5 : 1,
+                }}
+              />
+            )
+          })}
+        </div>
+      )}
+
       {/* Likes Count */}
-      <div className="px-3.5 mb-1.5">
-        <span className="text-[13px] text-white font-bold cursor-pointer">{post.likes_count} likes</span>
+      <div className="px-4 mb-1.5">
+        <span className="font-headline text-[13px] text-white cursor-pointer">{post.likes_count} likes</span>
       </div>
 
       {/* Title & Description with Media */}
       {post.media_urls && post.media_urls.length > 0 && (post.title || post.content) && !isEditingPost && (
-        <div className="px-3.5 mb-2">
-          <p className="text-[13px] text-zinc-100 leading-tight whitespace-pre-wrap">
-            <span className="font-bold text-white mr-1.5 cursor-pointer hover:underline">{post.user?.name}</span>
+        <div className="px-4 mb-2">
+          <p className="text-[13px] text-[#ffffff] leading-tight whitespace-pre-wrap">
+            <span className="font-headline text-white mr-1.5 cursor-pointer hover:text-[#bc9dff] transition-colors">{post.user?.name}</span>
             {post.title && <span className="font-medium mr-1">{post.title}</span>}
             {!isExpanded && post.content && post.content.length > 100 ? (
               <>
-                <span className="text-zinc-300">{post.content.slice(0, 100)}...</span>
-                <button onClick={() => setIsExpanded(true)} className="text-zinc-500 font-medium ml-1">more</button>
+                <span className="text-[#adaaaa]">{post.content.slice(0, 100)}...</span>
+                <button onClick={() => setIsExpanded(true)} className="text-[#bc9dff] font-medium ml-1">more</button>
               </>
             ) : (
-              <span className="text-zinc-300">{post.content}</span>
+              <span className="text-[#adaaaa]">{post.content}</span>
             )}
           </p>
         </div>
       )}
 
-      {/* Comments Preview Line */}
+      {/* Comments Preview / Toggle */}
       {(post.comments_count > 0 || showComments) && (
-        <div className="px-3.5 mb-2">
+        <div className="px-4 mb-2 flex items-center justify-between">
           {!showComments ? (
-            <button onClick={toggleComments} className="text-[13px] text-zinc-500 font-medium hover:text-zinc-400">
-              View all {post.comments_count} comments
+            <button onClick={toggleComments} className="text-[13px] text-[#adaaaa] font-medium hover:text-white transition-colors">
+              View all {post.comments_count} {post.comments_count === 1 ? 'comment' : 'comments'}
             </button>
           ) : (
-             <span className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider">Comments</span>
+            <button 
+              onClick={toggleComments}
+              className="flex items-center gap-1.5 text-[11px] uppercase font-bold text-[#bc9dff] tracking-wider hover:text-white transition-colors"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+              Hide comments
+            </button>
           )}
         </div>
       )}
 
-      {/* Inline Add Comment (Always visible like instagram) */}
-      <form onSubmit={handleAddComment} className="px-3.5 mt-1 pb-2 flex items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-white/[0.06] overflow-hidden shrink-0 border border-white/[0.04]">
+      {/* Inline Add Comment */}
+      <form onSubmit={handleAddComment} className="px-4 mt-1 pb-2 flex items-center gap-3">
+        <div className="w-7 h-7 rounded-full overflow-hidden shrink-0" style={{border:'1px solid rgba(188,157,255,0.2)'}}>
           {user?.user_metadata?.avatar_url ? (
             <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-[8px] text-zinc-500 font-bold uppercase">{user?.user_metadata?.name?.[0] || 'U'}</div>
+            <div className="w-full h-full primary-gradient flex items-center justify-center text-[9px] text-white font-bold uppercase">{user?.user_metadata?.name?.[0] || 'U'}</div>
           )}
         </div>
         <input 
@@ -485,13 +524,13 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
           placeholder="Add a comment..."
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
-          className="flex-1 bg-transparent text-[13px] text-white placeholder-zinc-500 outline-none"
+          className="flex-1 bg-transparent text-[13px] text-white placeholder-[#adaaaa] outline-none"
         />
         {commentText.trim() && (
           <button 
             type="submit"
             disabled={submitting}
-            className="text-blue-500 font-bold text-[13px] px-1 disabled:opacity-50 transition-opacity"
+            className="text-[#bc9dff] font-bold text-[13px] px-1 disabled:opacity-50 transition-opacity"
           >
             {submitting ? '...' : 'Post'}
           </button>

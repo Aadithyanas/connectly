@@ -16,13 +16,13 @@ const getWaveform = (src: string) => {
   
   const bars = []
   for (let i = 0; i < 40; i++) {
-    const sin1 = Math.abs(Math.sin(hash + i * 0.5)) * 10
-    const sin2 = Math.abs(Math.cos(hash + i * 1.2)) * 15
-    const noise = (Math.abs(Math.sin(hash * i)) * 5)
+    const sin1 = Math.abs(Math.sin(hash + i * 0.5)) * 6
+    const sin2 = Math.abs(Math.cos(hash + i * 1.2)) * 8
+    const noise = (Math.abs(Math.sin(hash * i)) * 3)
     let height = Math.floor(sin1 + sin2 + noise + 2)
     if (i < 3 || i > 37) height = height * 0.4
     if (i < 6 || i > 34) height = height * 0.7
-    bars.push(Math.max(3, Math.min(22, height)))
+    bars.push(Math.max(2, Math.min(14, height)))
   }
   return bars
 }
@@ -97,64 +97,69 @@ export default function CustomAudioPlayer({ src, isOwn, avatarUrl }: CustomAudio
   const inactiveColorClass = 'bg-white/20'
 
   return (
-    <div className="flex items-center gap-1.5 sm:gap-3 p-0.5 sm:p-1 w-full min-w-[160px] max-w-[320px]">
+    <div className="flex items-center gap-1.5 px-2 py-1.5 w-full" style={{minWidth:'170px', maxWidth:'220px'}}>
+      {/* Play button */}
       <button 
         onClick={togglePlayPause} 
-        className="p-1.5 sm:p-2 hover:bg-white/5 rounded-full transition-colors flex shrink-0"
+        className="p-1 hover:bg-white/5 rounded-full transition-colors flex shrink-0"
       >
         {isPlaying ? (
-          <Pause className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-zinc-400" />
+          <Pause className="w-3.5 h-3.5 fill-current text-white/80" />
         ) : (
-          <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-zinc-400 ml-0.5" />
+          <Play className="w-3.5 h-3.5 fill-current text-white/80 ml-0.5" />
         )}
       </button>
 
-      <div className="flex-1 flex flex-col justify-center gap-0.5 sm:gap-1 min-w-[80px] sm:min-w-[140px] mx-0.5 sm:mx-1">
-        <div className="relative w-full h-8 sm:h-10 flex items-center justify-between group cursor-pointer gap-[1px] sm:gap-[2px]">
-           {waveform.map((h, i) => {
-              if (i % 2 !== 0) return null
-              const barPercent = (i / waveform.length) * 100
-              const isPlayed = progress >= barPercent
-              return (
-                <div 
-                  key={i} 
-                  className={`w-[2px] sm:w-[3px] rounded-full transition-colors ${!isPlayed ? inactiveColorClass : ''}`} 
-                  style={{ height: `${h}px`, backgroundColor: isPlayed ? activeColor : undefined }} 
-                />
-              )
-            })}
-            
-            <input 
+      {/* Waveform + time stacked */}
+      <div className="flex-1 flex flex-col justify-center min-w-0">
+        {/* Bars — centered vertically */}
+        <div className="relative w-full flex items-center" style={{height:'20px'}}>
+           <div className="absolute inset-0 flex items-center justify-between">
+             {waveform.map((h, i) => {
+               if (i % 2 !== 0) return null
+               const barPercent = (i / waveform.length) * 100
+               const isPlayed = progress >= barPercent
+               return (
+                 <div 
+                   key={i} 
+                   className={`w-[2px] rounded-full transition-colors flex-shrink-0 ${!isPlayed ? inactiveColorClass : ''}`} 
+                   style={{ height: `${h}px`, backgroundColor: isPlayed ? activeColor : undefined }} 
+                 />
+               )
+             })}
+           </div>
+           {/* Scrub dot */}
+           <div 
+             className="w-2 h-2 rounded-full absolute z-10 top-1/2 -translate-y-1/2 pointer-events-none bg-white shadow"
+             style={{ left: `calc(${progress}% - 4px)` }}
+           />
+           {/* Transparent range input for seeking */}
+           <input 
              type="range" 
              min="0" 
              max={duration || 100} 
              value={currentTime} 
              onChange={handleSeek}
-             className="w-full absolute z-10 opacity-0 cursor-pointer h-full" 
+             className="absolute inset-0 w-full opacity-0 cursor-pointer" 
            />
-           <div 
-             className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full absolute z-10 top-1/2 -translate-y-1/2 shadow-sm pointer-events-none transition-all bg-white"
-             style={{ left: `calc(${progress}% - 5px)` }}
-           ></div>
         </div>
-
-        <div className="flex items-center justify-between -mt-0.5">
-          <span className="text-[10px] sm:text-[11px] text-white/40 tabular-nums font-medium">
-            {formatTime(currentTime > 0 ? currentTime : duration)}
-          </span>
-        </div>
+        {/* Duration */}
+        <span className="text-[8px] text-white/35 tabular-nums font-medium mt-0.5">
+          {formatTime(currentTime > 0 ? currentTime : duration)}
+        </span>
       </div>
 
-      <div className="relative flex shrink-0 ml-1 sm:ml-2">
-        <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-white/[0.06] flex items-center justify-center overflow-hidden border border-white/[0.06]">
+      {/* Avatar */}
+      <div className="relative flex shrink-0 ml-0.5">
+        <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center overflow-hidden border border-white/[0.06]">
           {avatarUrl ? (
-            <Image src={avatarUrl} alt="Avatar" width={44} height={44} className="object-cover" />
+            <Image src={avatarUrl} alt="Avatar" width={24} height={24} className="object-cover" />
           ) : (
-            <User className="w-5 h-5 sm:w-6 sm:h-6 text-zinc-600" />
+            <User className="w-3.5 h-3.5 text-zinc-600" />
           )}
         </div>
-        <div className="absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-white rounded-full flex items-center justify-center border border-black">
-           <Mic className="w-2 sm:w-2.5 h-2 sm:h-2.5 text-black" />
+        <div className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 bg-white rounded-full flex items-center justify-center border border-black">
+           <Mic className="w-1 h-1 text-black" />
         </div>
       </div>
     </div>

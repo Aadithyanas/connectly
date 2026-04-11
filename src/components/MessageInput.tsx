@@ -136,7 +136,7 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
   }
 
   return (
-    <div className="bg-[#0a0a0a] border-t border-white/[0.04] relative pb-2 sm:pb-0">
+    <div className="relative pb-2 sm:pb-3" style={{background:'rgba(14,14,14,0.9)'}}>
       {/* Emoji Picker */}
       {showEmojiPicker && (
         <div className="absolute bottom-[calc(100%+8px)] left-2 sm:left-4 z-[999] shadow-2xl rounded-xl overflow-hidden border border-white/[0.06] origin-bottom-left">
@@ -172,7 +172,8 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
       )}
 
       {/* Input Area */}
-      <div className="min-h-[52px] flex items-center px-3 sm:px-4 py-1.5 gap-2">
+      <div className="min-h-[52px] flex items-end px-3 sm:px-4 py-2 gap-2">
+        <div className="flex-1 glass-dock rounded-[1.5rem] flex items-center gap-1 px-2 py-1.5">
         {isRecording ? (
           <div className="flex-1 flex items-center justify-between bg-white/[0.04] rounded-full py-2 px-4">
             <div className="flex items-center gap-3 text-red-400">
@@ -185,10 +186,10 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
           </div>
         ) : (
           <>
-            <div className="flex gap-1 text-zinc-600 shrink-0">
+            <div className="flex gap-1 text-[#adaaaa] shrink-0">
               <button 
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
-                className={`p-2 hover:bg-white/[0.06] rounded-full transition-colors ${showEmojiPicker ? 'bg-white/[0.06] text-white' : ''}`}
+                className={`p-2 hover:bg-white/[0.06] rounded-full transition-colors ${showEmojiPicker ? 'bg-white/[0.06] text-[#bc9dff]' : ''}`}
               >
                 <Smile className="w-5 h-5" />
               </button>
@@ -208,28 +209,29 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
                 type="text"
                 placeholder={isUploading ? "Uploading media..." : "Type a message"}
                 disabled={isUploading}
-                className="w-full bg-white/[0.04] text-white rounded-lg py-2 px-4 focus:ring-0 border border-white/[0.04] focus:border-white/[0.08] placeholder-zinc-700 text-[14px] disabled:opacity-50 outline-none transition-all"
+                className="w-full bg-transparent text-white py-2.5 px-2 focus:ring-0 border-none placeholder-[#767575] text-[14px] disabled:opacity-50 outline-none transition-all"
                 value={content}
                 onChange={handleChange}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
                 onClick={() => setShowEmojiPicker(false)}
               />
             </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
 
-        <div className="flex items-center text-zinc-500 shrink-0 ml-1">
+        <div className="flex items-center text-[#adaaaa] shrink-0">
           {content.trim() ? (
-            <button onClick={handleSend} className="p-2.5 bg-white hover:bg-zinc-200 text-black rounded-full transition-all active:scale-95">
+            <button onClick={handleSend} className="p-2.5 primary-gradient text-white rounded-full transition-all active:scale-95 primary-shadow ml-1">
               <Send className="w-4 h-4" />
             </button>
           ) : isRecording ? (
-            <button onClick={() => stopRecording(false)} className="p-2.5 bg-white hover:bg-zinc-200 text-black rounded-full transition-all active:scale-95">
+            <button onClick={() => stopRecording(false)} className="p-2.5 primary-gradient text-white rounded-full transition-all active:scale-95 primary-shadow ml-1">
               <Send className="w-4 h-4 pl-0.5" />
             </button>
           ) : (
-            <button onClick={startRecording} className="p-2.5 bg-white/[0.06] hover:bg-white/[0.1] text-zinc-400 rounded-full transition-colors">
-              <Mic className="w-4 h-4" />
+            <button onClick={startRecording} className="p-2 hover:bg-white/[0.06] text-[#adaaaa] hover:text-[#bc9dff] rounded-full transition-colors ml-1">
+              <Mic className="w-5 h-5" />
             </button>
           )}
         </div>

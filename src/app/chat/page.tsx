@@ -227,53 +227,63 @@ export default function ChatPage() {
         )}
       </div>
 
-      {/* Mobile Floating Nav */}
-      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] items-center justify-between px-1 h-[52px] bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/[0.08] rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.6)] w-[90%] max-w-[320px] ${(!activeChatId && !isInfoSidebarOpen) ? 'flex md:hidden' : 'hidden'}`}>
+      {/* Mobile Floating Nav — The Nocturnal glass dock */}
+      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] items-center justify-between px-1 h-[58px] glass-dock rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.7),0_0_0_1px_rgba(188,157,255,0.06)] w-[90%] max-w-[340px] ${(!activeChatId && !isInfoSidebarOpen) ? 'flex md:hidden' : 'hidden'}`}>
           <button 
             onClick={() => setActiveTab('chat')}
-            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'chat' ? 'text-white' : 'text-zinc-600'}`}
+            className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
+              activeTab === 'chat' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
+            }`}
           >
-            {activeTab === 'chat' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
-            <Home className="w-[18px] h-[18px]" />
+            {activeTab === 'chat' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
+            <Home className="w-[20px] h-[20px]" />
           </button>
           
           <button 
             onClick={() => setIsNewChatModalOpen(true)}
-            className="flex items-center justify-center w-11 h-11 text-zinc-600 hover:text-white transition-colors"
+            className="flex items-center justify-center w-11 h-11 text-[#767575] hover:text-[#bc9dff] transition-colors"
           >
             <Plus className="w-5 h-5" />
           </button>
 
           <button 
             onClick={() => setActiveTab('groups')}
-            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'groups' ? 'text-white' : 'text-zinc-600'}`}
+            className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
+              activeTab === 'groups' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
+            }`}
           >
-            {activeTab === 'groups' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
-            <Users className="w-[18px] h-[18px]" />
+            {activeTab === 'groups' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
+            <Users className="w-[20px] h-[20px]" />
           </button>
 
           <button 
             onClick={() => setActiveTab('feed')}
-            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'feed' ? 'text-white' : 'text-zinc-600'}`}
+            className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
+              activeTab === 'feed' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
+            }`}
           >
-            {activeTab === 'feed' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
-            <Compass className="w-[18px] h-[18px]" />
+            {activeTab === 'feed' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
+            <Compass className="w-[20px] h-[20px]" />
           </button>
 
           <button 
             onClick={() => setActiveTab('status')}
-            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'status' ? 'text-white' : 'text-zinc-600'}`}
+            className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
+              activeTab === 'status' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
+            }`}
           >
-            {activeTab === 'status' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
-            <StatusCircle className="w-[18px] h-[18px]" />
+            {activeTab === 'status' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
+            <StatusCircle className="w-[20px] h-[20px]" />
           </button>
 
           <button 
             onClick={() => setActiveTab('challenges')}
-            className={`relative flex items-center justify-center w-11 h-11 transition-all duration-200 ${activeTab === 'challenges' ? 'text-white' : 'text-zinc-600'}`}
+            className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
+              activeTab === 'challenges' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
+            }`}
           >
-            {activeTab === 'challenges' && <div className="absolute top-[-6px] w-5 h-0.5 bg-white rounded-full" />}
-            <Trophy className="w-[18px] h-[18px]" />
+            {activeTab === 'challenges' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
+            <Trophy className="w-[20px] h-[20px]" />
           </button>
         </div>
 

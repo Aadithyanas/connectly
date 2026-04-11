@@ -252,11 +252,22 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
  
                 {/* Bubble */}
                 <div
-                  className={`p-2.5 rounded-2xl relative w-fit min-w-[85px] border ${
-                    message.is_deleted_everyone 
-                      ? 'bg-white/[0.02] border-white/[0.02] italic' 
-                      : isOwn ? 'bg-[#1a1a1a] text-white border-white/[0.06] rounded-br-[4px]' : 'bg-white/[0.04] text-white border-white/[0.04] rounded-bl-[4px]'
+                  className={`rounded-2xl relative w-fit ${
+                    message.is_deleted_everyone
+                      ? 'p-3 min-w-[85px] bg-white/[0.02] italic'
+                      : (message.media_type === 'image' || message.media_type === 'video') && !message.content
+                        ? isOwn
+                          ? 'message-gradient rounded-br-[4px] overflow-hidden'
+                          : 'bg-transparent rounded-bl-[4px] overflow-hidden'
+                        : message.media_type === 'audio'
+                          ? isOwn
+                            ? 'message-gradient text-white rounded-br-[4px] p-2'
+                            : 'bg-[#1a1a1a] text-white rounded-bl-[4px] p-2'
+                        : isOwn
+                          ? 'p-3 min-w-[85px] message-gradient text-white rounded-br-[4px]'
+                          : 'p-3 min-w-[85px] bg-[#1a1a1a] text-white rounded-bl-[4px]'
                    }`}
+                   style={isOwn && !message.is_deleted_everyone ? {boxShadow:'0 4px 20px rgba(188,157,255,0.15)'} : undefined}
                    onContextMenu={(e) => handleOpenMenu(e, message.id)}
                 >
                   {/* Forwarded */}
@@ -269,8 +280,12 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
 
                   {/* Reply Preview */}
                   {message.reply && !message.is_deleted_everyone && (
-                    <div className={`mx-1 mb-1 px-2.5 py-1.5 rounded-lg border-l-2 ${isOwn ? 'bg-white/[0.06] border-zinc-500' : 'bg-white/[0.04] border-zinc-600'}`}>
-                      <p className="text-zinc-400 text-[11px] font-bold mb-0.5">
+                    <div className={`mx-1 mb-2 px-2.5 py-1.5 rounded-lg border-l-2 ${
+                      isOwn 
+                        ? 'bg-white/10 border-white/40' 
+                        : 'bg-white/[0.04] border-[#bc9dff]'
+                    }`}>
+                      <p className="text-[11px] font-bold mb-0.5" style={{color: isOwn ? 'rgba(255,255,255,0.7)' : '#bc9dff'}}>
                         {message.reply.sender_id === currentUserId ? 'You' : 'Them'}
                       </p>
                       <p className="text-white/50 text-[12px] truncate leading-tight">
@@ -283,7 +298,7 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                   {message.media_url && !message.is_deleted_everyone && (
                     <div className="mb-1">
                       {message.media_type === 'image' && (
-                        <div className="relative rounded-lg overflow-hidden flex items-center justify-center bg-black/10 group/media">
+                        <div className="relative overflow-hidden group/media w-full">
                           <FlickerFreeMedia 
                             url={message.media_url} 
                             type={message.media_type || 'image'}
@@ -292,7 +307,7 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                                 setFullscreenImage(message.media_url as string)
                               }
                             }}
-                            className={`max-w-full max-h-[350px] w-auto h-auto object-contain rounded-lg transition-all duration-500 ${
+                            className={`w-full max-h-[240px] object-cover transition-all duration-500 ${
                               (!isOwn && !downloadedIds.has(message.id)) ? 'blur-[30px] scale-110 grayscale' : 
                               (isOwn && message.status === 'sending') ? 'blur-[8px]' : 'cursor-pointer hover:opacity-95'
                             }`} 
@@ -327,7 +342,7 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                             url={message.media_url} 
                             type="video"
                             controls={(isOwn || downloadedIds.has(message.id))}
-                            className={`max-w-full max-h-[350px] w-auto h-auto rounded-lg transition-all duration-500 ${
+                            className={`w-full max-h-[280px] rounded-lg transition-all duration-500 ${
                               (!isOwn && !downloadedIds.has(message.id)) ? 'blur-[30px] scale-110 grayscale' : 
                               (isOwn && message.status === 'sending') ? 'blur-[8px]' : ''
                             }`} 
@@ -357,7 +372,7 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                         </div>
                       )}
                       {message.media_type === 'audio' && (
-                        <div className="py-1 px-1 min-w-[200px] relative">
+                        <div className="relative" style={{width:"220px"}}>
                           {message.status === 'sending' && (
                             <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[1px] flex items-center justify-center z-10 rounded-lg">
                                <Loader2 className="w-6 h-6 text-white animate-spin" />
@@ -387,20 +402,20 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
                       </p>
                     )}
 
-                    <div className={`flex items-center gap-1.5 absolute bottom-0 right-0 ${message.media_url && !message.content ? 'bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full ring-1 ring-white/10' : ''}`}>
+                    <div className={`flex items-center gap-1.5 absolute bottom-0 right-0 ${message.media_url && !message.content && message.media_type !== 'audio' ? 'bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full ring-1 ring-white/10' : ''}`}>
                       <span className="text-[10px] text-white/40 tabular-nums lowercase select-none whitespace-nowrap">
                         {format(new Date(message.created_at), 'h:mm a')}
                       </span>
                       {isOwn && (
                         <div className="flex items-center">
                           {message.status === 'sending' ? (
-                            <Clock className="w-3 h-3 text-white/30 animate-pulse" />
+                            <Clock className="w-3 h-3 text-white/40 animate-pulse" />
                           ) : message.status === 'sent' ? (
-                            <Check className="w-3.5 h-3.5 text-white/30" />
+                            <Check className="w-3.5 h-3.5 text-white/40" />
                           ) : message.status === 'delivered' ? (
-                            <CheckCheck className="w-4 h-4 text-white/30" />
+                            <CheckCheck className="w-4 h-4 text-white/40" />
                           ) : (
-                            <CheckCheck className="w-4 h-4 text-[#34B7F1]" />
+                            <CheckCheck className="w-4 h-4 text-[#bc9dff]" />
                           )}
                         </div>
                       )}
@@ -422,10 +437,11 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
           <motion.div 
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="fixed z-[1001] bg-[#111] border border-white/10 rounded-xl shadow-2xl py-1.5 min-w-[170px] backdrop-blur-md"
+            className="fixed z-[1001] bg-[#1a1a1a] border border-white/[0.06] rounded-2xl shadow-2xl py-1.5 min-w-[180px] overflow-hidden"
             style={{ 
-              top: Math.min(menuAnchor.y, typeof window !== 'undefined' ? window.innerHeight - 250 : menuAnchor.y), 
-              left: Math.min(menuAnchor.x, typeof window !== 'undefined' ? window.innerWidth - 180 : menuAnchor.x) 
+              top: Math.min(menuAnchor.y, typeof window !== 'undefined' ? window.innerHeight - 260 : menuAnchor.y), 
+              left: Math.min(menuAnchor.x, typeof window !== 'undefined' ? window.innerWidth - 195 : menuAnchor.x),
+              boxShadow: '0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(188,157,255,0.06)'
             }}
           >
             <button 

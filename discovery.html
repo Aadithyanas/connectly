@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Nocturnal | Discovery</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&amp;family=Manrope:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-container": "#2d006d",
+                    "tertiary-fixed-dim": "#f57ca5",
+                    "on-secondary-container": "#e1c5ff",
+                    "surface-container": "#1a1a1a",
+                    "primary-fixed": "#b08cff",
+                    "on-secondary-fixed": "#4a0b87",
+                    "on-secondary": "#340064",
+                    "error-container": "#a70138",
+                    "on-primary": "#3b008a",
+                    "tertiary-dim": "#ef77a0",
+                    "background": "#0e0e0e",
+                    "tertiary-fixed": "#ff8db2",
+                    "error": "#ff6e84",
+                    "inverse-primary": "#7327ef",
+                    "error-dim": "#d73357",
+                    "secondary-dim": "#ba85fb",
+                    "on-primary-fixed": "#000000",
+                    "on-tertiary": "#6a0936",
+                    "surface-dim": "#0e0e0e",
+                    "on-surface": "#ffffff",
+                    "primary-container": "#b08cff",
+                    "on-tertiary-fixed": "#380019",
+                    "primary-fixed-dim": "#a57bff",
+                    "secondary": "#bc87fe",
+                    "on-error-container": "#ffb2b9",
+                    "surface-container-lowest": "#000000",
+                    "on-secondary-fixed-variant": "#6834a6",
+                    "surface-tint": "#bc9dff",
+                    "surface-bright": "#2c2c2c",
+                    "secondary-fixed": "#e2c7ff",
+                    "on-primary-fixed-variant": "#380084",
+                    "on-tertiary-fixed-variant": "#70103b",
+                    "on-background": "#ffffff",
+                    "surface": "#0e0e0e",
+                    "on-error": "#490013",
+                    "secondary-fixed-dim": "#d7b5ff",
+                    "surface-container-highest": "#262626",
+                    "primary-dim": "#894bff",
+                    "on-surface-variant": "#adaaaa",
+                    "inverse-on-surface": "#565555",
+                    "outline": "#767575",
+                    "surface-variant": "#262626",
+                    "surface-container-high": "#20201f",
+                    "primary": "#bc9dff",
+                    "on-tertiary-container": "#59002b",
+                    "surface-container-low": "#131313",
+                    "inverse-surface": "#fcf9f8",
+                    "tertiary-container": "#fc81ab",
+                    "secondary-container": "#5e289b",
+                    "tertiary": "#ff97b8",
+                    "outline-variant": "#484847"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { background-color: #0e0e0e; color: #ffffff; font-family: 'Manrope', sans-serif; }
+        .glass-header { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .neon-glow { text-shadow: 0 0 12px rgba(188, 157, 255, 0.4); }
+        .primary-gradient { background: linear-gradient(135deg, #bc9dff 0%, #894bff 100%); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-neutral-950/60 backdrop-blur-2xl shadow-[0_0_32px_rgba(188,157,255,0.06)]">
+<div class="flex justify-between items-center px-6 py-4 w-full">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border border-primary/20 p-0.5 overflow-hidden">
+<img class="w-full h-full object-cover rounded-full" data-alt="portrait of a confident creative professional with colored lighting and soft bokeh background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnboZdHBwhNy-SItsyqhixGjyKmLRlLdot3hzk7jdklVtRcPRTP5RdRJNrj53QqjJZLtP7Jh2CpiwyHpSbwps_Y2aXpL8S6qf69oL6Gb21CquAstHngc2t_PC9Ns-3mEu2qfvQDuJ30iYAdVqz5xKY0eP0h8I2Q2c3NakaywhdinSunXQWoqUOL4jz5dXjnvzW_B6Dhg6DpCO4nIQ3dGCenv68G-Zo8JZFOp8m6EL_aZNR9Mmi6avdut7YcPIrcojLm4zosKfvTd0E"/>
+</div>
+</div>
+<h1 class="font-['Plus_Jakarta_Sans'] font-bold text-[1.75rem] tracking-tight text-[#bc9dff]">The Nocturnal</h1>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#bc9dff] cursor-pointer active:scale-95 duration-200">search</span>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-4 max-w-2xl mx-auto">
+<!-- Horizontal Filter Bar -->
+<section class="mb-10 overflow-x-auto no-scrollbar flex items-center gap-3 py-2">
+<button class="flex-shrink-0 px-6 py-2.5 rounded-full primary-gradient text-on-primary-fixed font-bold text-sm transition-all active:scale-95">All Posts</button>
+<button class="flex-shrink-0 px-6 py-2.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Professionals</button>
+<button class="flex-shrink-0 px-6 py-2.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Events</button>
+<button class="flex-shrink-0 px-6 py-2.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Digital Art</button>
+<button class="flex-shrink-0 px-6 py-2.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Trends</button>
+</section>
+<!-- Discovery Feed -->
+<div class="space-y-16">
+<!-- Post Card 1 -->
+<article class="group">
+<!-- User Attribution -->
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="profile photo of a male artist in a studio with moody atmospheric lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDk2zeHpgnydofatTd_jezoesMEW_rt6DMGt1VwFdlTrt49dBKrAI0yBTCIpa0R8sCqx4P5nXTLmm_mleLjZUSHgcVDR-Ei4V72oAfvWhL3TiyI-GRo-y76XptUQCR_MlEuI12j66-fp-VIk0pR20ZzQIQQl7sg39WM8OqDLDtkybCOWsaaDwkiBdmGieizhPnly2R4JSKczEa-Yz2wf5kC0-Zb4Z8rQ-qYsv8NLbtjFUD041WOmWCjx12tjDeSnhoJywKYABXB1iwG"/>
+<div>
+<p class="font-headline font-bold text-sm leading-tight tracking-wide">Marcus Vane</p>
+<p class="font-label text-[0.6875rem] text-on-surface-variant">2 hours ago • New York, NY</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<!-- Media Content -->
+<div class="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-surface-container-low transition-transform duration-500 group-hover:scale-[0.99] shadow-2xl">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="abstract digital landscape with neon purple and blue mountains under a starry dark sky" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCy2MjH6UFAne4yuwCf-3WD1mUsJTKzjiZWO5xTpH0ITdA_r6jZeItKPToRb81pKhaBgWbUWcPhsh8PyPWdjFgWmSEBqz_az1do4xhXjDhyMcw5DxM1S1Rf3hgaNDoxn4LSXU1QtvTfme0Kq9rP5vRvGpw-veIOtvqRhmBnsFwYo5H8yowA0JVgQ3A5jDI40CJieFeCXUV0Pqz9J4GFC0vBwgpV3gVUv4wp7hHD9GxDJlDTo4HwMKNQXr8T5Woq9IbW7d61CIU6ryzj"/>
+<!-- Floating Actions Overlay -->
+<div class="absolute bottom-6 right-6 flex flex-col gap-4">
+<div class="flex flex-col items-center gap-1 group/btn">
+<button class="w-12 h-12 rounded-full glass-header bg-white/10 flex items-center justify-center hover:bg-primary transition-all duration-300">
+<span class="material-symbols-outlined text-white group-hover/btn:text-on-primary" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+<span class="text-[0.6875rem] font-bold text-white drop-shadow-md">1.2k</span>
+</div>
+<div class="flex flex-col items-center gap-1 group/btn">
+<button class="w-12 h-12 rounded-full glass-header bg-white/10 flex items-center justify-center hover:bg-primary transition-all duration-300">
+<span class="material-symbols-outlined text-white group-hover/btn:text-on-primary">mode_comment</span>
+</button>
+<span class="text-[0.6875rem] font-bold text-white drop-shadow-md">84</span>
+</div>
+<button class="w-12 h-12 rounded-full glass-header bg-white/10 flex items-center justify-center hover:bg-primary transition-all duration-300 group/share">
+<span class="material-symbols-outlined text-white group-hover/share:text-on-primary">share</span>
+</button>
+</div>
+</div>
+<!-- Caption -->
+<div class="mt-4 px-2">
+<p class="font-body text-sm text-on-surface leading-relaxed">
+<span class="font-bold mr-2">Marcus Vane</span>Captured the soul of the digital void tonight. Exploring the intersection of artificial intelligence and deep human emotion.
+                    </p>
+<div class="mt-2 flex gap-2">
+<span class="text-[0.6875rem] font-bold text-primary">#nocturnal</span>
+<span class="text-[0.6875rem] font-bold text-primary">#digitalart</span>
+</div>
+</div>
+</article>
+<!-- Post Card 2 (Bento Style Variation) -->
+<article class="group">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="headshot of a stylish woman with neon pink hair and futuristic eyewear" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbzhKoYEr73d1QSEOMq7zy16M2x7WMJmvyqn5abt8vcbaEhQ_rFGk4m2_uoUOc2tB1Z6au-tKLpwBoG3wqY0bvbYiqMf7yo1xcebidzInPjNU3Zdh__CEYtxP4IegxxcTF9BVNTI5UnK3Q8ZyP6Y8T3FSNuMB21ZNNTk_NQ6VJCDkECdldp954MBDrFmS70VPyhKRLJlpjnrivQJTeLbHw3Zg_nM52gv01EXxJT4DxD68J3WH35Xj9L6_1yxmIHzA2qoLXfW8XJSfM"/>
+<div>
+<p class="font-headline font-bold text-sm leading-tight tracking-wide">Elara Frost</p>
+<p class="font-label text-[0.6875rem] text-on-surface-variant">5 hours ago • Tokyo, Japan</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-2 rounded-[2rem] overflow-hidden shadow-2xl">
+<div class="h-64 overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="close-up of glowing mechanical components with blue and purple highlights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2yTU6o6HpOanREZdzCEjJ_urJW6rVBoF6l5te46ep6IuS1rUmYFKqyTSLgeZhY55LBtk94_3YTBVTSSNGTLqzCd4KZoBJV_TuAEiHTlzTtG84y-j6iT_U0EFSGzmtWwR7OU23dScsWJfJdngv0HxCc5lC3SDK0JMAJeOSb5Cy2InP7F1WygJKOipxXbkOFaMQ2Ct0wzgmyzimAyVL2y2xrkcEQ-ANOJuC2Zc0w2c_kmHxScv004GUWDDYGGTaaBhV6qPZmdyayQDB"/>
+</div>
+<div class="h-64 overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="blurred night city lights reflecting off wet asphalt with magenta and indigo tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBK9_-0b_HjO-953nKghL9d_G1m33XDT0lH3L-QKIGoGh6YRFKseqN018WRWUSI_7KZjpRPW-33fkzDoZ3TbaotOvqo0cgosCG4D11igG6GmeTuryti-CfybwWSep5lZ2Hr7bD_zuZDc6VFQ-ocb90wQIdT3UD0GmEd0Vu-K7S2VczGaNO3B0Egy-YS-0fJv7sl7lnekVsRUkD6h--NRohQj3EMxfL-XT9jT1j0RQt05UkeJgxwU8ssuL6G7nKfz4ehC6rymTlNTuwb"/>
+</div>
+</div>
+<div class="mt-4 px-2">
+<p class="font-body text-sm text-on-surface leading-relaxed">
+<span class="font-bold mr-2">Elara Frost</span>Visual notes from the Shibuya underground. The pulse of the city is purely electric. ⚡️
+                    </p>
+<div class="mt-3 flex items-center gap-6">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors group/heart">
+<span class="material-symbols-outlined text-xl group-hover/heart:fill-1">favorite</span>
+<span class="text-[0.6875rem] font-bold">2.4k</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">mode_comment</span>
+<span class="text-[0.6875rem] font-bold">152</span>
+</button>
+</div>
+</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar (The Dock) -->
+<nav class="fixed bottom-8 w-full z-50 flex justify-around items-center px-4">
+<div class="flex justify-around items-center w-[90%] max-w-md h-16 bg-[#1a1a1a]/80 backdrop-blur-xl rounded-[1.5rem] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+<a class="flex items-center justify-center text-neutral-500 p-3 hover:bg-neutral-800 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+</a>
+<!-- Explore Active -->
+<a class="flex items-center justify-center bg-[#bc9dff]/20 text-[#bc9dff] rounded-full p-3 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">explore</span>
+</a>
+<a class="flex items-center justify-center text-neutral-500 p-3 hover:bg-neutral-800 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">add_circle</span>
+</a>
+<a class="flex items-center justify-center text-neutral-500 p-3 hover:bg-neutral-800 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">group</span>
+</a>
+<a class="flex items-center justify-center text-neutral-500 p-3 hover:bg-neutral-800 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">person</span>
+</a>
+</div>
+</nav>
+</body></html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Nocturnal | Chat</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&amp;family=Manrope:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#2d006d",
+                        "tertiary-fixed-dim": "#f57ca5",
+                        "on-secondary-container": "#e1c5ff",
+                        "surface-container": "#1a1a1a",
+                        "primary-fixed": "#b08cff",
+                        "on-secondary-fixed": "#4a0b87",
+                        "on-secondary": "#340064",
+                        "error-container": "#a70138",
+                        "on-primary": "#3b008a",
+                        "tertiary-dim": "#ef77a0",
+                        "background": "#0e0e0e",
+                        "tertiary-fixed": "#ff8db2",
+                        "error": "#ff6e84",
+                        "inverse-primary": "#7327ef",
+                        "error-dim": "#d73357",
+                        "secondary-dim": "#ba85fb",
+                        "on-primary-fixed": "#000000",
+                        "on-tertiary": "#6a0936",
+                        "surface-dim": "#0e0e0e",
+                        "on-surface": "#ffffff",
+                        "primary-container": "#b08cff",
+                        "on-tertiary-fixed": "#380019",
+                        "primary-fixed-dim": "#a57bff",
+                        "secondary": "#bc87fe",
+                        "on-error-container": "#ffb2b9",
+                        "surface-container-lowest": "#000000",
+                        "on-secondary-fixed-variant": "#6834a6",
+                        "surface-tint": "#bc9dff",
+                        "surface-bright": "#2c2c2c",
+                        "secondary-fixed": "#e2c7ff",
+                        "on-primary-fixed-variant": "#380084",
+                        "on-tertiary-fixed-variant": "#70103b",
+                        "on-background": "#ffffff",
+                        "surface": "#0e0e0e",
+                        "on-error": "#490013",
+                        "secondary-fixed-dim": "#d7b5ff",
+                        "surface-container-highest": "#262626",
+                        "primary-dim": "#894bff",
+                        "on-surface-variant": "#adaaaa",
+                        "inverse-on-surface": "#565555",
+                        "outline": "#767575",
+                        "surface-variant": "#262626",
+                        "surface-container-high": "#20201f",
+                        "primary": "#bc9dff",
+                        "on-tertiary-container": "#59002b",
+                        "surface-container-low": "#131313",
+                        "inverse-surface": "#fcf9f8",
+                        "tertiary-container": "#fc81ab",
+                        "secondary-container": "#5e289b",
+                        "tertiary": "#ff97b8",
+                        "outline-variant": "#484847"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(44, 44, 44, 0.6);
+            backdrop-filter: blur(24px);
+        }
+        .message-gradient {
+            background: linear-gradient(135deg, #bc9dff 0%, #894bff 100%);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30 min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-neutral-950/60 backdrop-blur-2xl shadow-[0_0_32px_rgba(188,157,255,0.06)]">
+<div class="flex justify-between items-center px-6 py-4 w-full">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img alt="User Profile" class="w-10 h-10 rounded-full object-cover border border-primary/20" data-alt="Close-up portrait of a stylish man with sharp features, neon purple ambient lighting reflecting on skin, cinematic editorial style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuteN790GWxmqMggQxJ-cYpfS5B86qlVn5H54wd35tuOvSIm8CJanABU-6MCKt5JD-RO_o7yQsD_Y1qeONvvOAO1CjL-skoQ62CLg5K8S_LTG3MDyA1p-dmB5yxCNyjsQXDY5TM0lblQ-VRS-aTQAC2EtTFuv0Aou7D9GEyqthLSwF1safrGfYUFgCe0X9eGr2e-YC20lBCSvLcxheZOUuNcVl7dzQFCsrcILN0IVbLL-3nnr6BWxTDVp_6WqlPI5f2qF1dTRYLfMB"/>
+<span class="absolute bottom-0 right-0 w-3 h-3 bg-tertiary-fixed-dim rounded-full border-2 border-background"></span>
+</div>
+<div class="flex flex-col">
+<h1 class="font-headline font-bold text-[1.25rem] tracking-tight text-primary leading-none">Julian Thorne</h1>
+<span class="font-label text-[0.6875rem] text-on-surface-variant uppercase tracking-widest mt-1">Active Now</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-neutral-400 hover:text-[#bc9dff] transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+<button class="text-neutral-400 hover:text-[#bc9dff] transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Area (Chat Canvas) -->
+<main class="flex-grow pt-24 pb-32 px-6 flex flex-col gap-8 max-w-4xl mx-auto w-full hide-scrollbar overflow-y-auto">
+<!-- Date Divider -->
+<div class="flex justify-center my-4">
+<span class="font-label text-[0.6875rem] text-on-surface-variant/40 tracking-[0.2em] uppercase">Friday, Oct 24</span>
+</div>
+<!-- Incoming Message -->
+<div class="flex flex-col gap-2 max-w-[85%] self-start">
+<div class="bg-surface-container rounded-2xl rounded-tl-none p-4 shadow-sm">
+<p class="text-body-md leading-relaxed text-on-surface">Did you see the latest editorial preview for the Night-shift collection? The neon saturation is incredible.</p>
+</div>
+<span class="font-label text-[0.6875rem] text-on-surface-variant px-1">11:42 PM</span>
+</div>
+<!-- Outgoing Message -->
+<div class="flex flex-col gap-2 max-w-[85%] self-end">
+<div class="message-gradient rounded-2xl rounded-tr-none p-4 shadow-[0_8px_24px_rgba(188,157,255,0.15)]">
+<p class="text-body-md leading-relaxed text-on-primary-fixed">Just saw it. The way they used the deep charcoal as a negative space anchor really makes the purple pop. Pure Ethereal Neon vibes.</p>
+</div>
+<div class="flex justify-end items-center gap-1 px-1">
+<span class="font-label text-[0.6875rem] text-on-surface-variant">11:44 PM</span>
+<span class="material-symbols-outlined text-[0.75rem] text-primary" style="font-variation-settings: 'FILL' 1;">done_all</span>
+</div>
+</div>
+<!-- Image Message Outgoing -->
+<div class="flex flex-col gap-2 max-w-[70%] self-end">
+<div class="bg-surface-container-highest p-1.5 rounded-2xl rounded-tr-none overflow-hidden shadow-xl">
+<img alt="Inspiration" class="w-full h-64 object-cover rounded-xl" data-alt="Abstract artistic shot of violet neon lights reflecting on wet pavement in a dark city alley, high contrast, editorial photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMJNv6-VtMdBThj-0zhQegsqUTx1QjEObsdx5IZwuN5-pqCu1PAy0T7CHqiQgcO9i4TkAyReh4pNb4tEmN0h2Cma03ZC10cRzHVEYcpvQE-ro-d3NBciyXk_G5UxW2tlmdOKDy4zVudOCet4SEHkhpnJe8py0a0WBXUnLUOtu0b4gxLetQxQ96oWa9d_qrCgwnNUrUPjBAgfde0pRC1ksIaXyg95pw4ZasbaBiQJWSi0HDeANsXLjbU4D2Qqz8j3C0qoShyQWflbrR"/>
+</div>
+<div class="flex justify-end items-center gap-1 px-1">
+<span class="font-label text-[0.6875rem] text-on-surface-variant">11:45 PM</span>
+</div>
+</div>
+<!-- Incoming Message with Reply -->
+<div class="flex flex-col gap-2 max-w-[85%] self-start">
+<div class="bg-surface-container rounded-2xl rounded-tl-none overflow-hidden">
+<div class="bg-surface-container-highest/50 border-l-2 border-primary mx-4 mt-4 p-2 rounded-md">
+<p class="text-[0.75rem] text-primary font-bold">You</p>
+<p class="text-[0.75rem] text-on-surface-variant truncate">Just saw it. The way they used the deep charcoal...</p>
+</div>
+<div class="p-4 pt-2">
+<p class="text-body-md leading-relaxed text-on-surface">Exactly. It's that "The Neon Curator" philosophy. Let's incorporate that level of depth into the new dashboard UI tomorrow.</p>
+</div>
+</div>
+<span class="font-label text-[0.6875rem] text-on-surface-variant px-1">11:47 PM</span>
+</div>
+<!-- Status Bubble -->
+<div class="flex justify-center my-2">
+<span class="bg-surface-container-low px-4 py-1.5 rounded-full font-label text-[0.6875rem] text-on-tertiary-fixed-variant/60">Julian Thorne is typing...</span>
+</div>
+</main>
+<!-- Bottom Input Area (Refined Glass Dock) -->
+<div class="fixed bottom-0 w-full px-6 pb-8 pt-4 bg-gradient-to-t from-background via-background/90 to-transparent">
+<div class="max-w-4xl mx-auto flex items-end gap-3 glass-panel p-2 rounded-[1.5rem] border border-white/5">
+<button class="p-3 text-neutral-400 hover:text-primary transition-all active:scale-90">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</button>
+<div class="flex-grow relative">
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-body-md text-on-surface placeholder-on-surface-variant py-3 px-2 resize-none max-h-32 hide-scrollbar" placeholder="Type a message..." rows="1"></textarea>
+</div>
+<button class="p-3 text-neutral-400 hover:text-primary transition-all active:scale-90">
+<span class="material-symbols-outlined" data-icon="mood">mood</span>
+</button>
+<button class="message-gradient text-on-primary-fixed p-3 rounded-full shadow-[0_4px_16px_rgba(188,157,255,0.3)] active:scale-90 transition-all">
+<span class="material-symbols-outlined" data-icon="send" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+<!-- Hidden Bottom Nav (Suppressed for focused chat journey, but following rule for mobile structure) -->
+<nav class="md:hidden hidden fixed bottom-8 w-full z-50 flex justify-around items-center px-4">
+<div class="bg-[#1a1a1a]/80 backdrop-blur-xl w-[90%] max-w-md rounded-[1.5rem] flex justify-around items-center py-2 px-4 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-center text-neutral-500 p-3 hover:bg-neutral-800 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+</div>
+<div class="flex items-center justify-center text-neutral-500 p-3 hover:bg-neutral-800 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</div>
+<div class="flex items-center justify-center text-neutral-500 p-3 hover:bg-neutral-800 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+</div>
+<div class="flex items-center justify-center text-neutral-500 p-3 hover:bg-neutral-800 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+</div>
+<div class="flex items-center justify-center bg-[#bc9dff]/20 text-[#bc9dff] rounded-full p-3 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</div>
+</div>
+</nav>
+</body></html>
