@@ -11,7 +11,6 @@ import { useGroups } from '@/hooks/useGroups'
 interface Profile {
   id: string
   name: string
-  email: string
   avatar_url: string | null
   role: string | null
   job_role: string | null
@@ -45,7 +44,7 @@ export default function NewGroupModal({ isOpen, onClose, onGroupCreated }: NewGr
       const fetchProfiles = async () => {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, name, email, avatar_url, role, job_role, verification_level, availability_status, companies(name)')
+          .select('id, name, avatar_url, role, job_role, verification_level, availability_status, companies(name)')
           .neq('id', user.id)
         
         if (!error && data) {
@@ -85,8 +84,7 @@ export default function NewGroupModal({ isOpen, onClose, onGroupCreated }: NewGr
 
   const filteredProfiles = profiles.filter(p => {
     const query = search.toLowerCase()
-    return (p.name || '').toLowerCase().includes(query) || 
-           (p.email || '').toLowerCase().includes(query)
+    return (p.name || '').toLowerCase().includes(query)
   })
 
   const toggleUser = (userId: string) => {

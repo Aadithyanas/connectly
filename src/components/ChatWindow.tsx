@@ -132,7 +132,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
             const uid = members[0].user_id
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
-              .select('id, name, email, avatar_url, status, last_seen, availability_status, role')
+              .select('id, name, avatar_url, status, last_seen, availability_status, role')
               .eq('id', uid)
               .maybeSingle()
             

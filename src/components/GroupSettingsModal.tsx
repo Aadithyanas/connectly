@@ -45,7 +45,7 @@ export default function GroupSettingsModal({ isOpen, onClose, chatId, onDetailsU
       // Fetch members with profiles
       const { data: memberData, error: memberError } = await supabase
         .from('chat_members')
-        .select('*, profiles(name, email, avatar_url, role)')
+        .select('*, profiles(name, avatar_url, role)')
         .eq('chat_id', chatId)
       
       if (memberError) throw memberError
@@ -54,7 +54,7 @@ export default function GroupSettingsModal({ isOpen, onClose, chatId, onDetailsU
       // Fetch all visible profiles for search
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, name, email, avatar_url, role')
+        .select('id, name, avatar_url, role')
         .neq('id', user?.id)
       
       setProfiles(profileData || [])
@@ -121,7 +121,7 @@ export default function GroupSettingsModal({ isOpen, onClose, chatId, onDetailsU
   const filteredProfiles = search.trim() === '' ? [] : profiles.filter(p => {
     const isMember = members.some(m => m.user_id === p.id)
     if (isMember) return false
-    return (p.name || '').toLowerCase().includes(search.toLowerCase()) || (p.email || '').toLowerCase().includes(search.toLowerCase())
+    return (p.name || '').toLowerCase().includes(search.toLowerCase())
   })
 
   const myRole = members.find(m => m.user_id === user?.id)?.role

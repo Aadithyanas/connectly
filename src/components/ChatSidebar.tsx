@@ -90,7 +90,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       if (allUserIds.length > 0) {
         const { data } = await supabase
           .from('profiles')
-          .select('id, name, email, avatar_url, status, last_seen, availability_status, role')
+          .select('id, name, avatar_url, status, last_seen, availability_status, role')
           .in('id', allUserIds)
         if (data) {
           allProfiles = data
@@ -136,7 +136,6 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
           id: chat.id,
           is_group: chat.is_group,
           display_name: displayName,
-          display_email: chat.is_group ? '' : (otherProfile?.email || ''),
           display_avatar: chat.is_group ? chat.avatar_url : otherProfile?.avatar_url,
           other_profile: otherProfile,
           unread_count: unreadCount,
