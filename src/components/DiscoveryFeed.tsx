@@ -693,6 +693,8 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
 function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string, isActive: boolean, isMuted: boolean, onToggleMute: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     if (!videoRef.current) return
@@ -700,32 +702,64 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
     if (isActive) {
       const playPromise = videoRef.current.play()
       if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Auto-play was prevented (browser restriction)
+        playPromise.catch((err) => {
+          console.log("Autoplay prevented:", err)
         })
       }
     } else {
       videoRef.current.pause()
     }
-  }, [isActive])
+  }, [isActive, retryCount])
+
+  const handleRetry = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setHasError(false)
+    setIsLoading(true)
+    setRetryCount(prev => prev + 1)
+    if (videoRef.current) {
+       videoRef.current.load()
+    }
+  }
 
   return (
     <div className="relative w-full h-full flex items-center justify-center group/video bg-[#0a0a0a]">
-      {isLoading && (
+      {isLoading && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/20">
-          <Loader2 className="w-8 h-8 text-zinc-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
         </div>
       )}
+      
+      {hasError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/60 px-6 text-center">
+          <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
+          <p className="text-white text-sm font-bold mb-2">Video couldn't load</p>
+          <button 
+            onClick={handleRetry}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white text-xs font-bold transition-all border border-white/10"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Try Again
+          </button>
+        </div>
+      )}
+
       <video 
         ref={videoRef}
+        key={`${url}-${retryCount}`}
         src={url} 
         muted={isMuted} 
         loop 
         playsInline 
-        onLoadedData={() => setIsLoading(false)}
-        onCanPlay={() => setIsLoading(false)}
-        onPlaying={() => setIsLoading(false)}
-        onWaiting={() => setIsLoading(true)}
+        crossOrigin="anonymous"
+        onLoadedData={() => { setIsLoading(false); setHasError(false); }}
+        onCanPlay={() => { setIsLoading(false); setHasError(false); }}
+        onPlaying={() => { setIsLoading(false); setHasError(false); }}
+        onWaiting={() => { if (!hasError) setIsLoading(true); }}
+        onError={(e) => {
+          console.error("Video error:", e);
+          setIsLoading(false);
+          setHasError(true);
+        }}
         preload="auto"
         onClick={(e) => {
           e.stopPropagation();
@@ -734,8 +768,9 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
             else videoRef.current.pause();
           }
         }}
-        className="w-full h-auto max-h-[85vh] object-contain cursor-pointer" 
+        className={`w-full h-auto max-h-[85vh] object-contain cursor-pointer transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`} 
       />
+      
       <button 
         onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
         className="absolute bottom-4 right-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-all z-20 shadow-xl border border-white/10 flex items-center justify-center"
@@ -747,7 +782,15 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
         )}
       </button>
+
+      {/* Play/Pause indicator overlay */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/video:opacity-100 pointer-events-none transition-opacity">
+         <div className="w-16 h-16 bg-black/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/10">
+            <Play className="w-8 h-8 text-white fill-white/20" />
+         </div>
+      </div>
     </div>
   )
 }
+
 
