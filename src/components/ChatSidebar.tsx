@@ -107,6 +107,13 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         const otherMemberId = chatMembers.find((m: any) => m.user_id !== user.id)?.user_id
         const otherProfile: any = otherMemberId ? profileMap.get(otherMemberId) : null
 
+        // Get nickname from localStorage if exists
+        let displayName = chat.is_group ? (chat.name || 'Group') : (otherProfile?.name || 'Chat')
+        if (!chat.is_group && otherMemberId) {
+          const savedNickname = localStorage.getItem(`nickname_${otherMemberId}`)
+          if (savedNickname) displayName = savedNickname
+        }
+
         const summary = summaryMap.get(chat.id)
         const unreadCount = Number(summary?.res_unread_count) || 0
         const lastMsgContent = summary?.res_last_message_content || (summary?.res_last_message_media_type ? '📎 Media' : 'No messages yet')
@@ -128,7 +135,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         return {
           id: chat.id,
           is_group: chat.is_group,
-          display_name: chat.is_group ? (chat.name || 'Group') : (otherProfile?.name || 'Chat'),
+          display_name: displayName,
           display_email: chat.is_group ? '' : (otherProfile?.email || ''),
           display_avatar: chat.is_group ? chat.avatar_url : otherProfile?.avatar_url,
           other_profile: otherProfile,
@@ -308,8 +315,18 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       fetchUserAndChats(false) // Background sync (no skeletons)
     }, 45000) // Slightly longer window as we have multiple realtime triggers now
 
+    // Add storage event listener to refresh nicknames if changed in other tabs/components
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key && e.key.startsWith('nickname_')) {
+        // Refresh local state to reflect new nickname
+        fetchUserAndChats(false)
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+
     return () => { 
       supabase.removeChannel(channel)
+      window.removeEventListener('storage', handleStorageChange)
       clearInterval(clockInterval)
       clearInterval(syncInterval)
       if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
