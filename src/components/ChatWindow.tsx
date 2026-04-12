@@ -297,7 +297,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0e0e0e] h-full overflow-hidden min-w-0">
+    <div className="flex-1 flex flex-col bg-[#0e0e0e] h-[100dvh] overflow-hidden min-w-0">
       {/* Header — The Nocturnal style */}
       <div className="glass-header flex items-center justify-between px-4 sticky top-0 z-20 border-b border-white/[0.04] shrink-0" style={{minHeight:'60px'}}>
         <div 

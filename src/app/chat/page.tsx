@@ -204,7 +204,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex w-full h-full relative overflow-hidden bg-black">
+    <div className="flex w-full h-[100dvh] relative overflow-hidden bg-black">
       <div className={`${(activeChatId || (activeTab !== 'chat' && activeTab !== 'groups')) ? 'hidden md:flex' : 'flex'} w-full md:w-[30%] md:min-w-[320px] h-full transition-all`}>
         <ChatSidebar
           onSelectChat={handleSelectChat}

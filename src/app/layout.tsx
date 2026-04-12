@@ -21,9 +21,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`font-sans h-screen antialiased`}
+      className={`font-sans h-[100dvh] antialiased`}
     >
-      <body className="h-screen overflow-hidden flex flex-col">
+      <body className="h-[100dvh] overflow-hidden flex flex-col">
         <AuthProvider>
           {children}
         </AuthProvider>

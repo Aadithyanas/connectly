@@ -56,7 +56,7 @@ export default function LoginPage() {
   const inputClass = "w-full bg-white/[0.03] border border-white/[0.06] rounded-xl py-3.5 sm:py-4 pl-12 pr-4 text-white placeholder-zinc-600 focus:ring-1 focus:ring-white/20 focus:border-white/15 focus:bg-white/[0.05] outline-none transition-all text-sm"
 
   return (
-    <div className="min-h-screen flex flex-col items-center py-12 md:py-16 bg-black text-white px-5 sm:px-6 relative overflow-x-hidden">
+    <div className="min-h-[100dvh] flex flex-col items-center py-12 md:py-16 bg-black text-white px-5 sm:px-6 relative overflow-x-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-white/[0.015] rounded-full blur-[120px] pointer-events-none" />
 
       <motion.div 

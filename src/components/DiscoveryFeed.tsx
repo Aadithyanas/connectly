@@ -63,7 +63,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-black relative w-full min-w-0 overflow-hidden">
+    <div className="flex-1 flex flex-col h-[100dvh] bg-black relative w-full min-w-0 overflow-hidden">
       {/* Header — The Nocturnal style (Only show for individual user view) */}
       {filterUserId && (
         <div className="w-full px-4 md:px-6 py-3 glass-header border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0" style={{minHeight:'60px'}}>

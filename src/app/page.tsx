@@ -20,7 +20,7 @@ export default function Home() {
   }, [supabase, router])
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center px-5 sm:px-6 py-16 md:py-24 text-white overflow-x-hidden relative">
+    <div className="min-h-[100dvh] bg-black flex flex-col items-center px-5 sm:px-6 py-16 md:py-24 text-white overflow-x-hidden relative">
       {/* Subtle gradient */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-white/[0.02] rounded-full blur-[120px] pointer-events-none" />
 

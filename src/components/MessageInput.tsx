@@ -136,7 +136,7 @@ export default function MessageInput({ onSendMessage, onTyping, onFileUpload, re
   }
 
   return (
-    <div className="relative pb-2 sm:pb-3" style={{background:'rgba(14,14,14,0.9)'}}>
+    <div className="relative pb-2 sm:pb-3 pb-[env(safe-area-inset-bottom,0.5rem)]" style={{background:'rgba(14,14,14,0.9)'}}>
       {/* Emoji Picker */}
       {showEmojiPicker && (
         <div className="absolute bottom-[calc(100%+8px)] left-2 sm:left-4 z-[999] shadow-2xl rounded-xl overflow-hidden border border-white/[0.06] origin-bottom-left">

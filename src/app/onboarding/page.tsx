@@ -116,7 +116,7 @@ export default function OnboardingPage() {
       
       // Use a timeout to detect hangs
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Database operation timed out after 10 seconds.')), 10000)
+        setTimeout(() => reject(new Error('Database operation timed out after 30 seconds.')), 30000)
       })
 
       const { error } = await Promise.race([
@@ -133,7 +133,9 @@ export default function OnboardingPage() {
       }
     } catch (e: any) { 
       console.error('Onboarding flow interrupted:', e)
-      alert(e.message || 'Failed to complete setup. Please check your connection and try again.') 
+      alert(e.message?.includes('timed out') 
+        ? 'Connection is slow. Please check your internet and try again.' 
+        : (e.message || 'Failed to complete setup. Please check your connection and try again.')) 
     } finally { 
       setLoading(false) 
     }
@@ -152,7 +154,7 @@ export default function OnboardingPage() {
   const inputClass = "w-full bg-white/[0.03] border border-white/[0.06] rounded-xl py-3.5 text-white placeholder-zinc-700 focus:ring-1 focus:ring-white/15 focus:border-white/12 focus:bg-white/[0.05] outline-none transition-all text-sm"
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center py-10 md:py-14 px-5 sm:px-6 relative overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-black text-white flex flex-col items-center py-10 md:py-14 px-5 sm:px-6 relative overflow-x-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-white/[0.015] rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-3xl relative z-10">
