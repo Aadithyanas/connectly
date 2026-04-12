@@ -695,6 +695,7 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   useEffect(() => {
     if (!videoRef.current) return
@@ -702,12 +703,14 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
     if (isActive) {
       const playPromise = videoRef.current.play()
       if (playPromise !== undefined) {
-        playPromise.catch((err) => {
+        playPromise.then(() => setIsPlaying(true)).catch((err) => {
           console.log("Autoplay prevented:", err)
+          setIsPlaying(false)
         })
       }
     } else {
       videoRef.current.pause()
+      setIsPlaying(false)
     }
   }, [isActive, retryCount])
 
@@ -718,6 +721,18 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
     setRetryCount(prev => prev + 1)
     if (videoRef.current) {
        videoRef.current.load()
+    }
+  }
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!videoRef.current) return
+    if (videoRef.current.paused) {
+      videoRef.current.play()
+      setIsPlaying(true)
+    } else {
+      videoRef.current.pause()
+      setIsPlaying(false)
     }
   }
 
@@ -752,7 +767,8 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
         playsInline 
         onLoadedData={() => { setIsLoading(false); setHasError(false); }}
         onCanPlay={() => { setIsLoading(false); setHasError(false); }}
-        onPlaying={() => { setIsLoading(false); setHasError(false); }}
+        onPlaying={() => { setIsLoading(false); setHasError(false); setIsPlaying(true); }}
+        onPause={() => setIsPlaying(false)}
         onWaiting={() => { if (!hasError) setIsLoading(true); }}
         onError={(e) => {
           const videoElement = e.currentTarget;
@@ -763,13 +779,7 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
           setHasError(true);
         }}
         preload="auto"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (videoRef.current) {
-            if (videoRef.current.paused) videoRef.current.play();
-            else videoRef.current.pause();
-          }
-        }}
+        onClick={togglePlay}
         className={`w-full h-auto max-h-[85vh] object-contain cursor-pointer transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`} 
       />
       
@@ -786,9 +796,12 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
       </button>
 
       {/* Play/Pause indicator overlay */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/video:opacity-100 pointer-events-none transition-opacity">
-         <div className="w-16 h-16 bg-black/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/10">
-            <Play className="w-8 h-8 text-white fill-white/20" />
+      <div 
+        onClick={togglePlay}
+        className={`absolute inset-0 flex items-center justify-center transition-all duration-300 cursor-pointer ${isPlaying ? 'opacity-0 pointer-events-none scale-110' : 'opacity-100 bg-black/10'}`}
+      >
+         <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl">
+            <Play className="w-8 h-8 text-white fill-white" />
          </div>
       </div>
     </div>
