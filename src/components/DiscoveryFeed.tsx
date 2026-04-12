@@ -712,8 +712,8 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
   return (
     <div className="relative w-full h-full flex items-center justify-center group/video bg-[#0a0a0a]">
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <Loader2 className="w-8 h-8 text-zinc-700 animate-spin" />
+        <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/20">
+          <Loader2 className="w-8 h-8 text-zinc-500 animate-spin" />
         </div>
       )}
       <video 
@@ -723,8 +723,18 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
         loop 
         playsInline 
         onLoadedData={() => setIsLoading(false)}
-        preload="metadata"
-        className="w-full h-auto max-h-[85vh] object-contain" 
+        onCanPlay={() => setIsLoading(false)}
+        onPlaying={() => setIsLoading(false)}
+        onWaiting={() => setIsLoading(true)}
+        preload="auto"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (videoRef.current) {
+            if (videoRef.current.paused) videoRef.current.play();
+            else videoRef.current.pause();
+          }
+        }}
+        className="w-full h-auto max-h-[85vh] object-contain cursor-pointer" 
       />
       <button 
         onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
