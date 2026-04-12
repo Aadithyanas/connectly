@@ -169,8 +169,13 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => {
         fetchPosts(true)
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_comments' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_comments' }, (payload: any) => {
         fetchPosts(true)
+        // If we are currently showing comments for this post, refresh them
+        const postId = payload.new?.post_id || payload.old?.post_id
+        if (postId) {
+          fetchComments(postId)
+        }
       })
       .subscribe()
 

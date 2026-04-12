@@ -467,7 +467,12 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
                 <button onClick={() => setIsExpanded(true)} className="text-[#bc9dff] font-medium ml-1">more</button>
               </>
             ) : (
-              post.content
+              <>
+                {post.content}
+                {post.content && post.content.length > 200 && (
+                  <button onClick={() => setIsExpanded(false)} className="text-[#bc9dff] font-medium ml-1">less</button>
+                )}
+              </>
             )}
           </p>
         </div>
@@ -552,13 +557,7 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
               <Send className="w-[22px] h-[22px] -mt-0.5 -rotate-[20deg]" />
             </button>
           )}
-          <button 
-            onClick={(e) => { e.stopPropagation(); onQuote(post); }}
-            className="transition-all active:scale-90 text-[#adaaaa] hover:text-[#bc9dff] group-hover/btn:text-[#bc9dff]"
-            title="Quote this post"
-          >
-            <RefreshCw className="w-[22px] h-[22px]" />
-          </button>
+          {/* Repost/Quote removed as per user request */}
         </div>
         <div className="flex justify-center flex-1">
         </div>
@@ -611,7 +610,12 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
                 <button onClick={() => setIsExpanded(true)} className="text-[#bc9dff] font-medium ml-1">more</button>
               </>
             ) : (
-              <span className="text-[#adaaaa]">{post.content}</span>
+              <>
+                <span className="text-[#adaaaa]">{post.content}</span>
+                {post.content && post.content.length > 100 && (
+                  <button onClick={() => setIsExpanded(false)} className="text-[#bc9dff] font-medium ml-1">less</button>
+                )}
+              </>
             )}
           </p>
         </div>

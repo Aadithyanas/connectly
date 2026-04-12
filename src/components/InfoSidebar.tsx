@@ -845,10 +845,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                         <SkillPills skills={data.skills} small />
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Email</label>
-                      <div className="flex items-center gap-3"><Mail className="w-4 h-4 text-zinc-600" /><p className="text-zinc-400">{data?.email || 'Not available'}</p></div>
-                    </div>
+
                     <div className="space-y-2">
                       <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">About</label>
                       <div className="flex items-start gap-3"><Info className="w-4 h-4 text-zinc-600 shrink-0 mt-0.5" /><p className="text-zinc-500 text-sm leading-relaxed">{data?.bio || 'Hey there! I am using Nexus.'}</p></div>

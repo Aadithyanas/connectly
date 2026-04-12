@@ -10,7 +10,6 @@ import { useAuth } from '@/context/AuthContext'
 interface Profile {
   id: string
   name: string
-  email: string
   avatar_url: string | null
   role: string | null
   job_role: string | null
@@ -43,7 +42,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNew
         if (!user) return
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, name, email, avatar_url, role, job_role, verification_level, availability_status, companies(name)')
+          .select('id, name, avatar_url, role, job_role, verification_level, availability_status, companies(name)')
           .neq('id', user.id)
         
         if (!error && data) {
@@ -97,7 +96,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNew
     ? [] 
     : profiles.filter(p => {
         const query = search.toLowerCase()
-        return (p.name || '').toLowerCase().includes(query) || (p.email || '').toLowerCase().includes(query) || (p.role === 'professional' && (p.companies?.name || '').toLowerCase().includes(query))
+        return (p.name || '').toLowerCase().includes(query) || (p.role === 'professional' && (p.companies?.name || '').toLowerCase().includes(query))
       })
 
   return (
@@ -159,7 +158,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNew
                     </div>
                     <input
                       type="text"
-                      placeholder="Search by name, email or company..."
+                      placeholder="Search by name or company..."
                       className="block w-full pl-10 pr-3 py-2 bg-white/[0.03] border border-white/[0.04] text-white rounded-xl focus:ring-1 focus:ring-white/10 text-sm placeholder-zinc-700 outline-none"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
@@ -188,7 +187,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNew
                       <div className="w-14 h-14 bg-white/[0.04] rounded-full flex items-center justify-center mb-3">
                         <Search className="w-7 h-7 text-zinc-700" />
                       </div>
-                      <p className="text-zinc-600 text-sm">Type a name or email to find someone.</p>
+                      <p className="text-zinc-600 text-sm">Type a name to find someone.</p>
                     </div>
                   ) : (
                     <>
@@ -247,15 +246,11 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNew
                                     <Check className="w-3 h-3 text-zinc-400" />
                                   )}
                                 </div>
-                                <div className="text-zinc-600 text-xs truncate">
                                   {profile.role === 'professional' ? (
                                     <span className="text-zinc-400 font-medium">
                                       {profile.job_role || 'Professional'} @ {profile.companies?.name || 'Unknown'}
                                     </span>
-                                  ) : (
-                                    profile.email
-                                  )}
-                                </div>
+                                  ) : null}
                               </div>
                               {onInspectProfile && (
                                 <button 
