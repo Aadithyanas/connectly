@@ -750,13 +750,15 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
         muted={isMuted} 
         loop 
         playsInline 
-        crossOrigin="anonymous"
         onLoadedData={() => { setIsLoading(false); setHasError(false); }}
         onCanPlay={() => { setIsLoading(false); setHasError(false); }}
         onPlaying={() => { setIsLoading(false); setHasError(false); }}
         onWaiting={() => { if (!hasError) setIsLoading(true); }}
         onError={(e) => {
-          console.error("Video error:", e);
+          const videoElement = e.currentTarget;
+          const errorCode = videoElement.error ? videoElement.error.code : 'unknown';
+          const errorMessage = videoElement.error ? videoElement.error.message : 'No message';
+          console.error(`Video Error [Code: ${errorCode}]: ${errorMessage}`);
           setIsLoading(false);
           setHasError(true);
         }}
