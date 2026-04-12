@@ -405,30 +405,12 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
                 onClick={() => setFullscreenMedia({ url, type: post.media_types?.[idx] || 'image' })}
               >
                 {post.media_types?.[idx] === 'video' ? (
-                  <div className="relative w-full h-full flex items-center justify-center group/video">
-                    <video 
-                      src={url} 
-                      autoPlay 
-                      muted={isMuted} 
-                      loop 
-                      playsInline 
-                      className="w-full h-auto max-h-[85vh] object-contain" 
-                    />
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
-                      className="absolute bottom-4 right-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-all z-20 shadow-xl border border-white/10 flex items-center justify-center"
-                      title={isMuted ? "Unmute" : "Mute"}
-                    >
-                      {isMuted ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                      )}
-                    </button>
-                    <div className="hidden absolute inset-0 flex items-center justify-center bg-black/10 group-hover/video:bg-black/40 transition-all">
-                      <Play className="w-12 h-12 text-white/80 fill-white/20 drop-shadow-xl" />
-                    </div>
-                  </div>
+                  <FeedVideoPlayer 
+                    url={url} 
+                    isActive={idx === activeMediaIndex} 
+                    isMuted={isMuted}
+                    onToggleMute={() => setIsMuted(!isMuted)}
+                  />
                 ) : (
                   <img src={url} alt={`Media ${idx + 1}`} className="w-full h-auto max-h-[85vh] object-contain" />
                 )}
@@ -703,7 +685,57 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
             ))
           )}
         </div>
+  )
+}
+
+function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string, isActive: boolean, isMuted: boolean, onToggleMute: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (!videoRef.current) return
+    
+    if (isActive) {
+      const playPromise = videoRef.current.play()
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Auto-play was prevented (browser restriction)
+        })
+      }
+    } else {
+      videoRef.current.pause()
+    }
+  }, [isActive])
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center group/video bg-[#0a0a0a]">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          <Loader2 className="w-8 h-8 text-zinc-700 animate-spin" />
+        </div>
       )}
+      <video 
+        ref={videoRef}
+        src={url} 
+        muted={isMuted} 
+        loop 
+        playsInline 
+        onLoadedData={() => setIsLoading(false)}
+        preload="metadata"
+        className="w-full h-auto max-h-[85vh] object-contain" 
+      />
+      <button 
+        onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
+        className="absolute bottom-4 right-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-all z-20 shadow-xl border border-white/10 flex items-center justify-center"
+        title={isMuted ? "Unmute" : "Mute"}
+      >
+        {isMuted ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        )}
+      </button>
     </div>
   )
 }
+
