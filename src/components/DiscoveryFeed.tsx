@@ -685,6 +685,8 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
             ))
           )}
         </div>
+      )}
+    </div>
   )
 }
 
