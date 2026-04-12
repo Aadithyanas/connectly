@@ -14,7 +14,7 @@ import { Status } from '@/hooks/useStatuses'
 import { createClient } from '@/utils/supabase/client'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import SettingsModal from '@/components/SettingsModal'
-import { Home, Compass, CircleDashed as StatusCircle, Plus, Trophy, Users } from 'lucide-react'
+import { Home, MessageCircle, CircleDashed as StatusCircle, Plus, Trophy, Users } from 'lucide-react'
 
 import { useAuth } from '@/context/AuthContext'
 
@@ -30,9 +30,10 @@ export default function ChatPage() {
   const [sidebarType, setSidebarType] = useState<'profile' | 'contact' | 'group'>('profile')
   const [sidebarData, setSidebarData] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState<'chat' | 'feed' | 'status' | 'challenges' | 'groups'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'feed' | 'status' | 'challenges' | 'groups'>('feed')
   const [feedFilterUserId, setFeedFilterUserId] = useState<string | undefined>(undefined)
   const [activeStatuses, setActiveStatuses] = useState<Status[] | null>(null)
+  const [isNavVisible, setIsNavVisible] = useState(true)
 
   const supabase = createClient()
 
@@ -139,6 +140,25 @@ export default function ChatPage() {
     }
   }
 
+  const handleInspectUser = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+        
+      if (profile && !error) {
+        setSidebarType('contact')
+        setSidebarData(profile)
+        setIsInfoSidebarOpen(true)
+        setIsNewChatModalOpen(false)
+      }
+    } catch (err) {
+      console.error("Exception in handleInspectUser:", err)
+    }
+  }
+
   const handleStartDirectChat = async (otherUserId: string, post?: any) => {
     try {
       const { data: chatId, error } = await supabase.rpc('create_dm_chat', {
@@ -193,6 +213,7 @@ export default function ChatPage() {
           onOpenProfile={handleOpenProfile}
           onOpenSettings={() => setShowSettingsModal(true)}
           activeTab={activeTab}
+          isModalOpen={isNewChatModalOpen}
           onTabChange={(tab) => {
             setActiveTab(tab)
             if (tab !== 'chat') setActiveChatId(undefined)
@@ -209,7 +230,9 @@ export default function ChatPage() {
             onBack={() => {
               setActiveTab('chat')
               setFeedFilterUserId(undefined)
+              setIsNavVisible(true) // Ensure nav is visible when returning
             }}
+            onScrollToggle={(visible) => setIsNavVisible(visible)}
           />
         ) : activeTab === 'status' ? (
           <StatusTab 
@@ -228,26 +251,27 @@ export default function ChatPage() {
       </div>
 
       {/* Mobile Floating Nav — The Nocturnal glass dock */}
-      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] items-center justify-between px-1 h-[58px] glass-dock rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.7),0_0_0_1px_rgba(188,157,255,0.06)] w-[90%] max-w-[340px] ${(!activeChatId && !isInfoSidebarOpen) ? 'flex md:hidden' : 'hidden'}`}>
+      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] items-center justify-between px-1 h-[58px] glass-dock rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.7),0_0_0_1px_rgba(188,157,255,0.06)] w-[90%] max-w-[340px] transition-all duration-500 ease-in-out ${(!activeChatId && !isInfoSidebarOpen) ? 'flex md:hidden' : 'hidden'} ${isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-[150%] opacity-0 pointer-events-none'}`}>
           <button 
-            onClick={() => setActiveTab('chat')}
+            onClick={() => {
+              setActiveTab('chat')
+              setIsNewChatModalOpen(false)
+              setIsNewGroupModalOpen(false)
+            }}
             className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
               activeTab === 'chat' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
             }`}
           >
             {activeTab === 'chat' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
-            <Home className="w-[20px] h-[20px]" />
-          </button>
-          
-          <button 
-            onClick={() => setIsNewChatModalOpen(true)}
-            className="flex items-center justify-center w-11 h-11 text-[#767575] hover:text-[#bc9dff] transition-colors"
-          >
-            <Plus className="w-5 h-5" />
+            <MessageCircle className="w-[20px] h-[20px]" />
           </button>
 
           <button 
-            onClick={() => setActiveTab('groups')}
+            onClick={() => {
+              setActiveTab('groups')
+              setIsNewChatModalOpen(false)
+              setIsNewGroupModalOpen(false)
+            }}
             className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
               activeTab === 'groups' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
             }`}
@@ -257,17 +281,25 @@ export default function ChatPage() {
           </button>
 
           <button 
-            onClick={() => setActiveTab('feed')}
+            onClick={() => {
+              setActiveTab('feed')
+              setIsNewChatModalOpen(false)
+              setIsNewGroupModalOpen(false)
+            }}
             className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
               activeTab === 'feed' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
             }`}
           >
             {activeTab === 'feed' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
-            <Compass className="w-[20px] h-[20px]" />
+            <Home className="w-[20px] h-[20px]" />
           </button>
 
           <button 
-            onClick={() => setActiveTab('status')}
+            onClick={() => {
+              setActiveTab('status')
+              setIsNewChatModalOpen(false)
+              setIsNewGroupModalOpen(false)
+            }}
             className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
               activeTab === 'status' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
             }`}
@@ -277,7 +309,11 @@ export default function ChatPage() {
           </button>
 
           <button 
-            onClick={() => setActiveTab('challenges')}
+            onClick={() => {
+              setActiveTab('challenges')
+              setIsNewChatModalOpen(false)
+              setIsNewGroupModalOpen(false)
+            }}
             className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
               activeTab === 'challenges' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
             }`}
@@ -307,6 +343,7 @@ export default function ChatPage() {
           setIsNewChatModalOpen(false)
         }}
         onOpenNewGroup={() => setIsNewGroupModalOpen(true)}
+        onInspectProfile={handleInspectUser}
       />
 
       <NewGroupModal

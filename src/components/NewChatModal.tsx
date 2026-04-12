@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { X, Search, User, Users, ChevronRight, Check, Plus } from 'lucide-react'
+import { X, Search, User, Users, ChevronRight, Check, Plus, Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useAuth } from '@/context/AuthContext'
@@ -24,9 +24,10 @@ interface NewChatModalProps {
   onClose: () => void
   onChatCreated: (chatId: string) => void
   onOpenNewGroup: () => void
+  onInspectProfile?: (userId: string) => void
 }
 
-export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNewGroup }: NewChatModalProps) {
+export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNewGroup, onInspectProfile }: NewChatModalProps) {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [search, setSearch] = useState('')
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
@@ -167,8 +168,23 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNew
                 </div>
 
                 <div className="max-h-[400px] overflow-y-auto custom-scrollbar min-h-[100px] flex flex-col">
+                  {selectedUsers.length === 0 && search.trim() === '' && (
+                    <div 
+                      className="flex items-center px-4 py-3 hover:bg-white/[0.03] cursor-pointer group border-b border-white/[0.03] transition-colors"
+                      onClick={() => {
+                        onClose()
+                        onOpenNewGroup()
+                      }}
+                    >
+                      <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center mr-3 group-hover:scale-105 transition-transform">
+                        <Users className="w-5 h-5 text-black" />
+                      </div>
+                      <span className="text-white font-medium text-sm">New Group</span>
+                    </div>
+                  )}
+
                   {search.trim() === '' ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center pt-10">
                       <div className="w-14 h-14 bg-white/[0.04] rounded-full flex items-center justify-center mb-3">
                         <Search className="w-7 h-7 text-zinc-700" />
                       </div>
@@ -241,6 +257,18 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated, onOpenNew
                                   )}
                                 </div>
                               </div>
+                              {onInspectProfile && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onInspectProfile(profile.id);
+                                  }}
+                                  className="p-1.5 md:p-2 text-zinc-500 hover:text-[#bc9dff] transition-colors md:hover:bg-white/[0.06] rounded-full"
+                                  title="Inspect Profile"
+                                >
+                                  <Info className="w-[18px] h-[18px] md:w-5 md:h-5" />
+                                </button>
+                              )}
                             </div>
                           )
                         })

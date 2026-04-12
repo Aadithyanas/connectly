@@ -4,19 +4,20 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Image as ImageIcon, Video, Send, Rocket, Briefcase, GraduationCap, Lightbulb, Loader2, Play, Trash2, Plus, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/context/AuthContext'
-import { usePosts } from '@/hooks/usePosts'
+import { usePosts, Post } from '@/hooks/usePosts'
 import Image from 'next/image'
 
 interface CreatePostModalProps {
   onClose: () => void
+  quotedPost?: Post
 }
 
-export default function CreatePostModal({ onClose }: CreatePostModalProps) {
+export default function CreatePostModal({ onClose, quotedPost }: CreatePostModalProps) {
   const { user } = useAuth()
   const { createPost } = usePosts()
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState('project')
+  const [category, setCategory] = useState('general')
   
   // Carousel states
   const [mediaFiles, setMediaFiles] = useState<File[]>([])
@@ -192,7 +193,8 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
         content: content.trim(),
         category,
         media_urls: uploadedUrls.filter(url => !!url),
-        media_types: mediaFiles.map(f => f.type.startsWith('video') ? 'video' : 'image')
+        media_types: mediaFiles.map(f => f.type.startsWith('video') ? 'video' : 'image'),
+        quoted_post_id: quotedPost?.id
       })
 
       if (error) throw error
@@ -218,8 +220,8 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
               <Rocket className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-white font-bold text-lg leading-none mb-1">Share Achievement</h2>
-              <p className="text-zinc-500 text-[9px] uppercase tracking-widest font-black">Inspire the tech community</p>
+              <h2 className="text-white font-bold text-lg leading-none mb-1">Create Post</h2>
+              <p className="text-zinc-500 text-[9px] uppercase tracking-widest font-black">Share with the community</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2.5 hover:bg-white/10 rounded-full transition-all text-zinc-500 hover:text-white active:scale-90">
@@ -233,10 +235,10 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
             
             {/* Post Title */}
             <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">Achievement Name</label>
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">Title (Optional)</label>
               <input
                 type="text"
-                placeholder="e.g. My Next.js Dashboard v1.0"
+                placeholder="What's this about?"
                 className="w-full bg-white/[0.03] text-white text-base font-bold px-5 py-3.5 rounded-2xl border border-white/[0.06] focus:border-white/20 outline-none transition-all placeholder:text-zinc-700"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -245,111 +247,126 @@ export default function CreatePostModal({ onClose }: CreatePostModalProps) {
 
             {/* Carousel Upload Area */}
             <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1 flex justify-between items-center">
-                Visual Proof ({mediaFiles.length}/10)
-              </label>
+              {mediaFiles.length > 0 && (
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1 flex justify-between items-center">
+                  Media ({mediaFiles.length}/10)
+                </label>
+              )}
               
-              <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar snap-x">
-                {previewUrls.map((url, idx) => (
-                  <div key={url} className="relative aspect-[4/5] h-64 rounded-[24px] shrink-0 overflow-hidden bg-black/40 border border-white/10 group snap-center">
-                    {mediaFiles[idx]?.type.startsWith('video') ? (
-                      <video src={url} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="relative w-full h-full">
-                         <Image src={url} alt="Preview" fill className="object-cover" unoptimized />
-                      </div>
-                    )}
-                    
-                    {/* Status Icons */}
-                    <div className="absolute top-2 right-2 flex flex-col gap-2">
-                      <button 
-                         type="button" 
-                         onClick={() => removeMedia(idx)}
-                         className="p-1.5 bg-black/60 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-all active:scale-90"
-                      >
-                         <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                      
-                      {uploadProgress[`${mediaFiles[idx].name}-${idx}`] === 100 ? (
-                        <div className="p-1.5 bg-white text-black rounded-full scale-90">
-                           <CheckCircle2 className="w-3.5 h-3.5" />
-                        </div>
-                      ) : uploadErrors[`${mediaFiles[idx].name}-${idx}`] ? (
-                        <div className="p-1.5 bg-red-500 text-white rounded-full scale-90">
-                           <X className="w-3.5 h-3.5" />
-                        </div>
+              {mediaFiles.length > 0 && (
+                <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar snap-x">
+                  {previewUrls.map((url, idx) => (
+                    <div key={url} className="relative aspect-[4/5] h-64 rounded-[24px] shrink-0 overflow-hidden bg-black/40 border border-white/10 group snap-center">
+                      {mediaFiles[idx]?.type.startsWith('video') ? (
+                        <video src={url} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="p-1.5 bg-black/80 text-white rounded-full scale-90">
-                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <div className="relative w-full h-full">
+                           <Image src={url} alt="Preview" fill className="object-cover" unoptimized />
+                        </div>
+                      )}
+                      
+                      {/* Status Icons */}
+                      <div className="absolute top-2 right-2 flex flex-col gap-2">
+                        <button 
+                           type="button" 
+                           onClick={() => removeMedia(idx)}
+                           className="p-1.5 bg-black/60 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-all active:scale-90"
+                        >
+                           <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        
+                        {uploadProgress[`${mediaFiles[idx].name}-${idx}`] === 100 ? (
+                          <div className="p-1.5 bg-white text-black rounded-full scale-90">
+                             <CheckCircle2 className="w-3.5 h-3.5" />
+                          </div>
+                        ) : uploadErrors[`${mediaFiles[idx].name}-${idx}`] ? (
+                          <div className="p-1.5 bg-red-500 text-white rounded-full scale-90">
+                             <X className="w-3.5 h-3.5" />
+                          </div>
+                        ) : (
+                          <div className="p-1.5 bg-black/80 text-white rounded-full scale-90">
+                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Individual progress bar */}
+                      {uploadProgress[`${mediaFiles[idx].name}-${idx}`] < 100 && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                           <div 
+                             className="h-full bg-white transition-all duration-300"
+                             style={{ width: `${uploadProgress[`${mediaFiles[idx].name}-${idx}`]}%` }}
+                           />
                         </div>
                       )}
                     </div>
+                  ))}
 
-                    {/* Individual progress bar */}
-                    {uploadProgress[`${mediaFiles[idx].name}-${idx}`] < 100 && (
-                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                         <div 
-                           className="h-full bg-white transition-all duration-300"
-                           style={{ width: `${uploadProgress[`${mediaFiles[idx].name}-${idx}`]}%` }}
-                         />
+                  {mediaFiles.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="aspect-[4/5] h-64 rounded-[24px] border-2 border-dashed border-white/10 hover:border-white/30 bg-white/[0.02] flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group shrink-0 snap-center"
+                    >
+                      <div className="p-4 bg-white/[0.04] rounded-2xl group-hover:bg-white/[0.08] transition-colors">
+                        <Plus className="w-8 h-8 text-zinc-500 group-hover:text-white" />
                       </div>
-                    )}
-                  </div>
-                ))}
-
-                {mediaFiles.length < 10 && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="aspect-[4/5] h-64 rounded-[24px] border-2 border-dashed border-white/10 hover:border-white/30 bg-white/[0.02] flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group shrink-0 snap-center"
-                  >
-                    <div className="p-4 bg-white/[0.04] rounded-2xl group-hover:bg-white/[0.08] transition-colors">
-                      <Plus className="w-8 h-8 text-zinc-500 group-hover:text-white" />
-                    </div>
-                    <span className="text-zinc-500 text-[10px] font-black uppercase tracking-wider">Add More</span>
-                  </button>
-                )}
-              </div>
+                      <span className="text-zinc-500 text-[10px] font-black uppercase tracking-wider">Add More</span>
+                    </button>
+                  )}
+                </div>
+              )}
               <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple hidden onChange={handleFileChange} />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">The Story / Details</label>
+               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">What's on your mind?</label>
                <textarea
                  required
-                 placeholder="Share the journey..."
+                 placeholder="Share your thoughts, questions, or journey..."
                  className="w-full bg-white/[0.03] text-white text-sm px-6 py-4 rounded-2xl border border-white/[0.06] focus:border-white/20 outline-none transition-all resize-none h-40 placeholder:text-zinc-700 custom-scrollbar leading-relaxed"
                  value={content}
                  onChange={(e) => setContent(e.target.value)}
                />
+               
+               {quotedPost && (
+                 <div className="mt-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] shadow-inner relative overflow-hidden">
+                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#bc9dff]/50"></div>
+                   <div className="flex items-center gap-2 mb-2">
+                     <div className="w-5 h-5 rounded-full overflow-hidden bg-white/10 shrink-0">
+                       {quotedPost.user?.avatar_url ? (
+                         <img src={quotedPost.user.avatar_url} alt="User" className="w-full h-full object-cover" />
+                       ) : (
+                         <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-white bg-[#bc9dff]/30 uppercase">
+                           {quotedPost.user?.name?.[0] || '?'}
+                         </div>
+                       )}
+                     </div>
+                     <span className="text-white text-xs font-bold">{quotedPost.user?.name}</span>
+                     <span className="text-zinc-500 text-[10px]">· {new Date(quotedPost.created_at).toLocaleDateString()}</span>
+                   </div>
+                   <p className="text-zinc-400 text-xs leading-relaxed line-clamp-3">
+                     {quotedPost.content || quotedPost.title || 'Attached Media'}
+                   </p>
+                 </div>
+               )}
+               
+               {/* Media Quick Add Toolbar */}
+               {mediaFiles.length === 0 && (
+                 <div className="mt-3 flex items-center">
+                   <button
+                     type="button"
+                     onClick={() => fileInputRef.current?.click()}
+                     className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] outline-none hover:bg-white/[0.06] border border-white/[0.06] rounded-xl transition-all text-zinc-400 hover:text-white"
+                   >
+                     <Plus className="w-4 h-4" />
+                     <span className="text-xs font-bold uppercase tracking-wider">Add Media</span>
+                   </button>
+                 </div>
+               )}
             </div>
 
-            {/* Category Grid */}
-            <div className="space-y-3">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">Label this achievement</label>
-              <div className="grid grid-cols-2 gap-3">
-                 {[
-                   { id: 'project', label: 'Tech Project', icon: Rocket },
-                   { id: 'workshop', label: 'Workshop', icon: GraduationCap },
-                   { id: 'tip', label: 'Tech Tip', icon: Lightbulb },
-                   { id: 'hiring', label: 'Hiring', icon: Briefcase, disabled: !isCompany },
-                 ].map((cat) => (
-                   <button
-                     key={cat.id}
-                     type="button"
-                     disabled={cat.disabled}
-                     onClick={() => setCategory(cat.id)}
-                     className={`flex items-center gap-3 px-4 py-4 rounded-2xl border transition-all
-                       ${cat.disabled ? 'opacity-20 cursor-not-allowed border-transparent grayscale' : 
-                         category === cat.id ? `bg-white text-black border-white` : 'bg-transparent border-white/[0.06] text-zinc-500 hover:text-white hover:bg-white/[0.04]'}`}
-                   >
-                     <cat.icon className="w-4 h-4" />
-                     <span className="text-sm font-bold">{cat.label}</span>
-                   </button>
-                 ))}
-              </div>
-            </div>
           </div>
 
           {/* Footer Actions */}

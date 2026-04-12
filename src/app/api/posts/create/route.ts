@@ -18,7 +18,8 @@ export async function POST(request: Request) {
       content,
       media_urls,
       media_types,
-      category
+      category,
+      quoted_post_id
     } = body
 
     if (!content) {
@@ -34,7 +35,8 @@ export async function POST(request: Request) {
         content,
         media_urls,
         media_types,
-        category
+        category,
+        quoted_post_id
       }])
       .select()
       .single()

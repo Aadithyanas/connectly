@@ -21,6 +21,19 @@ export interface Post {
     role: string
   }
   is_liked?: boolean
+  quoted_post_id?: string | null
+  quoted_post?: {
+    id: string
+    content: string
+    media_urls: string[]
+    media_types: string[]
+    created_at: string
+    user?: {
+      name: string
+      avatar_url: string
+      role: string
+    }
+  } | null
 }
 
 export interface PostComment {
@@ -43,14 +56,20 @@ export interface PostComment {
 }
 
 export function usePosts(filterUserId?: string, filterRole?: string) {
-  const [posts, setPosts] = useState<Post[]>(() => {
-    if (typeof window !== 'undefined' && !filterUserId) {
-      const saved = localStorage.getItem('tech_feed_cache')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
+  const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Hydrate from cache on mount (client-side only trick to avoid hydration mismatch)
+  useEffect(() => {
+    if (!filterUserId) {
+      try {
+        const saved = localStorage.getItem('tech_feed_cache')
+        if (saved) {
+          setPosts(JSON.parse(saved))
+        }
+      } catch (e) {}
+    }
+  }, [filterUserId])
 
   // State for comments
   const [activeComments, setActiveComments] = useState<Record<string, PostComment[]>>({})
@@ -80,7 +99,11 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
         .from('posts')
         .select(`
           *,
-          profiles:profiles!posts_user_id_fkey!inner(name, avatar_url, role)
+          profiles:profiles!posts_user_id_fkey!inner(name, avatar_url, role),
+          quoted_post:posts!quoted_post_id (
+            id, content, media_urls, media_types, created_at,
+            profiles:profiles!posts_user_id_fkey(name, avatar_url, role)
+          )
         `)
 
       if (filterUserId) {
@@ -103,13 +126,25 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
 
       const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id))
 
-      const formatted: Post[] = (data || []).map((p: any) => ({
-        ...p,
-        user: p.profiles,
-        is_liked: likedPostIds.has(p.id),
-        media_urls: Array.isArray(p.media_urls) ? p.media_urls : [],
-        media_types: Array.isArray(p.media_types) ? p.media_types : []
-      }))
+      const formatted: Post[] = (data || []).map((p: any) => {
+        let quoted_post = p.quoted_post
+        if (quoted_post) {
+          quoted_post = {
+            ...quoted_post,
+            user: quoted_post.profiles
+          }
+          delete quoted_post.profiles
+        }
+        
+        return {
+          ...p,
+          user: p.profiles,
+          is_liked: likedPostIds.has(p.id),
+          media_urls: Array.isArray(p.media_urls) ? p.media_urls : [],
+          media_types: Array.isArray(p.media_types) ? p.media_types : [],
+          quoted_post
+        }
+      })
 
       setPosts(formatted)
       if (!filterUserId) {
@@ -248,7 +283,7 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
     }
   }
 
-  const createPost = async (payload: { title?: string, content: string, media_urls: string[], media_types: string[], category: string }) => {
+  const createPost = async (payload: { title?: string, content: string, media_urls: string[], media_types: string[], category: string, quoted_post_id?: string }) => {
     if (!user) return { error: 'Not authenticated' }
 
     try {

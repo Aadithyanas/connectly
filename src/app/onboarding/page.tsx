@@ -109,6 +109,8 @@ export default function OnboardingPage() {
         course: role === 'student' ? (formData.course || null) : null,
         job_role: role === 'professional' ? formData.job_role : null,
         experience_years: role === 'professional' ? (formData.experience_years || null) : null,
+        education: role === 'student' && formData.college_name ? [{ school: formData.college_name, degree: formData.course || '', startDate: '', endDate: '', present: false, description: '' }] : [],
+        experience: role === 'professional' && formData.job_role ? [{ title: formData.job_role, company: companies.find(c => c.id === formData.company_id)?.name || '', startDate: '', endDate: '', present: true, description: '' }] : [],
       }
       console.log('Attempting profile upsert with payload:', p)
       

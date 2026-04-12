@@ -21,9 +21,10 @@ interface ChatSidebarProps {
   onOpenSettings: () => void
   activeTab: 'chat' | 'feed' | 'status' | 'challenges' | 'groups'
   onTabChange: (tab: 'chat' | 'feed' | 'status' | 'challenges' | 'groups') => void
+  isModalOpen?: boolean
 }
 
-export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat, onOpenProfile, onOpenSettings, activeTab, onTabChange }: ChatSidebarProps) {
+export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat, onOpenProfile, onOpenSettings, activeTab, onTabChange, isModalOpen }: ChatSidebarProps) {
   usePushNotifications()
   const [chats, setChats] = useState<any[] | null>(null)
   const [groupSubTab, setGroupSubTab] = useState<'my' | 'community'>('my')
@@ -463,7 +464,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
         {activeTab === 'groups' && groupSubTab === 'community' ? (
           <GroupDiscovery currentUserId={user?.id || ''} onSelectChat={onSelectChat} />
         ) : loading || authLoading ? (
@@ -517,7 +518,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-zinc-500 text-sm truncate leading-tight flex-1">{chat.last_message}</p>
                   {chat.unread_count > 0 && (
-                    <div className="min-w-[19px] h-[19px] px-1.5 bg-[#22c55e] rounded-full flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(34,197,94,0.3)]">
+                     <div className="min-w-[19px] h-[19px] px-1.5 bg-[#10b981] rounded-full flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
                       <span className="text-white text-[10px] font-bold">{chat.unread_count > 99 ? '99+' : chat.unread_count}</span>
                     </div>
                   )}
@@ -527,6 +528,17 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
           ))
         )}
       </div>
+
+      {/* Floating Action Button for New Chat (Mobile) */}
+      <div className={`absolute bottom-24 right-5 z-[90] md:hidden transition-all duration-300 ${isModalOpen ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'}`}>
+        <button
+          onClick={onOpenNewChat}
+          className="w-14 h-14 bg-[#1e1e1e] rounded-full flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.6)] border border-white/[0.08] hover:bg-[#2a2a2a] hover:scale-105 active:scale-95 transition-all text-white"
+        >
+          <Plus className="w-7 h-7" strokeWidth={2.5} />
+        </button>
+      </div>
+
     </div>
   )
 }

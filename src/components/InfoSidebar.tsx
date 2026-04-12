@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { useIsUserOnline } from '@/hooks/useOnlineStatus'
 import { useAuth } from '@/context/AuthContext'
 import { useConnections } from '@/hooks/useConnections'
+import ConnectionsModal from './ConnectionsModal'
 
 interface InfoSidebarProps {
   isOpen: boolean
@@ -38,6 +39,13 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
   const [jobRole, setJobRole] = useState(data?.job_role || '')
   const [experienceYears, setExperienceYears] = useState(data?.experience_years || '')
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(data?.avatar_url || '')
+
+  const [instagram, setInstagram] = useState(data?.instagram || '')
+  const [experiences, setExperiences] = useState<any[]>(data?.experience || [])
+  const [educations, setEducations] = useState<any[]>(data?.education?.length ? data.education : (data?.college_name ? [{ school: data?.college_name, degree: data?.course || '', startDate: '', endDate: '', present: false, description: '' }] : []))
+  
+  const [isConnectionsModalOpen, setIsConnectionsModalOpen] = useState(false)
+  const [connectionsTab, setConnectionsTab] = useState<'followers' | 'following'>('followers')
 
   const { user, profile, refreshProfile, signOut } = useAuth()
   const supabase = createClient()
@@ -80,6 +88,9 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
     setJobRole(data?.job_role || '')
     setExperienceYears(data?.experience_years || '')
     setCurrentAvatarUrl(data?.avatar_url || '')
+    setInstagram(data?.instagram || '')
+    setExperiences(data?.experience || [])
+    setEducations(data?.education?.length ? data.education : (data?.college_name ? [{ school: data?.college_name, degree: data?.course || '', startDate: '', endDate: '', present: false, description: '' }] : []))
     if (isOpen) {
       fetchChallengeStats()
     }
@@ -160,9 +171,11 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
     if (!user) { setLoading(false); return }
     try {
       const { error } = await supabase.from('profiles').update({ 
-        name, bio, linkedin, github, portfolio,
+        name, bio, linkedin, github, portfolio, instagram,
         college_name: collegeName, course, job_role: jobRole,
-        experience_years: experienceYears, avatar_url: currentAvatarUrl
+        experience_years: experienceYears === '' ? null : parseInt(experienceYears as string, 10), avatar_url: currentAvatarUrl,
+        experience: experiences,
+        education: educations
       }).eq('id', user.id)
       if (error) throw error
       refreshProfile()
@@ -277,11 +290,23 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
       ))}
     </div>
   )
+  const formatDate = (val: string) => {
+    if (!val) return ''
+    const parts = val.split('-')
+    if (parts.length === 2) {
+      return new Date(Number(parts[0]), Number(parts[1]) - 1).toLocaleString('default', { month: 'short', year: 'numeric' })
+    }
+    if (parts.length === 3) {
+      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).toLocaleString('default', { day: 'numeric', month: 'short', year: 'numeric' })
+    }
+    return val
+  }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="absolute inset-y-0 right-0 z-40 flex w-full h-full bg-black/50 backdrop-blur-[2px]">
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <div className="absolute inset-y-0 right-0 z-40 flex w-full h-full bg-black/50 backdrop-blur-[2px]">
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -445,14 +470,20 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                           <div className="flex flex-col">
                             <span className="text-white text-lg font-medium">{name || 'Add a name'}</span>
                             <div className="flex items-center gap-4 mt-1">
-                              <div className="flex items-center gap-1.5">
+                              <button 
+                                onClick={() => { setConnectionsTab('followers'); setIsConnectionsModalOpen(true); }}
+                                className="flex items-center gap-1.5 hover:bg-white/[0.05] p-1 -ml-1 rounded transition-colors"
+                              >
                                 <span className="text-white font-bold text-sm">{followersCount}</span>
                                 <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-tight">Connections</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
+                              </button>
+                              <button 
+                                onClick={() => { setConnectionsTab('following'); setIsConnectionsModalOpen(true); }}
+                                className="flex items-center gap-1.5 hover:bg-white/[0.05] p-1 -ml-1 rounded transition-colors"
+                              >
                                 <span className="text-white font-bold text-sm">{followingCount}</span>
                                 <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-tight">Following</span>
-                              </div>
+                              </button>
                               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-400/10 rounded-full border border-amber-400/20">
                                 <Trophy className="w-2.5 h-2.5 text-amber-500" />
                                 <span className="text-amber-500 font-bold text-[10px] uppercase tracking-tighter">{challengeStats.solved} Solved</span>
@@ -468,32 +499,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                       </div>
                     </div>
 
-                    {data?.role === 'student' && (
-                      <div className="space-y-4">
-                        <div className="space-y-1">
-                          <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">College</label>
-                          {isEditing ? (
-                            <input type="text" className="w-full bg-transparent border-b border-white/20 py-1 text-white text-sm focus:ring-0 outline-none" value={collegeName} onChange={(e) => setCollegeName(e.target.value)} />
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <GraduationCap className="w-4 h-4 text-zinc-600" />
-                              <p className="text-zinc-300 font-medium">{collegeName || 'Add college'}</p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Course</label>
-                          {isEditing ? (
-                            <input type="text" className="w-full bg-transparent border-b border-white/20 py-1 text-white text-sm focus:ring-0 outline-none" value={course} onChange={(e) => setCourse(e.target.value)} />
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-zinc-600" />
-                              <p className="text-zinc-300 font-medium">{course || 'Add course'}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+
 
                     {data?.role === 'professional' && (
                       <div className="space-y-4">
@@ -533,12 +539,156 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                     </div>
 
                     <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Experience</label>
+                        {isEditing && (
+                          <button 
+                            onClick={() => setExperiences([...experiences, { title: '', company: '', startDate: '', endDate: '', present: false, description: '' }])}
+                            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors"
+                          >
+                            <Plus className="w-3 h-3" /> Add
+                          </button>
+                        )}
+                      </div>
+                      
+                      {isEditing ? (
+                        <div className="space-y-4">
+                          {experiences.map((exp, idx) => (
+                            <div key={idx} className="bg-white/[0.02] border border-white/[0.04] p-3 rounded-xl space-y-3 relative group">
+                              <button 
+                                onClick={() => setExperiences(experiences.filter((_, i) => i !== idx))}
+                                className="absolute -top-2 -right-2 p-1.5 bg-red-500/20 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/40"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                              <input type="text" placeholder="Job Title (e.g. Frontend Developer)" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1" value={exp.title} onChange={(e) => { const newExp = [...experiences]; newExp[idx].title = e.target.value; setExperiences(newExp); }} />
+                              <input type="text" placeholder="Company Name" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1" value={exp.company} onChange={(e) => { const newExp = [...experiences]; newExp[idx].company = e.target.value; setExperiences(newExp); }} />
+                              
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 space-y-1">
+                                  <label className="text-[10px] text-zinc-500 uppercase font-bold">Start Date</label>
+                                  <input type="date" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1 [&::-webkit-calendar-picker-indicator]:invert" value={exp.startDate || ''} onChange={(e) => { const newExp = [...experiences]; newExp[idx].startDate = e.target.value; setExperiences(newExp); }} />
+                                </div>
+                                {!exp.present && (
+                                  <div className="flex-1 space-y-1">
+                                    <label className="text-[10px] text-zinc-500 uppercase font-bold">End Date</label>
+                                    <input type="date" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1 [&::-webkit-calendar-picker-indicator]:invert" value={exp.endDate || ''} onChange={(e) => { const newExp = [...experiences]; newExp[idx].endDate = e.target.value; setExperiences(newExp); }} />
+                                  </div>
+                                )}
+                              </div>
+                              <label className="flex items-center gap-2 cursor-pointer mt-1 w-fit">
+                                <input type="checkbox" className="rounded bg-white/10 border-none text-white focus:ring-0 w-3 h-3" checked={exp.present || false} onChange={(e) => { const newExp = [...experiences]; newExp[idx].present = e.target.checked; if(e.target.checked) newExp[idx].endDate = ''; setExperiences(newExp); }} />
+                                <span className="text-xs text-zinc-400">I currently work here</span>
+                              </label>
+
+                              <textarea placeholder="Description" rows={2} className="bg-white/[0.03] border-transparent rounded-lg w-full text-xs text-white focus:ring-1 focus:ring-white/20 p-2 outline-none mt-2" value={exp.description} onChange={(e) => { const newExp = [...experiences]; newExp[idx].description = e.target.value; setExperiences(newExp); }} />
+                            </div>
+                          ))}
+                          {experiences.length === 0 && <p className="text-zinc-600 text-xs italic">No experience added.</p>}
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {experiences.map((exp, idx) => (
+                            <div key={idx} className="flex gap-4">
+                              <div className="w-10 h-10 shrink-0 bg-white/[0.04] rounded-lg flex items-center justify-center text-zinc-500 border border-white/[0.04]">
+                                <Briefcase className="w-5 h-5" />
+                              </div>
+                              <div className="flex flex-col flex-1">
+                                <span className="text-white font-bold text-sm">{exp.title}</span>
+                                <span className="text-zinc-400 text-xs">{exp.company}</span>
+                                <span className="text-zinc-500 text-[10px] uppercase font-semibold mt-0.5">
+                                  {exp.startDate ? `${formatDate(exp.startDate)} - ${exp.present ? 'Present' : formatDate(exp.endDate) || 'Present'}` : exp.duration}
+                                </span>
+                                {exp.description && <p className="text-zinc-400 text-xs mt-1.5 leading-relaxed">{exp.description}</p>}
+                              </div>
+                            </div>
+                          ))}
+                          {experiences.length === 0 && <p className="text-zinc-600 text-sm">No experience listed.</p>}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Education</label>
+                        {isEditing && (
+                          <button 
+                            onClick={() => setEducations([...educations, { school: '', degree: '', startDate: '', endDate: '', present: false, description: '' }])}
+                            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors"
+                          >
+                            <Plus className="w-3 h-3" /> Add
+                          </button>
+                        )}
+                      </div>
+                      
+                      {isEditing ? (
+                        <div className="space-y-4">
+                          {educations.map((edu, idx) => (
+                            <div key={idx} className="bg-white/[0.02] border border-white/[0.04] p-3 rounded-xl space-y-3 relative group">
+                              <button 
+                                onClick={() => setEducations(educations.filter((_, i) => i !== idx))}
+                                className="absolute -top-2 -right-2 p-1.5 bg-red-500/20 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/40"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                              <input type="text" placeholder="School / University" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1" value={edu.school} onChange={(e) => { const newEdu = [...educations]; newEdu[idx].school = e.target.value; setEducations(newEdu); }} />
+                              <input type="text" placeholder="Degree / Course" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1" value={edu.degree} onChange={(e) => { const newEdu = [...educations]; newEdu[idx].degree = e.target.value; setEducations(newEdu); }} />
+                              
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 space-y-1">
+                                  <label className="text-[10px] text-zinc-500 uppercase font-bold">Start Date</label>
+                                  <input type="date" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1 [&::-webkit-calendar-picker-indicator]:invert" value={edu.startDate || ''} onChange={(e) => { const newEdu = [...educations]; newEdu[idx].startDate = e.target.value; setEducations(newEdu); }} />
+                                </div>
+                                {!edu.present && (
+                                  <div className="flex-1 space-y-1">
+                                    <label className="text-[10px] text-zinc-500 uppercase font-bold">End Date</label>
+                                    <input type="date" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1 [&::-webkit-calendar-picker-indicator]:invert" value={edu.endDate || ''} onChange={(e) => { const newEdu = [...educations]; newEdu[idx].endDate = e.target.value; setEducations(newEdu); }} />
+                                  </div>
+                                )}
+                              </div>
+                              <label className="flex items-center gap-2 cursor-pointer mt-1 w-fit">
+                                <input type="checkbox" className="rounded bg-white/10 border-none text-white focus:ring-0 w-3 h-3" checked={edu.present || false} onChange={(e) => { const newEdu = [...educations]; newEdu[idx].present = e.target.checked; if(e.target.checked) newEdu[idx].endDate = ''; setEducations(newEdu); }} />
+                                <span className="text-xs text-zinc-400">I currently study here</span>
+                              </label>
+
+                              <textarea placeholder="Description / Extracurriculars" rows={2} className="bg-white/[0.03] border-transparent rounded-lg w-full text-xs text-white focus:ring-1 focus:ring-white/20 p-2 outline-none mt-2" value={edu.description} onChange={(e) => { const newEdu = [...educations]; newEdu[idx].description = e.target.value; setEducations(newEdu); }} />
+                            </div>
+                          ))}
+                          {educations.length === 0 && <p className="text-zinc-600 text-xs italic">No education added.</p>}
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {educations.map((edu, idx) => (
+                            <div key={idx} className="flex gap-4">
+                              <div className="w-10 h-10 shrink-0 bg-white/[0.04] rounded-lg flex items-center justify-center text-zinc-500 border border-white/[0.04]">
+                                <GraduationCap className="w-5 h-5" />
+                              </div>
+                              <div className="flex flex-col flex-1">
+                                <span className="text-white font-bold text-sm">{edu.school}</span>
+                                <span className="text-zinc-400 text-xs">{edu.degree}</span>
+                                <span className="text-zinc-500 text-[10px] uppercase font-semibold mt-0.5">
+                                  {edu.startDate ? `${formatDate(edu.startDate)} - ${edu.present ? 'Present' : formatDate(edu.endDate) || 'Present'}` : ''}
+                                </span>
+                                {edu.description && <p className="text-zinc-400 text-xs mt-1.5 leading-relaxed">{edu.description}</p>}
+                              </div>
+                            </div>
+                          ))}
+                          {educations.length === 0 && <p className="text-zinc-600 text-sm">No education listed.</p>}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
                       <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Links</label>
                       {isEditing ? (
                         <div className="space-y-3 pt-1">
                           <div className="flex items-center gap-3 bg-white/[0.03] rounded-xl p-3">
                             <Link className="w-4 h-4 text-zinc-600" />
                             <input type="text" placeholder="LinkedIn URL" className="bg-transparent border-none text-sm text-white w-full p-0 focus:ring-0 outline-none placeholder-zinc-700" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
+                          </div>
+                          <div className="flex items-center gap-3 bg-white/[0.03] rounded-xl p-3">
+                            <Camera className="w-4 h-4 text-zinc-600" />
+                            <input type="text" placeholder="Instagram Username (e.g. zuck)" className="bg-transparent border-none text-sm text-white w-full p-0 focus:ring-0 outline-none placeholder-zinc-700" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
                           </div>
                           <div className="flex items-center gap-3 bg-white/[0.03] rounded-xl p-3">
                             <Globe className="w-4 h-4 text-zinc-600" />
@@ -552,24 +702,30 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                       ) : (
                         <div className="flex flex-col gap-2 pt-1">
                           {linkedin && (
-                            <a href={linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                            <a href={linkedin.startsWith('http') ? linkedin : `https://${linkedin}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
                               <div className="flex items-center gap-3"><Link className="w-4 h-4 text-zinc-400" /><span className="text-white text-[13px] font-medium">LinkedIn</span></div>
                               <Globe className="w-3.5 h-3.5 text-zinc-600" />
                             </a>
                           )}
+                          {instagram && (
+                            <a href={`https://instagram.com/${instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                              <div className="flex items-center gap-3"><Camera className="w-4 h-4 text-pink-500" /><span className="text-white text-[13px] font-medium">Instagram</span></div>
+                              <Globe className="w-3.5 h-3.5 text-zinc-600" />
+                            </a>
+                          )}
                           {github && (
-                            <a href={`https://github.com/${github}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                            <a href={`https://github.com/${github.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
                               <div className="flex items-center gap-3"><Globe className="w-4 h-4 text-zinc-400" /><span className="text-white text-[13px] font-medium">GitHub</span></div>
                               <Globe className="w-3.5 h-3.5 text-zinc-600" />
                             </a>
                           )}
                           {portfolio && (
-                            <a href={portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                            <a href={portfolio.startsWith('http') ? portfolio : `https://${portfolio}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
                               <div className="flex items-center gap-3"><Link className="w-4 h-4 text-zinc-400" /><span className="text-white text-[13px] font-medium">Portfolio</span></div>
                               <Globe className="w-3.5 h-3.5 text-zinc-600" />
                             </a>
                           )}
-                          {!linkedin && !github && !portfolio && <p className="text-zinc-600 text-sm">No links added yet.</p>}
+                          {!linkedin && !instagram && !github && !portfolio && <p className="text-zinc-600 text-sm">No links added yet.</p>}
                         </div>
                       )}
                     </div>
@@ -641,30 +797,48 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                       <p className="text-white text-lg font-medium">{data?.name || 'Unknown'}</p>
                     </div>
 
-                    {data?.role === 'student' && data?.college_name && (
-                      <div className="space-y-1">
-                        <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">College</label>
-                        <div className="flex items-center gap-2"><GraduationCap className="w-4 h-4 text-zinc-600" /><p className="text-zinc-400">{data.college_name}</p></div>
-                      </div>
-                    )}
-                    {data?.role === 'student' && data?.course && (
-                      <div className="space-y-1">
-                        <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Course</label>
-                        <div className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-zinc-600" /><p className="text-zinc-400">{data.course}</p></div>
-                      </div>
-                    )}
-                    {data?.role === 'professional' && companyName && (
-                      <div className="space-y-1">
-                        <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Company</label>
-                        <div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-zinc-600" /><p className="text-zinc-400">{companyName}</p></div>
-                      </div>
-                    )}
-                    {data?.role === 'professional' && data?.job_role && (
-                      <div className="space-y-1">
-                        <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Role</label>
-                        <div className="flex items-center gap-2"><Briefcase className="w-4 h-4 text-zinc-600" /><p className="text-zinc-400">{data.job_role}{data.experience_years ? ` · ${data.experience_years} yrs exp` : ''}</p></div>
-                      </div>
-                    )}
+                    <div className="space-y-4 pt-2">
+                        {experiences.length > 0 && (
+                          <div className="space-y-4">
+                            <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Experience</label>
+                            {experiences.map((exp, idx) => (
+                              <div key={idx} className="flex gap-4">
+                                <div className="w-10 h-10 shrink-0 bg-white/[0.04] rounded-lg flex items-center justify-center text-zinc-500 border border-white/[0.04]">
+                                  <Briefcase className="w-5 h-5" />
+                                </div>
+                                <div className="flex flex-col flex-1">
+                                  <span className="text-white font-bold text-sm">{exp.title}</span>
+                                  <span className="text-zinc-400 text-xs">{exp.company}</span>
+                                  <span className="text-zinc-500 text-[10px] uppercase font-semibold mt-0.5">
+                                    {exp.startDate ? `${formatDate(exp.startDate)} - ${exp.present ? 'Present' : formatDate(exp.endDate) || 'Present'}` : exp.duration}
+                                  </span>
+                                  {exp.description && <p className="text-zinc-400 text-xs mt-1.5 leading-relaxed">{exp.description}</p>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {educations.length > 0 && (
+                          <div className="space-y-4">
+                            <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Education</label>
+                            {educations.map((edu, idx) => (
+                              <div key={idx} className="flex gap-4">
+                                <div className="w-10 h-10 shrink-0 bg-white/[0.04] rounded-lg flex items-center justify-center text-zinc-500 border border-white/[0.04]">
+                                  <GraduationCap className="w-5 h-5" />
+                                </div>
+                                <div className="flex flex-col flex-1">
+                                  <span className="text-white font-bold text-sm">{edu.school}</span>
+                                  <span className="text-zinc-400 text-xs">{edu.degree}</span>
+                                  <span className="text-zinc-500 text-[10px] uppercase font-semibold mt-0.5">
+                                    {edu.startDate ? `${formatDate(edu.startDate)} - ${edu.present ? 'Present' : formatDate(edu.endDate) || 'Present'}` : ''}
+                                  </span>
+                                  {edu.description && <p className="text-zinc-400 text-xs mt-1.5 leading-relaxed">{edu.description}</p>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                    </div>
                     {data?.skills?.length > 0 && (
                       <div className="space-y-2">
                         <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Skills</label>
@@ -679,10 +853,16 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                       <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">About</label>
                       <div className="flex items-start gap-3"><Info className="w-4 h-4 text-zinc-600 shrink-0 mt-0.5" /><p className="text-zinc-500 text-sm leading-relaxed">{data?.bio || 'Hey there! I am using Nexus.'}</p></div>
                     </div>
-                    {(data?.linkedin || data?.github || data?.portfolio) && (
+                    {(data?.linkedin || data?.github || data?.portfolio || data?.instagram) && (
                       <div className="space-y-3 pt-1">
                         <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Links</label>
                         <div className="flex flex-col gap-2">
+                          {data.instagram && (
+                            <a href={`https://instagram.com/${data.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                              <div className="flex items-center gap-2.5"><Camera className="w-4 h-4 text-pink-500" /><span className="text-white text-xs font-medium">Instagram</span></div>
+                              <Globe className="w-3.5 h-3.5 text-zinc-600" />
+                            </a>
+                          )}
                           {data.linkedin && (
                             <a href={data.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
                               <div className="flex items-center gap-2.5"><Link className="w-4 h-4 text-zinc-400" /><span className="text-white text-xs font-medium">LinkedIn</span></div>
@@ -804,7 +984,18 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
             </div>
           </motion.div>
         </div>
+        )}
+      </AnimatePresence>
+
+      {/* Connections Modal */}
+      {targetUserId && (
+        <ConnectionsModal 
+          isOpen={isConnectionsModalOpen}
+          onClose={() => setIsConnectionsModalOpen(false)}
+          userId={targetUserId}
+          initialTab={connectionsTab}
+        />
       )}
-    </AnimatePresence>
+    </>
   )
 }

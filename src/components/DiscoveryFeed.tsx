@@ -1,9 +1,9 @@
 'use client'
 
 import { usePosts, Post, PostComment } from '@/hooks/usePosts'
-import { Heart, MessageCircle, Share2, Plus, Briefcase, Rocket, Lightbulb, GraduationCap, Clock, Send, Loader2, X, Play, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Plus, Briefcase, Rocket, Lightbulb, GraduationCap, Clock, Send, Loader2, X, Play, ChevronLeft, ChevronRight, ChevronUp, RefreshCw, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import CreatePostModal from './CreatePostModal'
 
@@ -12,12 +12,46 @@ interface DiscoveryFeedProps {
   filterUserId?: string
   onClearFilter?: () => void
   onBack?: () => void
+  onScrollToggle?: (visible: boolean) => void
 }
 
-export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter, onBack }: DiscoveryFeedProps) {
+export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter, onBack, onScrollToggle }: DiscoveryFeedProps) {
   const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'professional'>('all')
   const { posts, loading, toggleLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost } = usePosts(filterUserId, roleFilter === 'all' ? undefined : roleFilter)
-  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createModal, setCreateModal] = useState<{ isOpen: boolean, quotedPost?: Post }>({ isOpen: false })
+  
+  const [showHeader, setShowHeader] = useState(true)
+  const lastScrollY = useRef(0)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      const currentScrollY = container.scrollTop
+      // Threshold to prevent jitter, but responsive
+      const diff = currentScrollY - lastScrollY.current
+      
+      if (currentScrollY <= 0) {
+        setShowHeader(true)
+        onScrollToggle?.(true)
+      } else if (diff > 5 && currentScrollY > 50) {
+        // Scrolling down - Hide
+        setShowHeader(false)
+        onScrollToggle?.(false)
+      } else if (diff < -5) {
+        // Scrolling up - Show
+        setShowHeader(true)
+        onScrollToggle?.(true)
+      }
+      
+      lastScrollY.current = currentScrollY
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [onScrollToggle])
 
   if (loading && posts.length === 0) {
     return (
@@ -30,25 +64,25 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
 
   return (
     <div className="flex-1 flex flex-col h-full bg-black relative w-full min-w-0 overflow-hidden">
-      {/* Header — The Nocturnal style */}
-      <div className="w-full px-4 md:px-6 py-3 glass-header border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0" style={{minHeight:'60px'}}>
-        <div className="flex items-center gap-3">
-          {onBack && (
-            <button onClick={onBack} className="md:hidden p-1.5 hover:bg-white/[0.06] rounded-full text-[#adaaaa] transition-colors">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-          )}
-          <div>
-            <h1 className="font-headline text-[#bc9dff] text-lg md:text-xl tracking-tight flex items-center gap-2">
-              {filterUserId ? 'Achievements' : 'Discovery'}
-              <span className="w-1.5 h-1.5 rounded-full bg-[#bc9dff] animate-pulse inline-block"></span>
-            </h1>
-            <p className="text-[#adaaaa] text-[9px] uppercase font-bold tracking-widest mt-0.5">
-              {filterUserId ? 'Individual Journey' : 'Community Feed'}
-            </p>
+      {/* Header — The Nocturnal style (Only show for individual user view) */}
+      {filterUserId && (
+        <div className="w-full px-4 md:px-6 py-3 glass-header border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0" style={{minHeight:'60px'}}>
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button onClick={onBack} className="md:hidden p-1.5 hover:bg-white/[0.06] rounded-full text-[#adaaaa] transition-colors">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+            <div>
+              <h1 className="font-headline text-[#bc9dff] text-lg md:text-xl tracking-tight flex items-center gap-2">
+                Achievements
+                <span className="w-1.5 h-1.5 rounded-full bg-[#bc9dff] animate-pulse inline-block"></span>
+              </h1>
+              <p className="text-[#adaaaa] text-[9px] uppercase font-bold tracking-widest mt-0.5">
+                Individual Journey
+              </p>
+            </div>
           </div>
-        </div>
-        {filterUserId ? (
           <button 
             onClick={onClearFilter}
             className="flex items-center gap-2 text-[#adaaaa] hover:text-white transition-colors font-bold text-xs uppercase cursor-pointer"
@@ -56,78 +90,89 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
             <X className="w-4 h-4" />
             Back
           </button>
-        ) : (
-          <button 
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 primary-gradient text-white px-4 py-2 rounded-full font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 primary-shadow hover:opacity-90"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Post</span>
-          </button>
-        )}
-      </div>
-
-      {!filterUserId && (
-        <div className="w-full px-4 md:px-6 py-3 bg-[#0e0e0e] border-b border-white/[0.04] flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth shrink-0">
-          <button 
-            onClick={() => setRoleFilter('all')}
-            className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-              roleFilter === 'all' 
-                ? 'primary-gradient text-white primary-shadow' 
-                : 'bg-[#1a1a1a] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-[#20201f]'
-            }`}
-          >
-            All Posts
-          </button>
-          <button 
-            onClick={() => setRoleFilter('professional')}
-            className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${
-              roleFilter === 'professional' 
-                ? 'bg-[#5e289b] text-white' 
-                : 'bg-[#1a1a1a] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-[#20201f]'
-            }`}
-          >
-            <Briefcase className="w-3 h-3" />
-            Professionals
-          </button>
-          <button 
-            onClick={() => setRoleFilter('student')}
-            className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${
-              roleFilter === 'student' 
-                ? 'bg-[#5e289b] text-white' 
-                : 'bg-[#1a1a1a] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-[#20201f]'
-            }`}
-          >
-            <GraduationCap className="w-3 h-3" />
-            Students
-          </button>
-        </div>
-      )}
-
-      {filterUserId && posts.length > 0 && (
-        <div className="w-full px-6 py-2.5 bg-white/[0.02] border-b border-white/[0.04] flex items-center gap-3 shrink-0">
-          <Rocket className="w-3.5 h-3.5 text-zinc-500" />
-          <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-widest">
-            Viewing posts by <span className="text-white">{posts[0].user?.name}</span>
-          </p>
         </div>
       )}
 
       {/* Feed Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar w-full p-0 md:p-6 pb-32">
-        <div className="w-full md:max-w-5xl md:mx-auto md:space-y-8 md:p-0">
-          {posts.length === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-              <div className="p-6 bg-white/[0.03] rounded-2xl border border-white/[0.04]">
-                <Rocket className="w-10 h-10 text-zinc-700" />
-              </div>
-              <div>
-                <p className="text-white font-bold text-lg">No posts yet</p>
-                <p className="text-zinc-600 text-sm">Be the first to share!</p>
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar w-full p-0">
+        {!filterUserId && (
+          <div className={`sticky top-0 z-[40] transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${showHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`}>
+            <div className="w-full px-6 py-6 bg-black/90 backdrop-blur-3xl border-b border-white/[0.04]">
+              <div className="flex flex-col items-center justify-center text-center">
+                <h1 className="font-headline text-3xl md:text-5xl text-white tracking-tighter font-black">
+                  Connectly
+                  <span className="text-[#bc9dff]">.</span>
+                </h1>
+                <p className="text-[#767575] text-xs uppercase font-bold tracking-[0.4em] mt-2">
+                  Build your ideas
+                </p>
               </div>
             </div>
-          ) : (
-            posts.map(post => (
+
+            {/* Role Filter Chips (sub-header part of the sticky block) */}
+            <div className="w-full px-4 md:px-6 py-4 bg-black/80 backdrop-blur-2xl border-b border-white/[0.04] flex items-center justify-center gap-3 overflow-x-auto no-scrollbar scroll-smooth">
+              <button 
+                onClick={() => setRoleFilter('all')}
+                className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  roleFilter === 'all' 
+                    ? 'primary-gradient text-white primary-shadow' 
+                    : 'bg-white/[0.03] border border-white/[0.05] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-white/[0.06]'
+                }`}
+              >
+                All Roles
+              </button>
+              <button 
+                onClick={() => setRoleFilter('professional')}
+                className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  roleFilter === 'professional' 
+                    ? 'bg-[#5e289b] text-white border border-[#5e289b]' 
+                    : 'bg-white/[0.03] border border-white/[0.05] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-white/[0.06]'
+                }`}
+              >
+                <Briefcase className="w-[11px] h-[11px]" />
+                Professionals
+              </button>
+              <button 
+                onClick={() => setRoleFilter('student')}
+                className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  roleFilter === 'student' 
+                    ? 'bg-[#5e289b] text-white border border-[#5e289b]' 
+                    : 'bg-white/[0.03] border border-white/[0.05] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-white/[0.06]'
+                }`}
+              >
+                <GraduationCap className="w-[11px] h-[11px]" />
+                Students
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="w-full md:max-w-5xl md:mx-auto md:space-y-8 p-0 md:p-10">
+          {(() => {
+            const filteredPosts = posts.filter(post => {
+              if (filterUserId) return true; // Keep all for individual view
+              return true; // We removed the quotes tab, so just show everything in one stream
+            });
+
+            if (filteredPosts.length === 0 && !loading) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 animate-in fade-in zoom-in-95 duration-500">
+                  <div className="p-6 bg-white/[0.03] rounded-3xl border border-white/[0.04]">
+                    <Rocket className="w-12 h-12 text-zinc-700/50" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-xl mb-1">
+                      No Posts Found
+                    </h3>
+                    <p className="text-zinc-500 text-[13px]">
+                      Start sharing your achievements and ideas!
+                    </p>
+                  </div>
+                </div>
+              )
+            }
+
+            return filteredPosts.map(post => (
               <PostCard 
                 key={post.id} 
                 post={post} 
@@ -139,13 +184,30 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
                 onStartChat={onStartChat}
                 updatePost={updatePost}
                 deletePost={deletePost}
+                onQuote={(postToQuote) => setCreateModal({ isOpen: true, quotedPost: postToQuote })}
               />
-            ))
-          )}
+            ));
+          })()}
         </div>
-      </div>
+        {/* Floating Action Button for Create Post */}
+        {!filterUserId && (
+          <div className="absolute bottom-24 right-5 z-[80] md:hidden">
+            <button
+              onClick={() => setCreateModal({ isOpen: true })}
+              className="w-14 h-14 bg-[#1e1e1e] rounded-full flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.6)] border border-white/[0.08] hover:bg-[#2a2a2a] hover:scale-105 active:scale-95 transition-all text-white"
+            >
+              <Plus className="w-7 h-7" strokeWidth={2.5} />
+            </button>
+          </div>
+        )}
 
-      {showCreateModal && <CreatePostModal onClose={() => setShowCreateModal(false)} />}
+        {createModal.isOpen && (
+          <CreatePostModal
+            onClose={() => setCreateModal({ isOpen: false, quotedPost: undefined })}
+            quotedPost={createModal.quotedPost}
+          />
+        )}
+      </div>
     </div>
   )
 }
@@ -160,9 +222,10 @@ interface PostCardProps {
   updatePost: (postId: string, payload: { title?: string, content: string }) => Promise<any>
   deletePost: (postId: string) => Promise<any>
   onStartChat?: (userId: string, post?: Post) => void
+  onQuote: (post: Post) => void
 }
 
-function PostCard({ post, onLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost, onStartChat }: PostCardProps) {
+function PostCard({ post, onLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost, onStartChat, onQuote }: PostCardProps) {
   const { user } = useAuth()
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
@@ -410,6 +473,62 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
         </div>
       )}
 
+      {/* Quoted Post Box */}
+      {post.quoted_post_id && (
+        <div className="px-5 pb-2">
+          {post.quoted_post ? (
+            <div className="rounded-[1rem] p-4 bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.03] transition-colors cursor-pointer group/quote shadow-inner relative overflow-hidden" 
+              onClick={() => {
+                 // Option to navigate or expand quoted post in future
+              }}>
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#bc9dff]/50"></div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full overflow-hidden bg-white/10 shrink-0">
+                    {post.quoted_post.user?.avatar_url ? (
+                      <img src={post.quoted_post.user.avatar_url} alt="User" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-white bg-[#bc9dff]/30 uppercase">
+                        {post.quoted_post.user?.name?.[0] || '?'}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-white text-xs font-bold hover:text-[#bc9dff] transition-colors">
+                    {post.quoted_post.user?.name}
+                  </span>
+                  <span className="text-zinc-500 text-[10px]">· {new Date(post.quoted_post.created_at).toLocaleDateString()}</span>
+                </div>
+                <div className="text-zinc-300 text-xs leading-relaxed line-clamp-3 pl-1">
+                  {post.quoted_post.content || 'Attached Media'}
+                </div>
+                {post.quoted_post.media_urls && post.quoted_post.media_urls.length > 0 && (
+                  <div className="mt-2 w-full h-32 rounded-lg overflow-hidden relative">
+                    {post.quoted_post.media_types?.[0] === 'video' ? (
+                       <video src={post.quoted_post.media_urls[0]} className="w-full h-full object-cover pointer-events-none" />
+                    ) : (
+                       <img src={post.quoted_post.media_urls[0]} alt="Quote Media" className="w-full h-full object-cover" />
+                    )}
+                    {post.quoted_post.media_urls.length > 1 && (
+                      <div className="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[9px] text-white font-bold backdrop-blur-sm">
+                        1/{post.quoted_post.media_urls.length}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[1rem] p-4 bg-white/[0.02] border border-[#ff4d4d]/20 shadow-inner flex items-center gap-3">
+               <AlertCircle className="w-5 h-5 text-[#ff4d4d]/60" />
+               <div>
+                  <p className="text-[#ff4d4d]/80 text-sm font-bold">Post unavailable</p>
+                  <p className="text-zinc-500 text-[11px]">This post was deleted by the author.</p>
+               </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Interaction Bar */}
       <div className="px-4 pt-3 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-5">
@@ -433,6 +552,13 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
               <Send className="w-[22px] h-[22px] -mt-0.5 -rotate-[20deg]" />
             </button>
           )}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onQuote(post); }}
+            className="transition-all active:scale-90 text-[#adaaaa] hover:text-[#bc9dff] group-hover/btn:text-[#bc9dff]"
+            title="Quote this post"
+          >
+            <RefreshCw className="w-[22px] h-[22px]" />
+          </button>
         </div>
         <div className="flex justify-center flex-1">
         </div>
