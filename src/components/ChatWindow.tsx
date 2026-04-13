@@ -121,75 +121,78 @@ export default function ChatWindow({ chatId, initialData, onOpenInfo, onBack }: 
       }
 
       // 2. Fetch fresh chat details (synchronizes our knowledge of is_group)
-      const { data: chat } = await supabase
-        .from('chats')
-        .select('*')
-        .eq('id', chatId)
-        .single()
+      try {
+        const { data: chat } = await supabase
+          .from('chats')
+          .select('*')
+          .eq('id', chatId)
+          .single()
 
-      if (chat) {
-        setChatDetails(chat)
-        localStorage.setItem(`chat_${chatId}`, JSON.stringify(chat))
+        if (chat) {
+          setChatDetails(chat)
+          localStorage.setItem(`chat_${chatId}`, JSON.stringify(chat))
 
-        if (chat.is_group) {
-          // It's a group: fetch members and membership details
-          const { count } = await supabase
-            .from('chat_members')
-            .select('*', { count: 'exact', head: true })
-            .eq('chat_id', chatId)
-          if (count !== null) setGroupMemberCount(count)
+          if (chat.is_group) {
+            // It's a group: fetch members and membership details
+            const { count } = await supabase
+              .from('chat_members')
+              .select('*', { count: 'exact', head: true })
+              .eq('chat_id', chatId)
+            if (count !== null) setGroupMemberCount(count)
 
-          const { data: member } = await supabase
-            .from('chat_members')
-            .select('*')
-            .eq('chat_id', chatId)
-            .eq('user_id', user.id)
-            .single()
-          if (member) {
-            setMyMembership(member)
-            localStorage.setItem(`membership_${chatId}`, JSON.stringify(member))
-          } else {
-            setMyMembership(null)
-            localStorage.removeItem(`membership_${chatId}`)
-          }
-          setIsLoadingMembership(false)
-        } else {
-          // It's a DM: fetch the other user's profile
-          const { data: members, error: membersError } = await supabase
-            .from('chat_members')
-            .select('user_id')
-            .eq('chat_id', chatId)
-            .neq('user_id', user.id)
-            .limit(1)
-
-          if (members && members.length > 0) {
-            const uid = members[0].user_id
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
+            const { data: member } = await supabase
+              .from('chat_members')
               .select('*')
-              .eq('id', uid)
-              .maybeSingle()
-            
-            if (profile) {
-              setOtherUser(profile)
-              localStorage.setItem(`profile_${chatId}`, JSON.stringify(profile))
-            } else if (profileError) {
-              console.error("Error fetching profile:", profileError)
+              .eq('chat_id', chatId)
+              .eq('user_id', user.id)
+              .single()
+            if (member) {
+              setMyMembership(member)
+              localStorage.setItem(`membership_${chatId}`, JSON.stringify(member))
+            } else {
+              setMyMembership(null)
+              localStorage.removeItem(`membership_${chatId}`)
             }
           } else {
-             // If no other member found, check if it's a self-chat
-             const { data: selfMembers } = await supabase
-               .from('chat_members')
-               .select('user_id')
-               .eq('chat_id', chatId)
-               .eq('user_id', user.id)
-             if (selfMembers && selfMembers.length > 0) {
-               setOtherUser({ id: user.id, name: 'Just You (Saved Messages)' })
-             } else {
-               setOtherUser({ name: 'Unknown Chat' })
-             }
+            // It's a DM: fetch the other user's profile
+            const { data: members, error: membersError } = await supabase
+              .from('chat_members')
+              .select('user_id')
+              .eq('chat_id', chatId)
+              .neq('user_id', user.id)
+              .limit(1)
+
+            if (members && members.length > 0) {
+              const uid = members[0].user_id
+              const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', uid)
+                .maybeSingle()
+              
+              if (profile) {
+                setOtherUser(profile)
+                localStorage.setItem(`profile_${chatId}`, JSON.stringify(profile))
+              } else if (profileError) {
+                console.error("Error fetching profile:", profileError)
+              }
+            } else {
+               // If no other member found, check if it's a self-chat
+               const { data: selfMembers } = await supabase
+                 .from('chat_members')
+                 .select('user_id')
+                 .eq('chat_id', chatId)
+                 .eq('user_id', user.id)
+               if (selfMembers && selfMembers.length > 0) {
+                 setOtherUser({ id: user.id, name: 'Just You (Saved Messages)' })
+               } else {
+                 setOtherUser({ name: 'Unknown Chat' })
+               }
+            }
           }
         }
+      } finally {
+        setIsLoadingMembership(false)
       }
     }
 
