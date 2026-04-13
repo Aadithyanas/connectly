@@ -55,7 +55,7 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar w-full">
+      <div className="flex-1 overflow-y-auto custom-scrollbar w-full touch-action-pan-y" style={{ touchAction: 'pan-y' }}>
         <div className="max-w-4xl mx-auto w-full p-4 md:p-6 space-y-8 pb-32">
           {/* My Status */}
           <div className="space-y-4">

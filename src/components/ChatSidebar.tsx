@@ -16,7 +16,7 @@ import { usePWAInstall } from '@/hooks/usePWAInstall'
 import { Download } from 'lucide-react'
 
 interface ChatSidebarProps {
-  onSelectChat: (chatId: string) => void
+  onSelectChat: (chatId: string, metadata?: { name: string, avatar?: string, isGroup?: boolean }) => void
   activeChatId?: string
   onOpenNewChat: () => void
   onOpenProfile: () => void
@@ -42,6 +42,8 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   const { isInstallable, installApp } = usePWAInstall()
   
   const { settings, isLoaded } = useSettings()
+  // Unique ID for this instance to prevent channel name collisions when multiple sidebars mount (e.g. mobile carousel)
+  const instanceId = useRef(Math.random().toString(36).substring(7))
 
   const fetchUserAndChats = useCallback(async (showSkeleton = false) => {
     if (!user) {
@@ -267,8 +269,8 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       setLoading(false)
     }, 8000)
 
-    // Unique channel per user to prevent cross-tab interference
-    const channelName = `sidebar-sync:${user.id}`
+    // Unique channel per user and per instance to prevent cross-tab or cross-component interference
+    const channelName = `sidebar-sync:${user.id}:${instanceId.current}`
     const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload: any) => {
          debouncedFetch()
@@ -525,7 +527,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0 touch-action-pan-y" style={{ touchAction: 'pan-y' }}>
         {activeTab === 'groups' && groupSubTab === 'community' ? (
           <GroupDiscovery currentUserId={user?.id || ''} onSelectChat={onSelectChat} />
         ) : loading || authLoading ? (
@@ -553,7 +555,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
                 const extraCount = memberProfiles.length > 3 ? memberProfiles.length - 3 : 0;
 
                 return (
-                  <div key={chat.id} className="relative bg-[#09090b] rounded-3xl p-5 border border-white/[0.04] overflow-hidden flex flex-col hover:border-white/10 transition-all duration-300 cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.5)]" onClick={() => onSelectChat(chat.id)}>
+                  <div key={chat.id} className="relative bg-[#09090b] rounded-3xl p-5 border border-white/[0.04] overflow-hidden flex flex-col hover:border-white/10 transition-all duration-300 cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.5)]" onClick={() => onSelectChat(chat.id, { name: chat.display_name, avatar: chat.display_avatar, isGroup: true })}>
 
                     {/* Title & Unread Count */}
                     <div className="flex justify-between items-start mb-4">
@@ -623,7 +625,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
               }
 
               return (
-                <div key={chat.id} onClick={() => onSelectChat(chat.id)}
+                <div key={chat.id} onClick={() => onSelectChat(chat.id, { name: chat.display_name, avatar: chat.display_avatar, isGroup: chat.is_group })}
                   className={`group flex items-center px-4 py-3 cursor-pointer transition-all duration-150 border-b border-white/[0.03] ${activeChatId === chat.id ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'}`}>
                   
                   <div className="relative w-11 h-11 shrink-0 mr-3">

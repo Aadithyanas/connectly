@@ -313,7 +313,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
     <>
       <AnimatePresence>
         {isOpen && (
-          <div className="absolute inset-y-0 right-0 z-40 flex w-full h-full bg-black/50 backdrop-blur-[2px]">
+          <div className="absolute inset-y-0 right-0 z-[400] flex w-full h-full bg-black/50 backdrop-blur-[2px]">
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}

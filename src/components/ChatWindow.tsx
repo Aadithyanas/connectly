@@ -17,13 +17,14 @@ import { useSettings } from '@/hooks/useSettings'
 
 interface ChatWindowProps {
   chatId?: string
+  initialData?: { name: string, avatar?: string, isGroup?: boolean }
   onOpenInfo?: (existingProfile?: any) => void
   onBack?: () => void
 }
 
 import { useAuth } from '@/context/AuthContext'
 
-export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowProps) {
+export default function ChatWindow({ chatId, initialData, onOpenInfo, onBack }: ChatWindowProps) {
   const { messages, loading, sendMessage, uploadFile, markAsSeen, forwardMessage, deleteMessage } = useMessages(chatId)
   const { onlineUsers, typingUsers, sendTypingStatus } = usePresence(chatId || 'global')
   const { acceptInvitation } = useGroups()
@@ -62,6 +63,17 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
       setMyMembership(null)
       setIsLoadingMembership(false)
       return
+    }
+
+    // Apply initial data immediately if provided
+    if (initialData) {
+      if (initialData.isGroup) {
+        setChatDetails({ name: initialData.name, avatar_url: initialData.avatar, is_group: true })
+        setOtherUser(null)
+      } else {
+        setOtherUser({ name: initialData.name, avatar_url: initialData.avatar })
+        setChatDetails({ is_group: false })
+      }
     }
 
     setReplyingTo(null)
@@ -287,16 +299,18 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
   }
 
   const headerDisplay = chatDetails?.is_group ? {
-    name: chatDetails.name || 'Group',
+    name: chatDetails.name,
     avatar: chatDetails.avatar_url,
     status: `${groupMemberCount || 0} members`,
     isGroup: true
   } : {
-    name: otherUser?.name || 'Chat',
+    name: otherUser?.name,
     avatar: otherUser?.avatar_url,
     status: isOtherTyping ? 'typing...' : (isOtherOnline ? 'online' : (otherUser?.last_seen ? `last seen ${new Date(otherUser.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'offline')),
     isGroup: false
   }
+
+  const isLoadingHeader = !headerDisplay.name
 
   if (!chatId) {
     return (
@@ -336,41 +350,53 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
           )}
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden transition-all" style={{border:'1px solid rgba(188,157,255,0.2)'}}>
-                {headerDisplay.avatar ? (
+              <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden transition-all" style={{border: isLoadingHeader ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(188,157,255,0.2)'}}>
+                {isLoadingHeader ? (
+                  <div className="w-full h-full bg-white/5 animate-pulse" />
+                ) : headerDisplay.avatar ? (
                   <img src={headerDisplay.avatar} alt="" className="w-10 h-10 object-cover rounded-full" />
                 ) : (
                   <div className="w-full h-full primary-gradient flex items-center justify-center text-white font-bold uppercase text-sm">
-                    {headerDisplay.isGroup ? <Users className="w-4 h-4" /> : headerDisplay.name[0]}
+                    {headerDisplay.isGroup ? <Users className="w-4 h-4" /> : headerDisplay.name?.[0] || '?'}
                   </div>
                 )}
               </div>
-              {!headerDisplay.isGroup && isOtherOnline && otherUser?.availability_status !== false && (
+              {!isLoadingHeader && !headerDisplay.isGroup && isOtherOnline && otherUser?.availability_status !== false && (
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#bc9dff] rounded-full border-2 border-[#0e0e0e] animate-glow-pulse"></div>
               )}
             </div>
               <div className="flex flex-col min-w-0 flex-1">
                 {/* Name + role badge on same row */}
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <h3 className="font-headline text-[#bc9dff] text-[15px] leading-none truncate">{headerDisplay.name}</h3>
-                  {!headerDisplay.isGroup && otherUser?.role && (
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 uppercase tracking-wider ${
-                      otherUser.role === 'professional'
-                        ? 'bg-[#bc9dff]/15 text-[#bc9dff]'
-                        : 'bg-white/[0.06] text-[#adaaaa]'
-                    }`}>
-                      {otherUser.role === 'professional' ? 'pro' : 'stu'}
-                    </span>
+                  {isLoadingHeader ? (
+                    <div className="h-4 w-32 bg-white/5 rounded-md animate-pulse" />
+                  ) : (
+                    <>
+                      <h3 className="font-headline text-[#bc9dff] text-[15px] leading-none truncate">{headerDisplay.name}</h3>
+                      {!headerDisplay.isGroup && otherUser?.role && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 uppercase tracking-wider ${
+                          otherUser.role === 'professional'
+                            ? 'bg-[#bc9dff]/15 text-[#bc9dff]'
+                            : 'bg-white/[0.06] text-[#adaaaa]'
+                        }`}>
+                          {otherUser.role === 'professional' ? 'pro' : 'stu'}
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
                 {/* Status / last seen below name */}
-                <span className={`text-[11px] font-medium truncate mt-0.5 ${
-                  headerDisplay.status === 'online' || headerDisplay.status === 'typing...' 
-                    ? 'text-[#bc9dff]' 
-                    : 'text-[#666]'
-                }`}>
-                  {headerDisplay.status}
-                </span>
+                {isLoadingHeader ? (
+                  <div className="h-3 w-20 bg-white/5 rounded-md animate-pulse mt-1.5" />
+                ) : (
+                  <span className={`text-[11px] font-medium truncate mt-0.5 ${
+                    headerDisplay.status === 'online' || headerDisplay.status === 'typing...' 
+                      ? 'text-[#bc9dff]' 
+                      : 'text-[#666]'
+                  }`}>
+                    {headerDisplay.status}
+                  </span>
+                )}
               </div>
           </div>
         </div>

@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { Globe, Users, Plus, Loader2, Check } from 'lucide-react'
 
 interface GroupDiscoveryProps {
-  onSelectChat: (chatId: string) => void
+  onSelectChat: (chatId: string, metadata?: { name: string, avatar?: string, isGroup?: boolean }) => void
   currentUserId: string
 }
 
@@ -186,7 +186,7 @@ export default function GroupDiscovery({ onSelectChat, currentUserId }: GroupDis
               </button>
             ) : group.myStatus === 'invited' ? (
               <button 
-                onClick={() => onSelectChat(group.id)}
+                onClick={() => onSelectChat(group.id, { name: group.name, avatar: group.avatar_url, isGroup: true })}
                 className="w-full py-3.5 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-300 text-white text-sm font-bold active:scale-[0.98]"
               >
                 Open Invite

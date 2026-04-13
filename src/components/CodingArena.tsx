@@ -107,7 +107,7 @@ export default function CodingArena({ challenge, isSolved, onClose, onSuccess }:
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col pt-4 md:pt-0"
+      className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-md flex flex-col pt-4 md:pt-0"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04] bg-black">

@@ -20,38 +20,33 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
   const { posts, loading, toggleLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost } = usePosts(filterUserId, roleFilter === 'all' ? undefined : roleFilter)
   const [createModal, setCreateModal] = useState<{ isOpen: boolean, quotedPost?: Post }>({ isOpen: false })
   
-  const [showHeader, setShowHeader] = useState(true)
-  const lastScrollY = useRef(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showHeader, setShowHeader] = useState(true)
+  const lastScrollTop = useRef(0)
 
   useEffect(() => {
-    const container = scrollContainerRef.current
-    if (!container) return
-
-    const handleScroll = () => {
-      const currentScrollY = container.scrollTop
-      // Threshold to prevent jitter, but responsive
-      const diff = currentScrollY - lastScrollY.current
-      
-      if (currentScrollY <= 0) {
-        setShowHeader(true)
-        onScrollToggle?.(true)
-      } else if (diff > 5 && currentScrollY > 50) {
-        // Scrolling down - Hide
-        setShowHeader(false)
-        onScrollToggle?.(false)
-      } else if (diff < -5) {
-        // Scrolling up - Show
-        setShowHeader(true)
-        onScrollToggle?.(true)
-      }
-      
-      lastScrollY.current = currentScrollY
-    }
-
-    container.addEventListener('scroll', handleScroll)
-    return () => container.removeEventListener('scroll', handleScroll)
+    // Dock is now always visible or handled by parent
+     onScrollToggle?.(true)
   }, [onScrollToggle])
+
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return
+    const currentScroll = scrollContainerRef.current.scrollTop
+    const isScrollingDown = currentScroll > lastScrollTop.current
+    
+    // Threshold or range checks to avoid jitter
+    if (Math.abs(currentScroll - lastScrollTop.current) < 10) return
+    
+    if (currentScroll < 50) {
+      setShowHeader(true)
+    } else if (isScrollingDown && showHeader) {
+      setShowHeader(false)
+    } else if (!isScrollingDown && !showHeader) {
+      setShowHeader(true)
+    }
+    
+    lastScrollTop.current = currentScroll
+  }
 
   if (loading && posts.length === 0) {
     return (
@@ -63,7 +58,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
   }
 
   return (
-    <div className="flex-1 flex flex-col h-[100dvh] bg-black relative w-full min-w-0 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-black relative w-full min-w-0 overflow-hidden">
       {/* Header — The Nocturnal style (Only show for individual user view) */}
       {filterUserId && (
         <div className="w-full px-4 md:px-6 py-3 glass-header border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0" style={{minHeight:'60px'}}>
@@ -94,9 +89,16 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
       )}
 
       {/* Feed Content */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar w-full p-0">
+      <div 
+        ref={scrollContainerRef} 
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto custom-scrollbar w-full p-0 touch-action-pan-y" 
+        style={{ touchAction: 'pan-y' }}
+      >
         {!filterUserId && (
-          <div className={`sticky top-0 z-[40] transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${showHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`}>
+          <div className={`sticky top-0 z-[40] transition-all duration-300 ease-in-out ${
+            showHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
+          }`}>
             <div className="w-full px-6 py-6 bg-black/90 backdrop-blur-3xl border-b border-white/[0.04]">
               <div className="flex flex-col items-center justify-center text-center">
                 <h1 className="font-headline text-3xl md:text-5xl text-white tracking-tighter font-black">
@@ -109,8 +111,9 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
               </div>
             </div>
 
-            {/* Role Filter Chips (sub-header part of the sticky block) */}
-            <div className="w-full px-4 md:px-6 py-4 bg-black/80 backdrop-blur-2xl border-b border-white/[0.04] flex items-center justify-center gap-3 overflow-x-auto no-scrollbar scroll-smooth">
+            {/* Role Filter Chips (Sticky header) */}
+            <div className="w-full bg-black/80 backdrop-blur-2xl border-b border-white/[0.04] overflow-x-auto no-scrollbar scroll-smooth">
+              <div className="flex items-center gap-3 py-4 px-4 min-w-max">
               <button 
                 onClick={() => setRoleFilter('all')}
                 className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
@@ -145,6 +148,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
               </button>
             </div>
           </div>
+        </div>
         )}
 
         <div className="w-full md:max-w-5xl md:mx-auto md:space-y-8 p-0 md:p-10">

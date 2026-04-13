@@ -6,13 +6,21 @@ import { Trophy, Code2, Bug, Brain, ChevronRight, CheckCircle2, Zap, Layout, Loa
 import { useAuth } from '@/context/AuthContext'
 import CodingArena from '@/components/CodingArena'
 
-export default function ChallengesRoom() {
+interface ChallengesRoomProps {
+  onSessionChange?: (isActive: boolean) => void
+}
+
+export default function ChallengesRoom({ onSessionChange }: ChallengesRoomProps) {
   const [challenges, setChallenges] = useState<any[]>([])
   const [solutions, setSolutions] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedChallenge, setSelectedChallenge] = useState<any>(null)
   const { user, loading: authLoading } = useAuth()
   const supabase = createClient()
+
+  useEffect(() => {
+    onSessionChange?.(!!selectedChallenge)
+  }, [selectedChallenge, onSessionChange])
 
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
