@@ -12,6 +12,8 @@ import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { Status } from '@/hooks/useStatuses'
 import { useAuth } from '@/context/AuthContext'
 import GroupDiscovery from './GroupDiscovery'
+import { usePWAInstall } from '@/hooks/usePWAInstall'
+import { Download } from 'lucide-react'
 
 interface ChatSidebarProps {
   onSelectChat: (chatId: string) => void
@@ -37,6 +39,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isMounted, setIsMounted] = useState(false)
   const supabase = createClient()
+  const { isInstallable, installApp } = usePWAInstall()
   
   const { settings, isLoaded } = useSettings()
 
@@ -495,6 +498,32 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
           </div>
         )}
       </div>
+
+      {/* PWA Install Banner */}
+      {isInstallable && (
+        <div className="px-4 py-3 bg-white/[0.04] border-b border-white/[0.05] animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="bg-gradient-to-br from-white/[0.08] to-white/[0.02] rounded-2xl p-4 border border-white/[0.08] relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+               <Download className="w-12 h-12 text-white" />
+            </div>
+            <div className="relative z-10">
+              <h4 className="text-white text-sm font-bold mb-1 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Install Connectly
+              </h4>
+              <p className="text-[11px] text-zinc-500 mb-3 leading-relaxed max-w-[160px]">
+                Add to your home screen for a premium standalone experience.
+              </p>
+              <button 
+                onClick={installApp}
+                className="px-4 py-2 rounded-xl bg-white text-black text-[11px] font-bold hover:scale-105 active:scale-95 transition-all w-full shadow-lg shadow-white/5"
+              >
+                Launch Desktop App
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
         {activeTab === 'groups' && groupSubTab === 'community' ? (
