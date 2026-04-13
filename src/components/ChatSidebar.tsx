@@ -95,7 +95,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       if (allUserIds.length > 0) {
         const { data } = await supabase
           .from('profiles')
-          .select('id, name, avatar_url, status, last_seen, availability_status, role')
+          .select('*')
           .in('id', allUserIds)
         if (data) {
           allProfiles = data
@@ -527,7 +527,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0 touch-action-pan-y" style={{ touchAction: 'pan-y' }}>
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
         {activeTab === 'groups' && groupSubTab === 'community' ? (
           <GroupDiscovery currentUserId={user?.id || ''} onSelectChat={onSelectChat} />
         ) : loading || authLoading ? (

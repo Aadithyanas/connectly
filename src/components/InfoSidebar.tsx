@@ -43,6 +43,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
   const [instagram, setInstagram] = useState(data?.instagram || '')
   const [experiences, setExperiences] = useState<any[]>(data?.experience || [])
   const [educations, setEducations] = useState<any[]>(data?.education?.length ? data.education : (data?.college_name ? [{ school: data?.college_name, degree: data?.course || '', startDate: '', endDate: '', present: false, description: '' }] : []))
+  const [skills, setSkills] = useState<string[]>(data?.skills || [])
   
   const [isConnectionsModalOpen, setIsConnectionsModalOpen] = useState(false)
   const [connectionsTab, setConnectionsTab] = useState<'followers' | 'following'>('followers')
@@ -92,6 +93,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
     setInstagram(data?.instagram || '')
     setExperiences(data?.experience || [])
     setEducations(data?.education?.length ? data.education : (data?.college_name ? [{ school: data?.college_name, degree: data?.course || '', startDate: '', endDate: '', present: false, description: '' }] : []))
+    setSkills(data?.skills || [])
     if (isOpen) {
       fetchChallengeStats()
     }
@@ -120,6 +122,39 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
   useEffect(() => {
     const targetUserId = type === 'profile' ? user?.id : data?.id
     if (!targetUserId) return
+
+    // If we're viewing a contact and some detailed fields are missing, fetch the full profile
+    const isMissingDetails = type === 'contact' && data?.id && (
+      data.bio === undefined || 
+      data.experience === undefined || 
+      data.education === undefined ||
+      data.linkedin === undefined
+    )
+
+    if (isMissingDetails) {
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', targetUserId)
+        .single()
+        .then(({ data: fullProfile }: { data: any }) => {
+          if (fullProfile) {
+            // Update local states with full profile data
+            setBio(fullProfile.bio || '')
+            setLinkedin(fullProfile.linkedin || '')
+            setGithub(fullProfile.github || '')
+            setPortfolio(fullProfile.portfolio || '')
+            setInstagram(fullProfile.instagram || '')
+            setExperiences(fullProfile.experience || [])
+            setEducations(fullProfile.education?.length ? fullProfile.education : (fullProfile.college_name ? [{ school: fullProfile.college_name, degree: fullProfile.course || '', startDate: '', endDate: '', present: false, description: '' }] : []))
+            setCollegeName(fullProfile.college_name || '')
+            setCourse(fullProfile.course || '')
+            setJobRole(fullProfile.job_role || '')
+            setExperienceYears(fullProfile.experience_years || '')
+            setSkills(fullProfile.skills || [])
+          }
+        })
+    }
 
     // Real-time listener for challenge solutions
     const channel = supabase.channel(`solutions-sync:${targetUserId}`)
@@ -721,7 +756,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                             </a>
                           )}
                           {github && (
-                            <a href={`https://github.com/${github.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                            <a href={github.startsWith('http') ? github : `https://github.com/${github.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
                               <div className="flex items-center gap-3"><Globe className="w-4 h-4 text-zinc-400" /><span className="text-white text-[13px] font-medium">GitHub</span></div>
                               <Globe className="w-3.5 h-3.5 text-zinc-600" />
                             </a>
@@ -846,41 +881,41 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                           </div>
                         )}
                     </div>
-                    {data?.skills?.length > 0 && (
+                    {skills?.length > 0 && (
                       <div className="space-y-2">
                         <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Skills</label>
-                        <SkillPills skills={data.skills} small />
+                        <SkillPills skills={skills} small />
                       </div>
                     )}
 
                     <div className="space-y-2">
                       <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">About</label>
-                      <div className="flex items-start gap-3"><Info className="w-4 h-4 text-zinc-600 shrink-0 mt-0.5" /><p className="text-zinc-500 text-sm leading-relaxed">{data?.bio || 'Hey there! I am using Nexus.'}</p></div>
+                      <div className="flex items-start gap-3"><Info className="w-4 h-4 text-zinc-600 shrink-0 mt-0.5" /><p className="text-zinc-500 text-sm leading-relaxed">{bio || 'Hey there! I am using Nexus.'}</p></div>
                     </div>
-                    {(data?.linkedin || data?.github || data?.portfolio || data?.instagram) && (
+                    {(linkedin || github || portfolio || instagram) && (
                       <div className="space-y-3 pt-1">
                         <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Links</label>
                         <div className="flex flex-col gap-2">
-                          {data.instagram && (
-                            <a href={`https://instagram.com/${data.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                          {instagram && (
+                            <a href={`https://instagram.com/${instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
                               <div className="flex items-center gap-2.5"><Camera className="w-4 h-4 text-pink-500" /><span className="text-white text-xs font-medium">Instagram</span></div>
                               <Globe className="w-3.5 h-3.5 text-zinc-600" />
                             </a>
                           )}
-                          {data.linkedin && (
-                            <a href={data.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                          {linkedin && (
+                            <a href={linkedin.startsWith('http') ? linkedin : `https://${linkedin}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
                               <div className="flex items-center gap-2.5"><Link className="w-4 h-4 text-zinc-400" /><span className="text-white text-xs font-medium">LinkedIn</span></div>
                               <Globe className="w-3.5 h-3.5 text-zinc-600" />
                             </a>
                           )}
-                          {data.github && (
-                            <a href={`https://github.com/${data.github}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                          {github && (
+                            <a href={github.startsWith('http') ? github : `https://github.com/${github.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
                               <div className="flex items-center gap-2.5"><Globe className="w-4 h-4 text-zinc-400" /><span className="text-white text-xs font-medium">GitHub</span></div>
                               <Globe className="w-3.5 h-3.5 text-zinc-600" />
                             </a>
                           )}
-                          {data.portfolio && (
-                            <a href={data.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                          {portfolio && (
+                            <a href={portfolio.startsWith('http') ? portfolio : `https://${portfolio}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
                               <div className="flex items-center gap-2.5"><Link className="w-4 h-4 text-zinc-400" /><span className="text-white text-xs font-medium">Portfolio</span></div>
                               <Globe className="w-3.5 h-3.5 text-zinc-600" />
                             </a>
@@ -896,7 +931,13 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                   <div className="space-y-3 pt-6 border-t border-white/[0.04]">
                     <div className="flex items-center justify-between">
                       <label className="text-white text-sm font-bold uppercase tracking-wider">Posts</label>
-                      <button onClick={() => onViewPosts?.(type === 'profile' ? user?.id! : data?.id)} className="text-zinc-500 text-xs font-bold hover:text-white transition-colors">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onViewPosts?.(type === 'profile' ? user?.id! : data?.id)
+                        }} 
+                        className="text-zinc-500 text-xs font-bold hover:text-white transition-colors"
+                      >
                         View Feed
                       </button>
                     </div>
@@ -913,7 +954,10 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                             <div 
                               key={post.id} 
                               className="aspect-square bg-white/[0.02] relative cursor-pointer group overflow-hidden" 
-                              onClick={() => onViewPosts?.(type === 'profile' ? user?.id! : data?.id)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onViewPosts?.(type === 'profile' ? user?.id! : data?.id)
+                              }}
                             >
                                {hasMedia ? (
                                   post.media_types?.[0] === 'video' ? (
@@ -970,7 +1014,14 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                       </div>
                       <div className="flex flex-col gap-2">
                         {groupMembers.map((member: any) => (
-                           <div key={member.user_id} className="flex items-center gap-3 p-2 hover:bg-white/[0.02] rounded-xl transition-colors cursor-pointer" onClick={() => onViewPosts && onViewPosts(member.user_id)}>
+                           <div 
+                             key={member.user_id} 
+                             className="flex items-center gap-3 p-2 hover:bg-white/[0.02] rounded-xl transition-colors cursor-pointer" 
+                             onClick={(e) => {
+                               e.stopPropagation()
+                               onViewPosts && onViewPosts(member.user_id)
+                             }}
+                           >
                               <div className="w-8 h-8 rounded-full bg-white/[0.05] overflow-hidden flex items-center justify-center shrink-0">
                                 {member.profiles?.avatar_url ? (
                                   <img src={member.profiles.avatar_url} alt="" className="w-full h-full object-cover" />

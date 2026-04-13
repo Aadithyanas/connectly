@@ -166,7 +166,7 @@ export default function ChatWindow({ chatId, initialData, onOpenInfo, onBack }: 
             const uid = members[0].user_id
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
-              .select('id, name, avatar_url, status, last_seen, availability_status, role')
+              .select('*')
               .eq('id', uid)
               .maybeSingle()
             
@@ -338,7 +338,7 @@ export default function ChatWindow({ chatId, initialData, onOpenInfo, onBack }: 
       <div className="glass-header flex items-center justify-between px-4 sticky top-0 z-20 border-b border-white/[0.04] shrink-0" style={{minHeight:'60px'}}>
         <div 
           className="flex items-center gap-3 cursor-pointer group min-w-0 flex-1 h-full py-3"
-          onClick={() => onOpenInfo?.()}
+          onClick={() => onOpenInfo?.(otherUser)}
         >
           {onBack && (
             <button 

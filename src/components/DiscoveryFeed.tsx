@@ -92,8 +92,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
       <div 
         ref={scrollContainerRef} 
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto custom-scrollbar w-full p-0 touch-action-pan-y" 
-        style={{ touchAction: 'pan-y' }}
+        className="flex-1 overflow-y-auto custom-scrollbar w-full p-0" 
       >
         {!filterUserId && (
           <div className={`sticky top-0 z-[40] transition-all duration-300 ease-in-out ${

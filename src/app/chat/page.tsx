@@ -84,20 +84,11 @@ export default function ChatPage() {
     fetchProfile()
   }, [user])
 
-  // Initial scroll to center (Feed) on mobile
+  // Initial state is Feed at index 0, so no complex initial scroll is needed.
   useEffect(() => {
     if (window.innerWidth < 768 && scrollContainerRef.current) {
-      const width = scrollContainerRef.current.offsetWidth
-      if (width > 0) {
-        scrollContainerRef.current.scrollTo({ left: width * 2 })
-      } else {
-        // Fallback for immediate mount where width might be 0
-        setTimeout(() => {
-          if (scrollContainerRef.current) {
-             scrollContainerRef.current.scrollTo({ left: scrollContainerRef.current.offsetWidth * 2 })
-          }
-        }, 100)
-      }
+      // We are already at index 0 (Feed), but we can ensure it's clean
+      scrollContainerRef.current.scrollTo({ left: 0 })
     }
   }, [])
 
@@ -240,9 +231,24 @@ export default function ChatPage() {
   }
 
   const handleViewUserPosts = (userId: string) => {
+    // 1. Clear active sessions first to unmount overlays
+    setActiveChatSession(null)
+    setIsInfoSidebarOpen(false)
+    
+    // 2. Set feed filters and tab
     setFeedFilterUserId(userId)
     setActiveTab('feed')
-    setIsInfoSidebarOpen(false)
+    
+    // 3. Sync scroll position for mobile tabs (Feed is at index 0)
+    setTimeout(() => {
+      if (scrollContainerRef.current) {
+        isInternalScrollRef.current = true
+        scrollContainerRef.current.scrollTo({
+          left: 0,
+          behavior: 'smooth'
+        })
+      }
+    }, 50)
   }
 
   const handleLogout = async () => {
@@ -266,7 +272,7 @@ export default function ChatPage() {
           activeTab={activeTab}
           isModalOpen={isNewChatModalOpen}
           onTabChange={(tab) => {
-            const tabs = ['chat', 'groups', 'feed', 'status', 'challenges']
+            const tabs = ['feed', 'chat', 'groups', 'status', 'challenges']
             const index = tabs.indexOf(tab)
             if (index !== -1 && scrollContainerRef.current) {
               isInternalScrollRef.current = true
@@ -289,9 +295,19 @@ export default function ChatPage() {
             setTimeout(() => { isInternalScrollRef.current = false }, 600)
           }
         }}
-        className={`flex-1 h-full min-w-0 overflow-x-auto md:overflow-hidden overflow-y-hidden snap-x snap-mandatory no-scrollbar transition-all scroll-smooth overscroll-x-none ${activeChatSession?.id ? 'hidden md:flex' : 'flex'}`}
+        className={`flex-1 h-full min-w-0 overflow-x-auto md:overflow-hidden overflow-y-hidden snap-x snap-mandatory no-scrollbar transition-all scroll-smooth ${activeChatSession?.id ? 'hidden md:flex' : 'flex'}`}
       >
-        {/* Page 0: Chat List */}
+        {/* Page 0: Discovery Feed (HOME) */}
+        <div data-tab="feed" className="min-w-full h-full snap-start snap-always flex flex-col">
+          <DiscoveryFeed 
+            onStartChat={handleStartDirectChat} 
+            filterUserId={feedFilterUserId}
+            onClearFilter={() => setFeedFilterUserId(undefined)}
+            onBack={() => setFeedFilterUserId(undefined)}
+          />
+        </div>
+
+        {/* Page 1: Chat List */}
         <div data-tab="chat" className="min-w-full h-full snap-start snap-always md:hidden flex flex-col bg-black">
            <ChatSidebar
             onSelectChat={handleSelectChat}
@@ -302,7 +318,7 @@ export default function ChatPage() {
             activeTab="chat"
             isModalOpen={isNewChatModalOpen}
             onTabChange={(tab) => {
-              const tabs = ['chat', 'groups', 'feed', 'status', 'challenges']
+              const tabs = ['feed', 'chat', 'groups', 'status', 'challenges']
               const index = tabs.indexOf(tab)
               if (index !== -1 && scrollContainerRef.current) {
                 isInternalScrollRef.current = true
@@ -316,7 +332,7 @@ export default function ChatPage() {
           />
         </div>
 
-        {/* Page 1: Groups (Communities) */}
+        {/* Page 2: Groups (Communities) */}
         <div data-tab="groups" className="min-w-full h-full snap-start snap-always flex flex-col bg-black">
           <ChatSidebar
             onSelectChat={handleSelectChat}
@@ -327,7 +343,7 @@ export default function ChatPage() {
             activeTab="groups"
             isModalOpen={isNewChatModalOpen}
             onTabChange={(tab) => {
-              const tabs = ['chat', 'groups', 'feed', 'status', 'challenges']
+              const tabs = ['feed', 'chat', 'groups', 'status', 'challenges']
               const index = tabs.indexOf(tab)
               if (index !== -1 && scrollContainerRef.current) {
                 isInternalScrollRef.current = true
@@ -338,16 +354,6 @@ export default function ChatPage() {
               }
               setActiveTab(tab)
             }}
-          />
-        </div>
-
-        {/* Page 2: Discovery Feed (HOME) */}
-        <div data-tab="feed" className="min-w-full h-full snap-start snap-always flex flex-col">
-          <DiscoveryFeed 
-            onStartChat={handleStartDirectChat} 
-            filterUserId={feedFilterUserId}
-            onClearFilter={() => setFeedFilterUserId(undefined)}
-            onBack={() => setFeedFilterUserId(undefined)}
           />
         </div>
 
@@ -387,6 +393,26 @@ export default function ChatPage() {
                 if (scrollContainerRef.current) {
                   scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' })
                 }
+                setActiveTab('feed')
+              }, 10)
+            }}
+            className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
+              activeTab === 'feed' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
+            }`}
+          >
+            {activeTab === 'feed' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
+            <Home className="w-[20px] h-[20px]" />
+          </button>
+
+          <button 
+            onClick={() => {
+              isInternalScrollRef.current = true
+              setActiveChatSession(null)
+              setIsInfoSidebarOpen(false)
+              setTimeout(() => {
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollTo({ left: scrollContainerRef.current.offsetWidth, behavior: 'smooth' })
+                }
                 setActiveTab('chat')
               }, 10)
             }}
@@ -406,7 +432,7 @@ export default function ChatPage() {
               setIsInfoSidebarOpen(false)
               setTimeout(() => {
                 if (scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollTo({ left: scrollContainerRef.current.offsetWidth, behavior: 'smooth' })
+                  scrollContainerRef.current.scrollTo({ left: scrollContainerRef.current.offsetWidth * 2, behavior: 'smooth' })
                 }
                 setActiveTab('groups')
               }, 10)
@@ -417,26 +443,6 @@ export default function ChatPage() {
           >
             {activeTab === 'groups' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
             <Users className="w-[20px] h-[20px]" />
-          </button>
-
-          <button 
-            onClick={() => {
-              isInternalScrollRef.current = true
-              setActiveChatSession(null)
-              setIsInfoSidebarOpen(false)
-              setTimeout(() => {
-                if (scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollTo({ left: scrollContainerRef.current.offsetWidth * 2, behavior: 'smooth' })
-                }
-                setActiveTab('feed')
-              }, 10)
-            }}
-            className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
-              activeTab === 'feed' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
-            }`}
-          >
-            {activeTab === 'feed' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
-            <Home className="w-[20px] h-[20px]" />
           </button>
 
           <button 
