@@ -18,14 +18,14 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('general')
-  
+
   // Carousel states
   const [mediaFiles, setMediaFiles] = useState<File[]>([])
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([])
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({})
-  
+
   const [isFinalizing, setIsFinalizing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -41,7 +41,7 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve) => {
       if (!file.type.startsWith('image/')) return resolve(file)
-      
+
       const reader = new FileReader()
       reader.readAsDataURL(file)
       reader.onload = (event) => {
@@ -70,7 +70,7 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
           canvas.height = height
           const ctx = canvas.getContext('2d')
           ctx?.drawImage(img, 0, 0, width, height)
-          
+
           canvas.toBlob((blob) => {
             if (blob) {
               const compressedFile = new File([blob], file.name, {
@@ -89,25 +89,43 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
 
   const uploadFile = async (file: File, index: number) => {
     const fileId = `${file.name}-${index}`
+
+    // 1. Determine resource type and set limits
+    const isVideo = file.type.startsWith('video/')
+    const resourceType = isVideo ? 'video' : (file.type.startsWith('image/') ? 'image' : 'raw')
+
+    // Limits: Video = 100MB, Others = 10MB
+    const limit = (resourceType === 'video') ? 100 * 1024 * 1024 : 10 * 1024 * 1024
+    if (file.size > limit) {
+      setUploadErrors(prev => ({ ...prev, [fileId]: `Too large (>${limit / (1024 * 1024)}MB)` }))
+      return
+    }
+
     setUploadProgress(prev => ({ ...prev, [fileId]: 10 }))
-    
+
     try {
-      // 1. Get Signature via API
-      const signRes = await fetch('/api/cloudinary/sign', { method: 'POST', body: JSON.stringify({ folder: `posts/${user?.id || 'anonymous'}` }) })
+      // 2. Get Signature via API
+      const signRes = await fetch('/api/cloudinary/sign', {
+        method: 'POST',
+        body: JSON.stringify({
+          folder: `posts/${user?.id || 'anonymous'}`
+        })
+      })
       const signData = await signRes.json()
       if (!signRes.ok) throw new Error(signData.error || 'Failed to get signature')
 
       setUploadProgress(prev => ({ ...prev, [fileId]: 30 }))
 
-      // 2. Upload directly to Cloudinary
+      // 3. Upload to Cloudinary using correct endpoint
       const formData = new FormData()
       formData.append('file', file)
       formData.append('api_key', signData.apiKey)
       formData.append('timestamp', signData.timestamp)
       formData.append('signature', signData.signature)
       formData.append('folder', `posts/${user?.id || 'anonymous'}`)
+      // The upload URL endpoint (e.g. /video/upload) tells Cloudinary the type — don't append resource_type to FormData.
 
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/${resourceType}/upload`, {
         method: 'POST',
         body: formData
       })
@@ -135,15 +153,15 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
     const incomingFiles = files.slice(0, remainingSlots)
 
     if (files.length > remainingSlots) {
-       alert(`You can only add up to 10 items. Adding the first ${remainingSlots} selected.`)
+      alert(`You can only add up to 10 items. Adding the first ${remainingSlots} selected.`)
     }
 
     const newPreviews = incomingFiles.map(file => URL.createObjectURL(file))
     const startIndex = mediaFiles.length
-    
+
     setPreviewUrls(prev => [...prev, ...newPreviews])
     setMediaFiles(prev => [...prev, ...incomingFiles])
-    
+
     // Process each file
     incomingFiles.forEach(async (file, i) => {
       const currentIndex = startIndex + i
@@ -158,19 +176,19 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
   const removeMedia = (index: number) => {
     const file = mediaFiles[index]
     const fileId = `${file.name}-${index}`
-    
+
     setMediaFiles(prev => prev.filter((_, i) => i !== index))
     setPreviewUrls(prev => {
       URL.revokeObjectURL(prev[index])
       return prev.filter((_, i) => i !== index)
     })
     setUploadedUrls(prev => prev.filter((_, i) => i !== index))
-    
+
     // Clean up progress/errors
     const newProgress = { ...uploadProgress }
     delete newProgress[fileId]
     setUploadProgress(newProgress)
-    
+
     const newErrors = { ...uploadErrors }
     delete newErrors[fileId]
     setUploadErrors(newErrors)
@@ -182,8 +200,8 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
 
     // Ensure all selected files are uploaded
     if (uploadedUrls.filter(url => !!url).length !== mediaFiles.length) {
-       alert('Please wait for all media to finish syncing.')
-       return
+      alert('Please wait for all media to finish syncing.')
+      return
     }
 
     setIsFinalizing(true)
@@ -212,7 +230,7 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
   return (
     <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
       <div className="bg-[#0a0a0a] w-full max-w-xl rounded-[32px] overflow-hidden shadow-2xl relative border border-white/[0.06] animate-in zoom-in-95 duration-300">
-        
+
         {/* Header */}
         <div className="px-8 py-5 flex items-center justify-between bg-black/50 border-b border-white/[0.04]">
           <div className="flex items-center gap-3">
@@ -230,9 +248,9 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
         </div>
 
         <form onSubmit={handleSubmit} className="p-0 flex flex-col max-h-[85vh]">
-          
+
           <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
-            
+
             {/* Post Title */}
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">Title (Optional)</label>
@@ -252,7 +270,7 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
                   Media ({mediaFiles.length}/10)
                 </label>
               )}
-              
+
               {mediaFiles.length > 0 && (
                 <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar snap-x">
                   {previewUrls.map((url, idx) => (
@@ -261,31 +279,31 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
                         <video src={url} className="w-full h-full object-cover" />
                       ) : (
                         <div className="relative w-full h-full">
-                           <Image src={url} alt="Preview" fill className="object-cover" unoptimized />
+                          <Image src={url} alt="Preview" fill className="object-cover" unoptimized />
                         </div>
                       )}
-                      
+
                       {/* Status Icons */}
                       <div className="absolute top-2 right-2 flex flex-col gap-2">
-                        <button 
-                           type="button" 
-                           onClick={() => removeMedia(idx)}
-                           className="p-1.5 bg-black/60 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-all active:scale-90"
+                        <button
+                          type="button"
+                          onClick={() => removeMedia(idx)}
+                          className="p-1.5 bg-black/60 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-all active:scale-90"
                         >
-                           <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                        
+
                         {uploadProgress[`${mediaFiles[idx].name}-${idx}`] === 100 ? (
                           <div className="p-1.5 bg-white text-black rounded-full scale-90">
-                             <CheckCircle2 className="w-3.5 h-3.5" />
+                            <CheckCircle2 className="w-3.5 h-3.5" />
                           </div>
                         ) : uploadErrors[`${mediaFiles[idx].name}-${idx}`] ? (
                           <div className="p-1.5 bg-red-500 text-white rounded-full scale-90">
-                             <X className="w-3.5 h-3.5" />
+                            <X className="w-3.5 h-3.5" />
                           </div>
                         ) : (
                           <div className="p-1.5 bg-black/80 text-white rounded-full scale-90">
-                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           </div>
                         )}
                       </div>
@@ -293,10 +311,10 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
                       {/* Individual progress bar */}
                       {uploadProgress[`${mediaFiles[idx].name}-${idx}`] < 100 && (
                         <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                           <div 
-                             className="h-full bg-white transition-all duration-300"
-                             style={{ width: `${uploadProgress[`${mediaFiles[idx].name}-${idx}`]}%` }}
-                           />
+                          <div
+                            className="h-full bg-white transition-all duration-300"
+                            style={{ width: `${uploadProgress[`${mediaFiles[idx].name}-${idx}`]}%` }}
+                          />
                         </div>
                       )}
                     </div>
@@ -321,50 +339,50 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
 
             {/* Description */}
             <div className="space-y-2">
-               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">What's on your mind?</label>
-               <textarea
-                 required
-                 placeholder="Share your thoughts, questions, or journey..."
-                 className="w-full bg-white/[0.03] text-white text-sm px-6 py-4 rounded-2xl border border-white/[0.06] focus:border-white/20 outline-none transition-all resize-none h-40 placeholder:text-zinc-700 custom-scrollbar leading-relaxed"
-                 value={content}
-                 onChange={(e) => setContent(e.target.value)}
-               />
-               
-               {quotedPost && (
-                 <div className="mt-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] shadow-inner relative overflow-hidden">
-                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#bc9dff]/50"></div>
-                   <div className="flex items-center gap-2 mb-2">
-                     <div className="w-5 h-5 rounded-full overflow-hidden bg-white/10 shrink-0">
-                       {quotedPost.user?.avatar_url ? (
-                         <img src={quotedPost.user.avatar_url} alt="User" className="w-full h-full object-cover" />
-                       ) : (
-                         <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-white bg-[#bc9dff]/30 uppercase">
-                           {quotedPost.user?.name?.[0] || '?'}
-                         </div>
-                       )}
-                     </div>
-                     <span className="text-white text-xs font-bold">{quotedPost.user?.name}</span>
-                     <span className="text-zinc-500 text-[10px]">· {new Date(quotedPost.created_at).toLocaleDateString()}</span>
-                   </div>
-                   <p className="text-zinc-400 text-xs leading-relaxed line-clamp-3">
-                     {quotedPost.content || quotedPost.title || 'Attached Media'}
-                   </p>
-                 </div>
-               )}
-               
-               {/* Media Quick Add Toolbar */}
-               {mediaFiles.length === 0 && (
-                 <div className="mt-3 flex items-center">
-                   <button
-                     type="button"
-                     onClick={() => fileInputRef.current?.click()}
-                     className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] outline-none hover:bg-white/[0.06] border border-white/[0.06] rounded-xl transition-all text-zinc-400 hover:text-white"
-                   >
-                     <Plus className="w-4 h-4" />
-                     <span className="text-xs font-bold uppercase tracking-wider">Add Media</span>
-                   </button>
-                 </div>
-               )}
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">What's on your mind?</label>
+              <textarea
+                required
+                placeholder="Share your thoughts, questions, or journey..."
+                className="w-full bg-white/[0.03] text-white text-sm px-6 py-4 rounded-2xl border border-white/[0.06] focus:border-white/20 outline-none transition-all resize-none h-40 placeholder:text-zinc-700 custom-scrollbar leading-relaxed"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              />
+
+              {quotedPost && (
+                <div className="mt-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] shadow-inner relative overflow-hidden">
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#bc9dff]/50"></div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-5 h-5 rounded-full overflow-hidden bg-white/10 shrink-0">
+                      {quotedPost.user?.avatar_url ? (
+                        <img src={quotedPost.user.avatar_url} alt="User" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-white bg-[#bc9dff]/30 uppercase">
+                          {quotedPost.user?.name?.[0] || '?'}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-white text-xs font-bold">{quotedPost.user?.name}</span>
+                    <span className="text-zinc-500 text-[10px]">· {new Date(quotedPost.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-zinc-400 text-xs leading-relaxed line-clamp-3">
+                    {quotedPost.content || quotedPost.title || 'Attached Media'}
+                  </p>
+                </div>
+              )}
+
+              {/* Media Quick Add Toolbar */}
+              {mediaFiles.length === 0 && (
+                <div className="mt-3 flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] outline-none hover:bg-white/[0.06] border border-white/[0.06] rounded-xl transition-all text-zinc-400 hover:text-white"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Add Media</span>
+                  </button>
+                </div>
+              )}
             </div>
 
           </div>

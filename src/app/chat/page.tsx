@@ -87,7 +87,7 @@ export default function ChatPage() {
     try {
       const { data: chat, error: chatError } = await supabase
         .from('chats')
-        .select('id, name, is_group, avatar_url')
+        .select('id, name, is_group, avatar_url, description')
         .eq('id', activeChatId)
         .single()
 

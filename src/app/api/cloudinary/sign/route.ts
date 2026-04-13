@@ -15,7 +15,9 @@ export async function POST(request: Request) {
     // Generate a timestamp
     const timestamp = Math.round((new Date).getTime()/1000)
 
-    // Generate signature locally using the secret
+    // Sign only folder + timestamp — resource_type is NOT included in the signature.
+    // The upload endpoint URL (e.g. /video/upload) already determines the type.
+    // Including resource_type in both the FormData AND the signature causes a mismatch.
     const signature = cloudinary.utils.api_sign_request({
       timestamp,
       folder,

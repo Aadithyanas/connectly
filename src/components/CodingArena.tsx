@@ -5,6 +5,14 @@ import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/context/AuthContext'
 import { X, Play, Code2, Brain, Trophy, CheckCircle2, ChevronRight, AlertCircle, Loader2, Sparkles, ChevronDown, RotateCcw, Monitor } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Editor from 'react-simple-code-editor'
+import Prism from 'prismjs'
+import 'prismjs/themes/prism-tomorrow.css'
+import 'prismjs/components/prism-javascript'
+import 'prismjs/components/prism-python'
+import 'prismjs/components/prism-c'
+import 'prismjs/components/prism-cpp'
+import 'prismjs/components/prism-java'
 
 interface CodingArenaProps {
   challenge: any
@@ -294,15 +302,32 @@ export default function CodingArena({ challenge, isSolved, onClose, onSuccess }:
             </button>
           </div>
           
-          <div className="flex-1 relative flex overflow-hidden">
-            <textarea
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              disabled={status === 'success'}
-              spellCheck={false}
-              className="flex-1 p-6 bg-transparent text-zinc-300 font-mono text-sm outline-none resize-none selection:bg-white/10 leading-relaxed custom-scrollbar"
-              placeholder="// Write your solution here..."
-            />
+          <div className="flex-1 relative overflow-auto custom-scrollbar bg-[#050505]">
+            <div className="min-h-full min-w-full">
+              <Editor
+                value={code}
+                onValueChange={code => setCode(code)}
+                highlight={code => {
+                  let currentLang = Prism.languages.javascript;
+                  const targetLang = selectedLang.toLowerCase();
+                  if (targetLang === 'python' && Prism.languages.python) currentLang = Prism.languages.python;
+                  else if ((targetLang === 'cpp' || targetLang === 'c++') && Prism.languages.cpp) currentLang = Prism.languages.cpp;
+                  else if (targetLang === 'java' && Prism.languages.java) currentLang = Prism.languages.java;
+                  else if (targetLang === 'c' && Prism.languages.c) currentLang = Prism.languages.c;
+                  return Prism.highlight(code, currentLang || Prism.languages.javascript, targetLang);
+                }}
+                padding={24}
+                disabled={status === 'success'}
+                style={{
+                  fontFamily: '"Fira Code", "JetBrains Mono", Consolas, Monaco, monospace',
+                  fontSize: 14,
+                  minHeight: '100%',
+                  width: '100%',
+                  backgroundColor: 'transparent',
+                }}
+                className="editor-container text-zinc-300 outline-none leading-relaxed"
+              />
+            </div>
           </div>
 
           {/* New Results Dashboard Overlay */}

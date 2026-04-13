@@ -52,6 +52,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
   
   const [challengeStats, setChallengeStats] = useState({ solved: 0, points: 0 })
   const [groupMemberCount, setGroupMemberCount] = useState<number>(0)
+  const [groupMembers, setGroupMembers] = useState<any[]>([])
 
   const fetchChallengeStats = async () => {
     const targetId = type === 'profile' ? user?.id : data?.id
@@ -103,9 +104,15 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
     }
 
     if (type === 'group' && data?.id) {
-      supabase.from('chat_members').select('*', { count: 'exact', head: true }).eq('chat_id', data.id)
-        .then(({ count }: any) => {
-          if (count !== null) setGroupMemberCount(count)
+      supabase.from('chat_members')
+        .select('*, profiles(name, avatar_url, role)')
+        .eq('chat_id', data.id)
+        .eq('status', 'joined')
+        .then(({ data: membersData, error }: any) => {
+          if (membersData) {
+            setGroupMembers(membersData)
+            setGroupMemberCount(membersData.length)
+          }
         })
     }
   }, [data, type, isOpen])
@@ -939,14 +946,48 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                 {/* ===== GROUP MODE ===== */}
                 {type === 'group' && (
                   <>
-                    <div className="space-y-2">
-                      <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Group Name</label>
-                      <span className="text-white text-lg font-medium block">{data?.name || 'Unnamed Group'}</span>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Group Name</label>
+                        <span className="text-white text-lg font-medium block">{data?.name || 'Unnamed Group'}</span>
+                      </div>
+                      
+                      {data?.description && (
+                        <div className="space-y-2">
+                          <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Description</label>
+                          <div className="flex items-start gap-3">
+                            <Info className="w-4 h-4 text-zinc-600 shrink-0 mt-0.5" />
+                            <p className="text-zinc-400 text-sm leading-relaxed">{data.description}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-4 pt-4 border-t border-white/[0.04]">
-                      <div className="flex items-center justify-between text-zinc-500">
-                        <span className="text-sm font-medium">{groupMemberCount || data?.members?.length || 0} Members</span>
-                        <Users className="w-5 h-5" />
+                    
+                    <div className="space-y-4 pt-6 border-t border-white/[0.04]">
+                      <div className="flex items-center justify-between text-zinc-500 mb-2">
+                        <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Members ({groupMemberCount || data?.members?.length || 0})</label>
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {groupMembers.map((member: any) => (
+                           <div key={member.user_id} className="flex items-center gap-3 p-2 hover:bg-white/[0.02] rounded-xl transition-colors cursor-pointer" onClick={() => onViewPosts && onViewPosts(member.user_id)}>
+                              <div className="w-8 h-8 rounded-full bg-white/[0.05] overflow-hidden flex items-center justify-center shrink-0">
+                                {member.profiles?.avatar_url ? (
+                                  <img src={member.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="w-4 h-4 text-zinc-500" />
+                                )}
+                              </div>
+                              <div className="flex flex-col flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 line-clamp-1">
+                                  <span className="text-sm text-white font-medium truncate">{member.profiles?.name || 'Unknown User'}</span>
+                                  {member.role === 'admin' && <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-zinc-400 uppercase tracking-widest">Admin</span>}
+                                </div>
+                                <span className="text-[10px] text-zinc-500 uppercase font-black truncate">{member.profiles?.role || 'Guest'}</span>
+                              </div>
+                           </div>
+                        ))}
+                        {groupMembers.length === 0 && <span className="text-sm text-zinc-500 italic px-2">Loading members...</span>}
                       </div>
                     </div>
                   </>
@@ -973,8 +1014,8 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                 )}
                 {type === 'group' && (
                   <button className="w-full flex items-center gap-4 p-4 text-red-400 hover:bg-red-500/[0.05] rounded-xl transition-all font-medium border border-red-500/10 group">
-                    <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                    <span className="text-sm">Delete Group</span>
+                    <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm">Leave Group</span>
                   </button>
                 )}
               </div>

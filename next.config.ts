@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            value: 'camera=(), microphone=(self), geolocation=()',
           },
           {
             key: 'Strict-Transport-Security',
@@ -42,7 +42,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://taouiojtxkwwgfqpuhyl.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://lh3.googleusercontent.com https://taouiojtxkwwgfqpuhyl.supabase.co https://res.cloudinary.com; media-src 'self' https://taouiojtxkwwgfqpuhyl.supabase.co https://res.cloudinary.com; connect-src 'self' https://taouiojtxkwwgfqpuhyl.supabase.co wss://taouiojtxkwwgfqpuhyl.supabase.co; frame-ancestors 'none';",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://taouiojtxkwwgfqpuhyl.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://taouiojtxkwwgfqpuhyl.supabase.co https://res.cloudinary.com https://cdn.jsdelivr.net; media-src 'self' blob: https://taouiojtxkwwgfqpuhyl.supabase.co https://res.cloudinary.com; connect-src 'self' https://taouiojtxkwwgfqpuhyl.supabase.co wss://taouiojtxkwwgfqpuhyl.supabase.co https://api.cloudinary.com; frame-ancestors 'none';",
           },
         ],
       },

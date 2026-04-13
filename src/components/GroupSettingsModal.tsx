@@ -80,6 +80,7 @@ export default function GroupSettingsModal({ isOpen, onClose, chatId, onDetailsU
     if (!error) {
        onDetailsUpdated(chat)
        setActiveTab('info')
+       window.dispatchEvent(new CustomEvent('chat-updated', { detail: chat }))
        // Optionally you could add a 'Saved' toast here
     } else {
        console.error("Failed to update group settings:", error)

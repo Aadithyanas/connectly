@@ -90,21 +90,37 @@ export function useStatuses() {
   const uploadStatus = async (file: File, caption?: string) => {
     if (!user) return { error: 'Not authenticated' }
 
+    // 1. Determine resource type and set limits
+    const isVideo = file.type.startsWith('video/')
+    const resourceType = isVideo ? 'video' : (file.type.startsWith('image/') ? 'image' : 'raw')
+    
+    // Limits: Video = 100MB, Others = 10MB
+    const limit = (resourceType === 'video') ? 100 * 1024 * 1024 : 10 * 1024 * 1024
+    if (file.size > limit) {
+      return { error: `File is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max limit is ${(limit / (1024 * 1024))}MB.` }
+    }
+
     try {
-      // 1. Get Signature via API
-      const signRes = await fetch('/api/cloudinary/sign', { method: 'POST', body: JSON.stringify({ folder: `statuses/${user.id}` }) })
+      // 2. Get Signature via API
+      const signRes = await fetch('/api/cloudinary/sign', { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+          folder: `statuses/${user.id}`
+        }) 
+      })
       const signData = await signRes.json()
       if (!signRes.ok) throw new Error(signData.error || 'Failed to get signature')
 
-      // 2. Upload directly to Cloudinary
+      // 3. Upload to Cloudinary using correct endpoint
       const formData = new FormData()
       formData.append('file', file)
       formData.append('api_key', signData.apiKey)
       formData.append('timestamp', signData.timestamp)
       formData.append('signature', signData.signature)
       formData.append('folder', `statuses/${user.id}`)
+      // The upload URL endpoint (e.g. /video/upload) tells Cloudinary the type — don't append resource_type to FormData.
 
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/${resourceType}/upload`, {
         method: 'POST',
         body: formData
       })

@@ -19,30 +19,46 @@ export default function GroupDiscovery({ onSelectChat, currentUserId }: GroupDis
     const fetchPublicGroups = async () => {
       setLoading(true)
       try {
-        // Fetch all public groups
+        // Fetch all public groups with member avatars
         const { data: publicGroups, error } = await supabase
           .from('chats')
-          .select('*, chat_members(user_id, status)')
+          .select('*, chat_members(user_id, status, profiles(avatar_url))')
           .eq('is_public', true)
           .eq('is_group', true)
 
-        if (error) throw error
+        if (error) {
+          // Fallback if profiles relation fails
+          const { data: fallbackGroups, error: fallbackError } = await supabase
+            .from('chats')
+            .select('*, chat_members(user_id, status)')
+            .eq('is_public', true)
+            .eq('is_group', true)
+            
+          if (fallbackError) throw fallbackError
+          
+          processGroups(fallbackGroups)
+        } else {
+          processGroups(publicGroups)
+        }
 
-        // Filter out groups where user is already a member (including Admin/Pending)
-        const formatted = (publicGroups || []).map((group: any) => {
-          const myMembership = group.chat_members?.find((m: any) => m.user_id === currentUserId)
-          return {
-            ...group,
-            myStatus: myMembership?.status || null
-          }
-        }).filter((g: any) => !g.myStatus) // Only show groups where I have NO status yet
-
-        setGroups(formatted)
       } catch (err) {
         console.error('Error fetching public groups:', err)
       } finally {
         setLoading(false)
       }
+    }
+
+    const processGroups = (data: any) => {
+      // Filter out groups where user is already a member (including Admin/Pending)
+      const formatted = (data || []).map((group: any) => {
+        const myMembership = group.chat_members?.find((m: any) => m.user_id === currentUserId)
+        return {
+          ...group,
+          myStatus: myMembership?.status || null
+        }
+      }).filter((g: any) => !g.myStatus) // Only show groups where I have NO status yet
+
+      setGroups(formatted)
     }
 
     fetchPublicGroups()
@@ -76,14 +92,24 @@ export default function GroupDiscovery({ onSelectChat, currentUserId }: GroupDis
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-5 p-4">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="animate-pulse flex items-center gap-3">
-             <div className="w-12 h-12 rounded-xl bg-white/[0.03]" />
-             <div className="flex-1 space-y-2">
-               <div className="h-3 w-1/2 bg-white/[0.03] rounded" />
-               <div className="h-2 w-3/4 bg-white/[0.02] rounded" />
+          <div key={i} className="animate-pulse bg-[#1c1e2e] rounded-3xl p-5 border border-white/[0.04]">
+             <div className="flex justify-between items-start mb-4">
+               <div className="w-3/4 h-6 bg-white/[0.03] rounded-lg" />
+               <div className="w-16 h-5 bg-white/[0.03] rounded-full" />
              </div>
+             <div className="flex -space-x-2.5 mb-4">
+               {[...Array(3)].map((_, j) => (
+                 <div key={j} className="w-8 h-8 rounded-full border-2 border-[#1c1e2e] bg-white/[0.03]" style={{ zIndex: 10 - j }} />
+               ))}
+               <div className="w-8 h-8 rounded-full border-2 border-[#1c1e2e] bg-white/[0.03] z-0" />
+             </div>
+             <div className="space-y-2 mb-5">
+               <div className="w-full h-3 bg-white/[0.03] rounded" />
+               <div className="w-5/6 h-3 bg-white/[0.03] rounded" />
+             </div>
+             <div className="w-full h-11 bg-white/[0.03] rounded-xl" />
           </div>
         ))}
       </div>
@@ -92,7 +118,7 @@ export default function GroupDiscovery({ onSelectChat, currentUserId }: GroupDis
 
   if (groups.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center opacity-40">
+      <div className="flex flex-col items-center justify-center p-8 text-center opacity-40 h-full">
         <Globe className="w-10 h-10 mb-2" />
         <p className="text-sm">No new public communities found.</p>
       </div>
@@ -100,48 +126,87 @@ export default function GroupDiscovery({ onSelectChat, currentUserId }: GroupDis
   }
 
   return (
-    <div className="flex flex-col">
-      {groups.map((group) => (
-        <div key={group.id} className="flex items-center gap-3 p-4 border-b border-white/[0.03] group hover:bg-white/[0.01] transition-colors">
-          <div className="w-12 h-12 rounded-xl bg-white/[0.05] shrink-0 overflow-hidden flex items-center justify-center border border-white/[0.05]">
-            {group.avatar_url ? (
-              <img src={group.avatar_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <Users className="w-5 h-5 text-zinc-600" />
-            )}
-          </div>
-          
-          <div className="flex-1 min-w-0 pr-2">
-            <h4 className="text-sm font-bold text-white truncate mb-0.5">{group.name}</h4>
-            <p className="text-[11px] text-zinc-500 line-clamp-1">{group.description || 'Global tech community'}</p>
-          </div>
+    <div className="flex flex-col gap-5 p-4">
+      {groups.map((group) => {
+        const memberCount = group.chat_members?.length || 1;
+        // Display generic or actual members (up to 3 faces)
+        const displayMembers = group.chat_members?.slice(0, 3) || [];
+        const extraCount = Math.max(0, memberCount - displayMembers.length);
 
-          <div className="shrink-0">
-            {group.myStatus === 'requesting' ? (
-              <div className="px-3 py-1.5 rounded-lg bg-zinc-800/50 text-zinc-500 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Pending
+        return (
+          <div key={group.id} className="relative bg-[#1c1e2ee0] backdrop-blur-xl rounded-3xl p-5 border border-white/[0.06] overflow-hidden flex flex-col shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-[#bc9dff]/30 transition-all duration-300">
+            {/* LIVE NOW badge */}
+            <div className="absolute top-5 right-5 bg-white/5 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow-lg">
+              <div className="w-1.5 h-1.5 bg-[#bc9dff] rounded-full animate-pulse shadow-[0_0_8px_rgba(188,157,255,0.6)]" />
+              <span className="text-[9px] font-bold text-white/80 uppercase tracking-widest">Live Now</span>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-[22px] font-bold text-white mb-4 pr-[85px] tracking-tight leading-[1.1] selection:bg-[#bc9dff]/30">
+              {group.name}
+            </h3>
+
+            {/* Avatars */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex -space-x-3">
+                {displayMembers.map((m: any, i: number) => {
+                  // Fallback vibrant gradients if no avatar
+                  const gradients = [
+                    'from-[#ff7eb3] to-[#ff758c]',
+                    'from-[#bc9dff] to-[#4c1d95]',
+                    'from-[#4facfe] to-[#00f2fe]',
+                  ]
+                  const avatar = m.profiles?.avatar_url || group.avatar_url;
+                  
+                  return (
+                    <div key={i} className={`w-9 h-9 rounded-full border-[2.5px] border-[#1c1e2e] bg-gradient-to-br ${gradients[i % gradients.length]} shrink-0 shadow-md flex items-center justify-center overflow-hidden`} style={{ zIndex: 10 - i }}>
+                        {avatar ? (
+                          <img src={avatar} className="w-full h-full object-cover" alt="Member" onError={(e) => e.currentTarget.style.display = 'none'} />
+                        ) : (
+                          <Users className="w-4 h-4 text-white/50" />
+                        )}
+                    </div>
+                  )
+                })}
+                {extraCount > 0 && (
+                  <div className="w-9 h-9 rounded-full border-[2.5px] border-[#1c1e2e] bg-white/[0.08] backdrop-blur-md flex items-center justify-center shrink-0 z-0 shadow-md">
+                    <span className="text-[10px] font-bold text-white/80">+{extraCount}</span>
+                  </div>
+                )}
               </div>
+            </div>
+
+            <p className="text-[13.5px] text-white/60 leading-relaxed mb-6 line-clamp-3">
+              {group.description || 'Discussing the evolution of nocturnal interfaces and the future of glassmorphism in high-end UI.'}
+            </p>
+
+            {group.myStatus === 'requesting' ? (
+              <button disabled className="w-full py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.05] text-white/40 text-sm font-bold flex items-center justify-center gap-2 cursor-not-allowed">
+                <Loader2 className="w-4 h-4 animate-spin" /> Pending Approval
+              </button>
             ) : group.myStatus === 'invited' ? (
               <button 
                 onClick={() => onSelectChat(group.id)}
-                className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-[10px] font-bold uppercase tracking-wider hover:bg-white/20 transition-all"
+                className="w-full py-3.5 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-300 text-white text-sm font-bold active:scale-[0.98]"
               >
-                View Invite
+                Open Invite
               </button>
             ) : (
               <button 
                 onClick={() => handleJoinRequest(group.id)}
                 disabled={requestingIds.has(group.id)}
-                className="px-3 py-1.5 rounded-lg bg-white text-black text-[10px] font-bold uppercase tracking-wider hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
+                className="w-full py-3.5 rounded-xl bg-[#bc9dff] hover:bg-[#a78bfa] hover:shadow-[0_0_20px_rgba(188,157,255,0.3)] transition-all duration-300 text-[#1a103c] text-sm font-bold flex items-center justify-center gap-2 mt-auto active:scale-[0.98]"
               >
-                {requestingIds.has(group.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                Join
+                 {requestingIds.has(group.id) ? (
+                   <Loader2 className="w-4 h-4 animate-spin" />
+                 ) : (
+                   'Join Session'
+                 )}
               </button>
             )}
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

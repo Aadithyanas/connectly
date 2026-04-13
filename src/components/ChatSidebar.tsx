@@ -71,7 +71,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
 
       const { data: chatData, error: chatError } = await supabase
         .from('chats')
-        .select('id, name, is_group, avatar_url')
+        .select('id, name, description, is_group, avatar_url')
         .in('id', chatIds)
 
       if (chatError || !chatData) {
@@ -137,6 +137,8 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
           is_group: chat.is_group,
           display_name: displayName,
           display_avatar: chat.is_group ? chat.avatar_url : otherProfile?.avatar_url,
+          description: chat.description,
+          group_members: chat.is_group ? chatMembers.map((m: any) => profileMap.get(m.user_id)).filter(Boolean) : [],
           other_profile: otherProfile,
           unread_count: unreadCount,
           last_message: lastMsgContent,
@@ -217,6 +219,20 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       }
     }
   }, [user])
+
+  useEffect(() => {
+    const handleChatUpdated = (e: any) => {
+      const updatedChat = e.detail
+      setChats(prev => (prev || []).map(c => 
+        c.id === updatedChat.id 
+          ? { ...c, display_name: updatedChat.name, description: updatedChat.description, display_avatar: updatedChat.avatar_url || c.display_avatar }
+          : c
+      ))
+    }
+    
+    window.addEventListener('chat-updated', handleChatUpdated)
+    return () => window.removeEventListener('chat-updated', handleChatUpdated)
+  }, [])
 
   // Debounced fetch: prevents stacking 10+ simultaneous fetches when many events fire
   fetchRef.current = fetchUserAndChats
@@ -500,48 +516,127 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
             <p className="text-zinc-700 text-sm">{search ? 'No conversations found.' : 'No chats yet. Tap + to start.'}</p>
           </div>
         ) : (
-          filteredChats.map((chat) => (
-            <div key={chat.id} onClick={() => onSelectChat(chat.id)}
-              className={`group flex items-center px-4 py-3 cursor-pointer transition-all duration-150 border-b border-white/[0.03] ${activeChatId === chat.id ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'}`}>
-              
-              <div className="relative w-11 h-11 shrink-0 mr-3">
-                <div className="w-11 h-11 rounded-full bg-white/[0.05] flex items-center justify-center overflow-hidden">
-                  {chat.display_avatar ? (
-                    <img src={chat.display_avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-                  ) : (
-                    <div className="w-full h-full bg-white/[0.08] flex items-center justify-center text-zinc-400 font-bold uppercase text-base">
-                      {chat.display_name?.[0] || '?'}
-                    </div>
-                  )}
-                </div>
-                {chat.other_profile && isUserOnline(chat.other_profile) && chat.other_profile?.availability_status !== false && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-white rounded-full border-2 border-black"></div>
-                )}
-              </div>
+          <div className={activeTab === 'groups' ? "flex flex-col gap-5 p-4" : ""}>
+            {filteredChats.map((chat) => {
+              if (activeTab === 'groups') {
+                const memberProfiles = chat.group_members || [];
+                const displayMembers = memberProfiles.slice(0, 3);
+                const extraCount = memberProfiles.length > 3 ? memberProfiles.length - 3 : 0;
 
-              <div className="flex-1 min-w-0 pr-2">
-                <div className="flex items-center justify-between gap-1 mb-0.5">
-                  <h3 className={`${textSizeClass} font-medium truncate leading-tight flex items-center gap-1.5 ${activeChatId === chat.id ? 'text-white' : 'text-zinc-200'}`}>
-                    {chat.display_name}
-                    {chat.other_profile?.role === 'professional' && chat.other_profile?.availability_status === false && (
-                      <span className="text-[9px] bg-white/[0.06] text-zinc-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Away</span>
-                    )}
-                  </h3>
-                  <span className={`text-[11px] whitespace-nowrap shrink-0 ${chat.unread_count > 0 ? 'text-white font-bold' : 'text-zinc-600'}`}>
-                    {chat.last_time}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-zinc-500 text-sm truncate leading-tight flex-1">{chat.last_message}</p>
-                  {chat.unread_count > 0 && (
-                     <div className="min-w-[19px] h-[19px] px-1.5 bg-[#10b981] rounded-full flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                      <span className="text-white text-[10px] font-bold">{chat.unread_count > 99 ? '99+' : chat.unread_count}</span>
+                return (
+                  <div key={chat.id} className="relative bg-[#09090b] rounded-3xl p-5 border border-white/[0.04] overflow-hidden flex flex-col hover:border-white/10 transition-all duration-300 cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.5)]" onClick={() => onSelectChat(chat.id)}>
+
+                    {/* Title & Unread Count */}
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-[20px] font-bold text-white pr-4 tracking-tight leading-[1.1] truncate flex-1 min-w-0">
+                        {chat.display_name}
+                      </h3>
+                      {chat.unread_count > 0 && (
+                         <div className="min-w-[22px] h-[22px] px-1.5 bg-[#10b981] rounded-full flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                          <span className="text-white text-[11px] font-bold">{chat.unread_count > 99 ? '99+' : chat.unread_count}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    {/* Avatars */}
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex -space-x-3">
+                        {displayMembers.length > 0 ? (
+                          displayMembers.map((profile: any, i: number) => {
+                            const gradients = [
+                              'from-[#ff7eb3] to-[#ff758c]',
+                              'from-[#bc9dff] to-[#4c1d95]',
+                              'from-[#4facfe] to-[#00f2fe]',
+                            ]
+                            const avatar = profile?.avatar_url;
+                            
+                            return (
+                              <div key={i} className={`w-9 h-9 rounded-full border-[2.5px] border-[#09090b] bg-gradient-to-br ${gradients[i % gradients.length]} shrink-0 shadow-md flex items-center justify-center overflow-hidden`} style={{ zIndex: 10 - i }}>
+                                  {avatar ? (
+                                    <img src={avatar} className="w-full h-full object-cover" alt="Member" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                  ) : (
+                                    <Users className="w-4 h-4 text-white/50" />
+                                  )}
+                              </div>
+                            )
+                          })
+                        ) : (
+                          <div className="w-9 h-9 rounded-full border-[2.5px] border-[#09090b] bg-white/[0.05] shrink-0 shadow-md flex items-center justify-center overflow-hidden z-10">
+                            {chat.display_avatar ? (
+                              <img src={chat.display_avatar} className="w-full h-full object-cover" alt="Group" />
+                            ) : (
+                              <Users className="w-4 h-4 text-white/40" />
+                            )}
+                          </div>
+                        )}
+                        {extraCount > 0 && (
+                          <div className="w-9 h-9 rounded-full border-[2.5px] border-[#09090b] bg-white/[0.05] flex items-center justify-center shrink-0 z-0">
+                            <span className="text-[10px] font-bold text-white/60">+{extraCount}</span>
+                          </div>
+                        )}
+                      </div>
+                      <span className={`text-[11px] whitespace-nowrap shrink-0 text-zinc-500`}>
+                        {chat.last_time}
+                      </span>
+                    </div>
+
+                    <p className="text-[13.5px] text-white/50 leading-relaxed mb-6 line-clamp-2 min-h-[40px]">
+                      {chat.description || chat.last_message || 'No messages yet.'}
+                    </p>
+
+                    <button 
+                      className="w-full py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.05] hover:bg-white/[0.08] transition-all duration-300 text-white/80 hover:text-white text-sm font-semibold active:scale-[0.98]"
+                    >
+                      Open Chat
+                    </button>
+                  </div>
+                )
+              }
+
+              return (
+                <div key={chat.id} onClick={() => onSelectChat(chat.id)}
+                  className={`group flex items-center px-4 py-3 cursor-pointer transition-all duration-150 border-b border-white/[0.03] ${activeChatId === chat.id ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'}`}>
+                  
+                  <div className="relative w-11 h-11 shrink-0 mr-3">
+                    <div className="w-11 h-11 rounded-full bg-white/[0.05] flex items-center justify-center overflow-hidden">
+                      {chat.display_avatar ? (
+                        <img src={chat.display_avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                      ) : (
+                        <div className="w-full h-full bg-white/[0.08] flex items-center justify-center text-zinc-400 font-bold uppercase text-base">
+                          {chat.display_name?.[0] || '?'}
+                        </div>
+                      )}
+                    </div>
+                    {chat.other_profile && isUserOnline(chat.other_profile) && chat.other_profile?.availability_status !== false && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-white rounded-full border-2 border-black"></div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                      <h3 className={`${textSizeClass} font-medium truncate leading-tight flex items-center gap-1.5 ${activeChatId === chat.id ? 'text-white' : 'text-zinc-200'}`}>
+                        {chat.display_name}
+                        {chat.other_profile?.role === 'professional' && chat.other_profile?.availability_status === false && (
+                          <span className="text-[9px] bg-white/[0.06] text-zinc-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Away</span>
+                        )}
+                      </h3>
+                      <span className={`text-[11px] whitespace-nowrap shrink-0 ${chat.unread_count > 0 ? 'text-white font-bold' : 'text-zinc-600'}`}>
+                        {chat.last_time}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-zinc-500 text-sm truncate leading-tight flex-1">{chat.last_message}</p>
+                      {chat.unread_count > 0 && (
+                         <div className="min-w-[19px] h-[19px] px-1.5 bg-[#10b981] rounded-full flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                          <span className="text-white text-[10px] font-bold">{chat.unread_count > 99 ? '99+' : chat.unread_count}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))
+              )
+            })}
+          </div>
         )}
       </div>
 

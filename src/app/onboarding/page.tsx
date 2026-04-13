@@ -101,6 +101,7 @@ export default function OnboardingPage() {
       }
       const p: Record<string, any> = {
         id: user.id,
+        email: user.email,
         name: formData.name, role, skills: formData.skills, verification_level: vl, availability_status: true,
         linkedin: formData.linkedin || null, github: formData.github || null, portfolio: formData.portfolio || null,
         company_id: role === 'professional' ? formData.company_id : null,

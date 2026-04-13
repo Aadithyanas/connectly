@@ -442,6 +442,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
                 currentUserId={user?.id || ''} 
                 otherUserAvatar={otherUser?.avatar_url}
                 currentUserAvatar={currentUserProfile?.avatar_url || user?.user_metadata?.avatar_url}
+                isGroup={chatDetails?.is_group}
                 onReply={handleReply}
                 onForward={handleForward}
                 onDelete={deleteMessage}

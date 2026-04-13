@@ -149,7 +149,7 @@ export function useMessages(chatId?: string) {
       try {
         const { data, error } = await supabase
           .from('messages')
-          .select('*, reply:reply_to(id, content, sender_id)')
+          .select('*, sender:profiles!sender_id(name, avatar_url), reply:reply_to(id, content, sender_id)')
           .eq('chat_id', chatId)
           .order('created_at', { ascending: true })
           .abortSignal(abortController.signal)
@@ -163,7 +163,22 @@ export function useMessages(chatId?: string) {
              if (currentId && m.deleted_for?.includes(currentId)) return false
              return true
            })
-           setMessages(freshMessages)
+           setMessages((prev) => {
+             const sendingMessages = prev.filter(m => m.status === 'sending')
+             const final = [...freshMessages]
+             
+             sendingMessages.forEach(sending => {
+               const alreadyInDb = freshMessages.some((dbMsg: any) => 
+                 (sending.client_id && dbMsg.client_id === sending.client_id) || 
+                 dbMsg.id === sending.id
+               )
+               if (!alreadyInDb) {
+                 final.push(sending)
+               }
+             })
+             
+             return final.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+           })
            
            // 3. Cache the fresh data (limit to last 100 messages for storage efficiency)
            if (freshMessages.length > 0) {
@@ -172,16 +187,25 @@ export function useMessages(chatId?: string) {
            
            markAsSeen()
         } else {
+          // Silently ignore abort errors (expected when switching chats)
+          if (error.message?.includes('AbortError') || error.code === '20') return
           // If aborted by auth lock timeout, retry once after 500ms
           if ((error.message?.includes('Lock broken') || error.details?.includes('Lock broken')) && retryCount < 2) {
             console.warn(`Auth lock contention detected, retrying fetchMessages (${retryCount + 1})...`)
             setTimeout(() => fetchMessages(isBackgroundRefresh, retryCount + 1), 500)
             return
           }
-          console.error("fetchMessages error:", error)
+          const hasDetails = error.message || error.details || error.hint || error.code
+          if (hasDetails) {
+            console.error('fetchMessages error:', { message: error.message, details: error.details, hint: error.hint, code: error.code })
+          } else {
+            console.error('fetchMessages unknown error:', error)
+          }
         }
       } catch (err: any) {
-        if (err.name !== 'AbortError') console.error(err)
+        // AbortError is expected when switching chats — suppress it
+        if (err?.name === 'AbortError' || err?.message?.includes('AbortError')) return
+        console.error('fetchMessages catch error:', err?.message || err)
       } finally {
         if (isMounted && !isBackgroundRefresh && retryCount === 0) {
           setLoading(false)
@@ -408,10 +432,11 @@ export function useMessages(chatId?: string) {
     // Handle File local preview (Immediate visual feedback)
     if (mediaFile && !mediaUrl) {
       finalMediaUrl = URL.createObjectURL(mediaFile)
-      finalMediaType = mediaFile.type.split('/')[0]
+      const type = mediaFile.type.split('/')[0]
+      finalMediaType = type === 'image' || type === 'video' || type === 'audio' ? type : 'file'
     }
 
-    const tempId = `temp-${Date.now()}`
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     const msgData: any = {
       id: tempId,
       client_id: tempId,
@@ -430,9 +455,16 @@ export function useMessages(chatId?: string) {
 
     // 2. Perform File Upload if needed
     if (mediaFile) {
-      const { publicUrl, mediaType: uType, error } = await uploadFile(mediaFile)
+      const { publicUrl, mediaType: uType, error } = await uploadFile(mediaFile, (pct) => {
+        setMessages((prev) => prev.map(m => m.id === tempId ? { ...m, uploadPct: pct } : m))
+      })
       if (error || !publicUrl) {
-        setMessages((prev) => prev.filter(m => m.id !== tempId))
+        // Mark message as failed so user can see the error (don't silently remove it)
+        setMessages((prev) => prev.map(m => m.id === tempId
+          ? { ...m, status: 'failed', uploadError: error || 'Upload failed' }
+          : m
+        ))
+        console.error('Upload failed:', error)
         return { error }
       }
       finalMediaUrl = publicUrl
@@ -562,16 +594,30 @@ export function useMessages(chatId?: string) {
     return { error: null }
   }
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, onProgress?: (pct: number) => void) => {
     if (!user) return { error: 'Not authenticated' }
 
+    // 1. Determine resource type and limits
+    const isVideo = file.type.startsWith('video/')
+    const isAudio = file.type.startsWith('audio/') || ['mp3', 'wav', 'webm', 'ogg', 'm4a'].some(ext => file.name.toLowerCase().endsWith(`.${ext}`))
+    const resourceType = (isVideo || isAudio) ? 'video' : (file.type.startsWith('image/') ? 'image' : 'raw')
+    const limit = (resourceType === 'video') ? 100 * 1024 * 1024 : 10 * 1024 * 1024
+
+    if (file.size > limit) {
+      return { error: `File is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max limit is ${limit / (1024 * 1024)}MB.` }
+    }
+
     try {
-      // 1. Get Signature via unified server API
-      const signRes = await fetch('/api/cloudinary/sign', { method: 'POST', body: JSON.stringify({ folder: `chat/${chatId || 'general'}` }) })
+      // 2. Get Signature
+      const signRes = await fetch('/api/cloudinary/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder: `chat/${chatId || 'general'}` })
+      })
       const signData = await signRes.json()
       if (!signRes.ok) throw new Error(signData.error || 'Failed to get signature')
 
-      // 2. Upload to Cloudinary directly from Client
+      // 3. Upload with XHR for progress tracking
       const formData = new FormData()
       formData.append('file', file)
       formData.append('api_key', signData.apiKey)
@@ -579,14 +625,36 @@ export function useMessages(chatId?: string) {
       formData.append('signature', signData.signature)
       formData.append('folder', `chat/${chatId || 'general'}`)
 
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
-        method: 'POST',
-        body: formData
+      const uploadData = await new Promise<any>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', `https://api.cloudinary.com/v1_1/${signData.cloudName}/${resourceType}/upload`)
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable && onProgress) {
+            onProgress(Math.round((e.loaded / e.total) * 100))
+          }
+        })
+        xhr.addEventListener('load', () => {
+          try {
+            const data = JSON.parse(xhr.responseText)
+            if (xhr.status >= 200 && xhr.status < 300) resolve(data)
+            else reject(new Error(data?.error?.message || `Upload failed (${xhr.status})`))
+          } catch {
+            reject(new Error('Invalid response from Cloudinary'))
+          }
+        })
+        xhr.addEventListener('error', () => reject(new Error('Network error during upload')))
+        xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')))
+        xhr.send(formData)
       })
-      const uploadData = await uploadRes.json()
-      if (!uploadRes.ok) throw new Error(uploadData.error?.message || 'Upload failed')
 
-      return { publicUrl: uploadData.secure_url, mediaType: uploadData.resource_type === 'video' ? 'video' : 'image' }
+      let mediaType = 'image'
+      if (uploadData.resource_type === 'video') {
+        mediaType = isAudio ? 'audio' : 'video'
+      } else if (uploadData.resource_type === 'raw' || file.type.includes('pdf')) {
+        mediaType = 'file'
+      }
+
+      return { publicUrl: uploadData.secure_url, mediaType }
     } catch (err: any) {
       console.error('Cloudinary upload error:', err)
       return { error: err.message }
