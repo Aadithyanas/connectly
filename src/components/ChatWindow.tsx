@@ -42,6 +42,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
   const supabase = createClient()
   const { settings, isLoaded } = useSettings()
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null)
+  const [isLoadingMembership, setIsLoadingMembership] = useState(true)
 
   // Fetch current user's own profile from DB (auth metadata lags behind)
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
       setChatDetails(null)
       setOtherUser(null)
       setMyMembership(null)
+      setIsLoadingMembership(false)
       return
     }
 
@@ -77,6 +79,19 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
         } catch(e) {}
       } else {
         setChatDetails(null)
+      }
+
+      // Restore membership from cache
+      const cachedMembership = localStorage.getItem(`membership_${chatId}`)
+      if (cachedMembership) {
+        try {
+          setMyMembership(JSON.parse(cachedMembership))
+          setIsLoadingMembership(false)
+        } catch(e) {
+          setIsLoadingMembership(true)
+        }
+      } else {
+        setIsLoadingMembership(true)
       }
 
       // ONLY load cached profile if it's NOT a known group (prevents DM header flashing in groups)
@@ -118,7 +133,14 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
             .eq('chat_id', chatId)
             .eq('user_id', user.id)
             .single()
-          if (member) setMyMembership(member)
+          if (member) {
+            setMyMembership(member)
+            localStorage.setItem(`membership_${chatId}`, JSON.stringify(member))
+          } else {
+            setMyMembership(null)
+            localStorage.removeItem(`membership_${chatId}`)
+          }
+          setIsLoadingMembership(false)
         } else {
           // It's a DM: fetch the other user's profile
           const { data: members, error: membersError } = await supabase
@@ -479,18 +501,22 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
               />
             )}
           </>
+        ) : isLoadingMembership ? (
+          <div className="flex-1 flex items-center justify-center bg-black">
+            <Loader2 className="w-8 h-8 text-white/20 animate-spin" />
+          </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#0a0a0a]/40 backdrop-blur-md">
-             <div className="w-16 h-16 bg-white/[0.03] rounded-[24px] flex items-center justify-center mb-6 border border-white/[0.05]">
-                <Lock className="w-8 h-8 text-zinc-600" />
-             </div>
-             <h3 className="text-lg font-bold text-white mb-2">Private Community</h3>
-             <p className="text-[13px] text-zinc-500 max-w-[240px] leading-relaxed mx-auto">
-               {myMembership?.status === 'requesting' 
-                 ? "Your join request is pending approval from the admin."
-                 : "This community is private. You must be invited or join via community tab to view messages."}
-             </p>
-           </div>
+            <div className="w-16 h-16 bg-white/[0.03] rounded-[24px] flex items-center justify-center mb-6 border border-white/[0.05]">
+              <Lock className="w-8 h-8 text-zinc-600" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Private Community</h3>
+            <p className="text-[13px] text-zinc-500 max-w-[240px] leading-relaxed mx-auto">
+              {myMembership?.status === 'requesting' 
+                ? "Your join request is pending approval from the admin."
+                : "This community is private. You must be invited or join via community tab to view messages."}
+            </p>
+          </div>
         )}
       </div>
 
