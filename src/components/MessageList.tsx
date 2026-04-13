@@ -89,6 +89,7 @@ interface Message {
 interface MessageListProps {
   messages: Message[]
   loading?: boolean
+  chatId?: string
   currentUserId: string
   otherUserAvatar?: string
   currentUserAvatar?: string
@@ -168,9 +169,11 @@ function ImageAlbum({ items, isOwn, onImageClick, downloadedIds, handleDownload 
   )
 }
 
-export default function MessageList({ messages, loading, currentUserId, otherUserAvatar, currentUserAvatar, isGroup, onReply, onForward, onDelete }: MessageListProps) {
+export default function MessageList({ messages, loading, chatId, currentUserId, otherUserAvatar, currentUserAvatar, isGroup, onReply, onForward, onDelete }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
   const isAtBottomRef = useRef(true)
+  const lastChatIdRef = useRef<string | undefined>(chatId)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [gallery, setGallery] = useState<{ urls: string[], index: number } | null>(null)
   const [videoPlayer, setVideoPlayer] = useState<string | null>(null)
@@ -179,9 +182,38 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
   
   const { settings, isLoaded } = useSettings()
 
+  // Force scroll to bottom when chatId changes (switching chats)
+  useEffect(() => {
+    if (chatId !== lastChatIdRef.current) {
+      isAtBottomRef.current = true
+      lastChatIdRef.current = chatId
+      
+      // Immediate scroll
+      if (bottomRef.current) {
+        bottomRef.current.scrollIntoView({ behavior: 'auto' })
+      }
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      }
+    }
+  }, [chatId])
+
   useEffect(() => {
     if (scrollRef.current && isAtBottomRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      // Use both methods for reliability across browsers/devices
+      if (bottomRef.current) {
+        bottomRef.current.scrollIntoView({ behavior: 'auto' })
+      } else {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      }
+      
+      // Secondary check after a tiny delay to catch any late layout shifts (like avatars or text wrapping)
+      const timeout = setTimeout(() => {
+        if (scrollRef.current && isAtBottomRef.current) {
+           scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+        }
+      }, 50)
+      return () => clearTimeout(timeout)
     }
   }, [messages])
 
@@ -869,6 +901,8 @@ export default function MessageList({ messages, loading, currentUserId, otherUse
         </AnimatePresence>,
         document.body
       )}
+      {/* Bottom anchor for scrolling */}
+      <div ref={bottomRef} className="h-px w-full" />
     </div>
   )
 }

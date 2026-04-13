@@ -439,6 +439,7 @@ export default function ChatWindow({ chatId, onOpenInfo, onBack }: ChatWindowPro
               <MessageList 
                 messages={searchQuery ? messages.filter(m => m.content?.toLowerCase()?.includes(searchQuery.toLowerCase())) : messages} 
                 loading={loading}
+                chatId={chatId}
                 currentUserId={user?.id || ''} 
                 otherUserAvatar={otherUser?.avatar_url}
                 currentUserAvatar={currentUserProfile?.avatar_url || user?.user_metadata?.avatar_url}
