@@ -104,11 +104,12 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
     setUploadProgress(prev => ({ ...prev, [fileId]: 10 }))
 
     try {
-      // 2. Get Signature via API
+      // 2. Get Signature via API with explicit resource_type
       const signRes = await fetch('/api/cloudinary/sign', {
         method: 'POST',
         body: JSON.stringify({
-          folder: `posts/${user?.id || 'anonymous'}`
+          folder: `posts/${user?.id || 'anonymous'}`,
+          resource_type: resourceType
         })
       })
       const signData = await signRes.json()
@@ -123,7 +124,7 @@ export default function CreatePostModal({ onClose, quotedPost }: CreatePostModal
       formData.append('timestamp', signData.timestamp)
       formData.append('signature', signData.signature)
       formData.append('folder', `posts/${user?.id || 'anonymous'}`)
-      // The upload URL endpoint (e.g. /video/upload) tells Cloudinary the type — don't append resource_type to FormData.
+      formData.append('resource_type', resourceType)
 
       const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/${resourceType}/upload`, {
         method: 'POST',
