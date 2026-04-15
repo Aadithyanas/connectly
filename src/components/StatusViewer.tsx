@@ -1,17 +1,21 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { X, ChevronLeft, ChevronRight, Play, Pause, MoreVertical, Volume2, VolumeX, Loader2 } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Play, Pause, MoreVertical, Volume2, VolumeX, Loader2, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import { Status } from '@/hooks/useStatuses'
+import { useAuth } from '@/context/AuthContext'
 
 interface StatusViewerProps {
   statuses: Status[]
   onClose: () => void
+  onDelete?: (id: string) => Promise<any>
 }
 
-export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
+export default function StatusViewer({ statuses, onClose, onDelete }: StatusViewerProps) {
+  const { user } = useAuth()
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [progress, setProgress] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
@@ -58,6 +62,26 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
       setCurrentIndex(prev => prev - 1)
       setProgress(0)
       setCurrentDuration(5000)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!onDelete || !currentStatus?.id || isDeleting) return
+    if (!confirm('Are you sure you want to delete this status?')) return
+
+    setIsDeleting(true)
+    const res = await onDelete(currentStatus.id)
+    setIsDeleting(false)
+
+    if (res?.success) {
+      // Transition to next or close
+      if (statuses.length === 1) {
+        onClose()
+      } else {
+        goToNext()
+      }
+    } else {
+      alert(res?.error || 'Failed to delete status')
     }
   }
 
@@ -152,6 +176,16 @@ export default function StatusViewer({ statuses, onClose }: StatusViewerProps) {
           </div>
         </div>
         <div className="flex items-center gap-1">
+            {currentStatus.user_id === user?.id && (
+              <button 
+                onClick={handleDelete} 
+                className="p-2.5 hover:bg-red-500/20 rounded-full transition-colors backdrop-blur-md text-red-500"
+                disabled={isDeleting}
+                title="Delete Status"
+              >
+                {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+              </button>
+            )}
             <button 
               onClick={() => setIsMuted(!isMuted)} 
               className="p-2.5 hover:bg-white/10 rounded-full transition-colors backdrop-blur-md"

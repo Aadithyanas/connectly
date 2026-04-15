@@ -151,7 +151,7 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
 
       {/* Upload Preview */}
       {selectedFile && (
-        <div className="absolute inset-0 z-[100] bg-black flex flex-col">
+        <div className="fixed inset-0 z-[300] bg-black flex flex-col">
           <div className="p-4 flex items-center justify-between text-white bg-black/50 backdrop-blur-md">
             <button onClick={() => setSelectedFile(null)} className="p-2 hover:bg-white/[0.06] rounded-full"><X className="w-5 h-5" /></button>
             <span className="font-medium text-sm">Send Status</span>
@@ -171,19 +171,19 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
                {selectedFile.type.startsWith('image') && <Image src={URL.createObjectURL(selectedFile)} alt="Blur bg" fill className="object-cover" />}
             </div>
           </div>
-          <div className="p-4 pt-2 bg-[#0a0a0a] border-t border-white/[0.04] space-y-4 z-20">
-            <div className="relative">
-              <input 
-                type="text" placeholder="Add a caption..." autoFocus
-                className="w-full bg-white/[0.03] border border-white/[0.04] text-white rounded-xl py-3 pl-12 pr-4 focus:ring-1 focus:ring-white/10 text-sm outline-none placeholder-zinc-700"
-                value={caption} onChange={(e) => setCaption(e.target.value)}
-              />
-              <ImageIcon className="absolute left-4 top-3 w-5 h-5 text-zinc-600" />
-            </div>
-            <div className="flex justify-end pr-1">
+          <div className="p-4 pt-2 bg-[#0a0a0a] border-t border-white/[0.04] z-20">
+            <div className="flex items-center gap-2 max-w-4xl mx-auto w-full">
+              <div className="relative flex-1">
+                <input 
+                  type="text" placeholder="Add a caption..." autoFocus
+                  className="w-full bg-white/[0.03] border border-white/[0.04] text-white rounded-xl py-3 pl-12 pr-4 focus:ring-1 focus:ring-white/10 text-sm outline-none placeholder-zinc-700"
+                  value={caption} onChange={(e) => setCaption(e.target.value)}
+                />
+                <ImageIcon className="absolute left-4 top-3 w-5 h-5 text-zinc-600" />
+              </div>
               <button 
                 onClick={handleUpload} disabled={isUploading}
-                className="bg-white hover:bg-zinc-200 text-black p-3 rounded-full transition-all active:scale-95 disabled:opacity-50"
+                className="bg-white hover:bg-zinc-200 text-black p-3 rounded-full transition-all active:scale-95 disabled:opacity-50 shrink-0"
               >
                 {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </button>

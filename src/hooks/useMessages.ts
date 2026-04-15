@@ -151,7 +151,8 @@ export function useMessages(chatId?: string) {
           .from('messages')
           .select('*, sender:profiles!sender_id(name, avatar_url), reply:reply_to(id, content, sender_id)')
           .eq('chat_id', chatId)
-          .order('created_at', { ascending: true })
+          .order('created_at', { ascending: false })
+          .limit(100)
           .abortSignal(abortController.signal)
           
         if (!isMounted) return
@@ -162,7 +163,8 @@ export function useMessages(chatId?: string) {
              // Don't show messages deleted for me
              if (currentId && m.deleted_for?.includes(currentId)) return false
              return true
-           })
+           }).reverse() // Since we fetched DESC for the limit, reverse to maintain chronological top-to-bottom flow
+           
            setMessages((prev) => {
              const sendingMessages = prev.filter(m => m.status === 'sending')
              const final = [...freshMessages]
@@ -426,7 +428,7 @@ export function useMessages(chatId?: string) {
     }
   }, [chatId])
 
-  const sendMessage = async (content: string, mediaUrl?: string, mediaType?: string, replyTo?: string, mediaFile?: File) => {
+  const sendMessage = async (content: string, mediaUrl?: string, mediaType?: string, replyTo?: string, mediaFile?: File, recipientId?: string) => {
     if (!user || !chatId) return
 
     let finalMediaUrl = mediaUrl
@@ -483,11 +485,30 @@ export function useMessages(chatId?: string) {
           payload: { ...msgData, media_url: finalMediaUrl, media_type: finalMediaType, status: 'sent' }
         })
       }
+      
+      // 4. Notification Broadcast (Recipient's Sidebar)
+      // We send a lightweight ping to the recipient's personal notification channel
+      // This triggers their sidebar to refresh instantly.
+      if (recipientId) {
+        const notifyChannel = supabase.channel(`notifications:${recipientId}`)
+        notifyChannel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            notifyChannel.send({
+              type: 'broadcast',
+              event: 'ping',
+              payload: { chatId, senderId: user.id }
+            }).finally(() => {
+              // Clean up immediately to keep active connections low
+              supabase.removeChannel(notifyChannel)
+            })
+          }
+        })
+      }
     } catch (broadcastErr) {
       console.warn("Broadcast failed, continuing with insert:", broadcastErr)
     }
 
-    // 4. Database Persistence
+    // 5. Database Persistence
     const uiTimeout = setTimeout(() => {
       setMessages((prev) => prev.map(m => 
         m.id === tempId && m.status === 'sending' ? { ...m, status: 'sent' } : m

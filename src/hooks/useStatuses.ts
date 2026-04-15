@@ -167,5 +167,24 @@ export function useStatuses() {
     }
   }
 
-  return { myStatuses, partnerStatuses, loading, uploadStatus, refresh: fetchStatuses }
+  const deleteStatus = async (statusId: string) => {
+    if (!user) return { error: 'Not authenticated' }
+    try {
+      const { error } = await supabase
+        .from('statuses')
+        .delete()
+        .eq('id', statusId)
+        .eq('user_id', user.id)
+
+      if (error) throw error
+      
+      await fetchStatuses()
+      return { success: true }
+    } catch (err: any) {
+      console.error('Failed to delete status:', err)
+      return { error: err.message }
+    }
+  }
+
+  return { myStatuses, partnerStatuses, loading, uploadStatus, deleteStatus, refresh: fetchStatuses }
 }

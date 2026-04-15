@@ -10,7 +10,7 @@ import DiscoveryFeed from '@/components/DiscoveryFeed'
 import StatusTab from '@/components/StatusTab'
 import StatusViewer from '@/components/StatusViewer'
 import ChallengesRoom from '@/components/ChallengesRoom'
-import { Status } from '@/hooks/useStatuses'
+import { useStatuses, Status } from '@/hooks/useStatuses'
 import { createClient } from '@/utils/supabase/client'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import SettingsModal from '@/components/SettingsModal'
@@ -21,6 +21,7 @@ import { useAuth } from '@/context/AuthContext'
 export default function ChatPage() {
   useOnlineStatus()
   const { user, signOut } = useAuth()
+  const { deleteStatus } = useStatuses()
 
   const [activeChatSession, setActiveChatSession] = useState<{id: string, metadata?: {name: string, avatar?: string, isGroup?: boolean}} | null>(null)
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false)
@@ -487,7 +488,11 @@ export default function ChatPage() {
         </div>
 
       {activeStatuses && (
-        <StatusViewer statuses={activeStatuses} onClose={() => setActiveStatuses(null)} />
+        <StatusViewer 
+          statuses={activeStatuses} 
+          onClose={() => setActiveStatuses(null)} 
+          onDelete={deleteStatus}
+        />
       )}
 
       <InfoSidebar

@@ -512,7 +512,7 @@ export default function ChatWindow({ chatId, initialData, onOpenInfo, onBack }: 
                 </p>
                 <div className="w-full opacity-50 pointer-events-none">
                   <MessageInput 
-                    onSendMessage={sendMessage} 
+                    onSendMessage={(c, m, t, r, f) => sendMessage(c, m, t, r, f, otherUser?.id)} 
                     onTyping={(isT) => { sendTypingStatus(isT) }}
                     onFileUpload={uploadFile}
                     replyingTo={replyingTo}
@@ -522,7 +522,7 @@ export default function ChatWindow({ chatId, initialData, onOpenInfo, onBack }: 
               </div>
             ) : (
               <MessageInput 
-                onSendMessage={sendMessage} 
+                onSendMessage={(c, m, t, r, f) => sendMessage(c, m, t, r, f, otherUser?.id)} 
                 onTyping={(isT) => { sendTypingStatus(isT) }}
                 onFileUpload={uploadFile}
                 replyingTo={replyingTo}

@@ -9,6 +9,7 @@ import { isUserOnline } from '@/hooks/useOnlineStatus'
 import SettingsModal from './SettingsModal'
 import { useSettings } from '@/hooks/useSettings'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { useNotify } from '@/hooks/useNotify'
 import { Status } from '@/hooks/useStatuses'
 import { useAuth } from '@/context/AuthContext'
 import GroupDiscovery from './GroupDiscovery'
@@ -317,6 +318,12 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
     }
   }, [user?.id, authLoading])
+
+  // Instant Sidebar Updates via Broadcast Pings
+  useNotify(() => {
+    // When we get a ping, trigger a debounced fetch to update unread counts/order
+    debouncedFetch()
+  })
 
   const handleLogout = async () => {
     if (user) {
