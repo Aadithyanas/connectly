@@ -26,7 +26,7 @@ export function useNotify(onNotify: (payload: any) => void) {
     const channel = supabase.channel(channelName)
 
     channel
-      .on('broadcast', { event: 'ping' }, (payload) => {
+      .on('broadcast', { event: 'ping' }, (payload: any) => {
         // Re-check visibility or other conditions if needed
         callbackRef.current(payload.payload)
       })

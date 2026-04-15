@@ -491,7 +491,7 @@ export function useMessages(chatId?: string) {
       // This triggers their sidebar to refresh instantly.
       if (recipientId) {
         const notifyChannel = supabase.channel(`notifications:${recipientId}`)
-        notifyChannel.subscribe((status) => {
+        notifyChannel.subscribe((status: string) => {
           if (status === 'SUBSCRIBED') {
             notifyChannel.send({
               type: 'broadcast',
