@@ -58,8 +58,9 @@ export interface PostComment {
 export function usePosts(filterUserId?: string, filterRole?: string) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [newPostsCount, setNewPostsCount] = useState(0)
 
-  // Hydrate from cache on mount (client-side only trick to avoid hydration mismatch)
+  // Hydrate from cache on mount
   useEffect(() => {
     if (!filterUserId) {
       try {
@@ -78,7 +79,6 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
   const { user, loading: authLoading } = useAuth()
   const supabase = createClient()
 
-  // Use a ref to keep track of posts for background logic without triggering re-renders of the callback
   const postsRef = useRef<Post[]>(posts)
   useEffect(() => {
     postsRef.current = posts
@@ -105,6 +105,7 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
             profiles:profiles!posts_user_id_fkey(name, avatar_url, role)
           )
         `)
+        .limit(15) // Pagination: Limit initial fetch
 
       if (filterUserId) {
         query = query.eq('user_id', filterUserId)
@@ -147,6 +148,7 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
       })
 
       setPosts(formatted)
+      setNewPostsCount(0) // Reset count on full refresh
       if (!filterUserId) {
         localStorage.setItem('tech_feed_cache', JSON.stringify(formatted))
       }
@@ -157,32 +159,68 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
     }
   }, [user, authLoading, supabase, filterUserId, filterRole])
 
+  // Delta Fetching Detection
+  const checkForNewPosts = useCallback(async () => {
+    if (!user || postsRef.current.length === 0 || filterUserId) return
+
+    const latestPostTime = postsRef.current[0].created_at
+    
+    try {
+      const { count, error } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .gt('created_at', latestPostTime)
+
+      if (!error && count !== null && count > 0) {
+        setNewPostsCount(count)
+      }
+    } catch (err) {
+      // Silent error for background check
+    }
+  }, [user, supabase, filterUserId])
+
+  // Adaptive Polling Strategy
   useEffect(() => {
     if (authLoading || !user) return
 
+    // Initial fetch
     fetchPosts()
 
-    const channel = supabase.channel(`tech-feed-sync-${Math.random()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
-        fetchPosts(true)
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => {
-        fetchPosts(true)
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_comments' }, (payload: any) => {
-        fetchPosts(true)
-        // If we are currently showing comments for this post, refresh them
-        const postId = payload.new?.post_id || payload.old?.post_id
-        if (postId) {
-          fetchComments(postId)
+    // Setup polling
+    let intervalId: NodeJS.Timeout
+
+    const startPolling = () => {
+      const isIdle = document.visibilityState === 'hidden'
+      const interval = isIdle ? 60000 : 15000 // 15s active / 60s idle
+      
+      intervalId = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          // If active, check for new posts (for button)
+          checkForNewPosts()
+        } else {
+          // If idle, maybe do a silent full refresh less often
+          // fetchPosts(true)
         }
-      })
-      .subscribe()
+      }, interval)
+    }
+
+    startPolling()
+
+    const handleVisibilityChange = () => {
+      clearInterval(intervalId)
+      if (document.visibilityState === 'visible') {
+        checkForNewPosts() // Check immediately when returning
+      }
+      startPolling()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      supabase.removeChannel(channel)
+      clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [user, authLoading, supabase, fetchPosts, filterRole])
+  }, [user, authLoading, fetchPosts, checkForNewPosts])
 
   const fetchComments = async (postId: string) => {
     setLoadingComments(prev => ({ ...prev, [postId]: true }))
@@ -210,7 +248,6 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
       setActiveComments(prev => ({ ...prev, [postId]: formatted }))
     } catch (err) {
       console.error('Failed to fetch comments:', err)
-      // Clear comments on error or keep old ones? Clear for now to reset UI
       setActiveComments(prev => ({ ...prev, [postId]: [] }))
     } finally {
       setLoadingComments(prev => ({ ...prev, [postId]: false }))
@@ -274,7 +311,6 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
       }
     } catch (err) {
       console.error('Like toggle failed:', err)
-      // Rollback on error
       setPosts(prev => prev.map(p => {
         if (p.id === postId) {
           return {
@@ -313,7 +349,7 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
       .from('posts')
       .update(payload)
       .eq('id', postId)
-      .eq('user_id', user.id) // Security check
+      .eq('user_id', user.id)
       .select()
 
     if (!error) await fetchPosts(true)
@@ -323,7 +359,6 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
   const deletePost = async (postId: string) => {
     if (!user) return { error: 'Not authenticated' }
 
-    // RLS will ensure they only delete their own
     const { error } = await supabase
       .from('posts')
       .delete()
@@ -338,6 +373,7 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
   return { 
     posts, 
     loading, 
+    newPostsCount,
     toggleLike, 
     createPost,
     updatePost,

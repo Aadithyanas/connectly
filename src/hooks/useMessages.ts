@@ -378,6 +378,9 @@ export function useMessages(chatId?: string) {
     // ── Lightweight status-only sync (2s) for own messages ───────────────────
     // Only fetches id+status — tiny query, never overwrites message content
     // This is the PRIMARY mechanism for showing blue ticks reliably
+    // ── Fallback status-only sync (30s) for own messages ───────────────────
+    // Only fetches id+status — tiny query, never overwrites message content.
+    // Relaxed from 2s to 30s as we now primarily rely on Broadcasts for ticks.
     const statusSyncInterval = setInterval(async () => {
       const meId = currentUserRef.current?.id
       // FIX #3: Also guard against missing chatId to avoid querying wrong chat
@@ -405,12 +408,12 @@ export function useMessages(chatId?: string) {
           return changed ? next : prev
         })
       } catch (_) {/* silently skip */}
-    }, 2000)
+    }, 30000)
 
-    // ── Full message sync (10s) — catches missed inserts or deletes ───────────
+    // ── Safety message sync (60s) — relaxed to minimize query egress ─────────
     const syncInterval = setInterval(() => {
       if (isMounted) fetchMessages(true)
-    }, 10000)
+    }, 60000)
 
     return () => { 
       isMounted = false

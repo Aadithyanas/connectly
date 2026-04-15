@@ -86,29 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    // Real-time profile updates
-    let profileSubscription: any = null
-    
-    const setupProfileSubscription = (userId: string) => {
-      if (profileSubscription) supabase.removeChannel(profileSubscription)
-      
-      profileSubscription = supabase.channel(`profile-sync:${userId}`)
-        .on('postgres_changes', { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'profiles', 
-          filter: `id=eq.${userId}` 
-        }, (payload: any) => {
-          setProfile(payload.new)
-        })
-        .subscribe()
-    }
-
-    if (user?.id) setupProfileSubscription(user.id)
-
     return () => {
       authSubscription.unsubscribe()
-      if (profileSubscription) supabase.removeChannel(profileSubscription)
     }
   }, [supabase, user?.id])
 

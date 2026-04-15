@@ -67,25 +67,41 @@ export function useStatuses() {
   }, [supabase, user])
 
   useEffect(() => {
+    if (!user) return
+
+    // Initial fetch
     fetchStatuses()
 
-    // Real-time subscription for statuses, privacy settings, and allowed users
-    const channel = supabase.channel(`status-system-sync-${Math.random()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'statuses' }, () => {
+    // Polling setup
+    let intervalId: NodeJS.Timeout
+
+    const startPolling = () => {
+      const isIdle = document.visibilityState === 'hidden'
+      const interval = isIdle ? 90000 : 45000 // 45s active / 90s idle
+      
+      intervalId = setInterval(() => {
         fetchStatuses()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'status_privacy' }, () => {
+      }, interval)
+    }
+
+    startPolling()
+
+    const handleVisibilityChange = () => {
+      clearInterval(intervalId)
+      // If we just became visible, refresh immediately
+      if (document.visibilityState === 'visible') {
         fetchStatuses()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'status_allowed_users' }, () => {
-        fetchStatuses()
-      })
-      .subscribe()
+      }
+      startPolling()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      supabase.removeChannel(channel)
+      clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [fetchStatuses, supabase])
+  }, [fetchStatuses, user])
 
   const uploadStatus = async (file: File, caption?: string) => {
     if (!user) return { error: 'Not authenticated' }

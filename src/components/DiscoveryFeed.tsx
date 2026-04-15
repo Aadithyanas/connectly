@@ -17,7 +17,7 @@ interface DiscoveryFeedProps {
 
 export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter, onBack, onScrollToggle }: DiscoveryFeedProps) {
   const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'professional'>('all')
-  const { posts, loading, toggleLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost } = usePosts(filterUserId, roleFilter === 'all' ? undefined : roleFilter)
+  const { posts, loading, toggleLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost, newPostsCount, refresh } = usePosts(filterUserId, roleFilter === 'all' ? undefined : roleFilter)
   const [createModal, setCreateModal] = useState<{ isOpen: boolean, quotedPost?: Post }>({ isOpen: false })
   
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -48,6 +48,13 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
     lastScrollTop.current = currentScroll
   }
 
+  const handleNewPostsClick = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    refresh()
+  }
+
   if (loading && posts.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-black">
@@ -59,6 +66,19 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
 
   return (
     <div className="flex-1 flex flex-col h-full bg-black relative w-full min-w-0 overflow-hidden">
+      {/* New Posts Pill */}
+      {newPostsCount > 0 && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-4 duration-500">
+          <button 
+            onClick={handleNewPostsClick}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#bc9dff] text-white rounded-full font-bold text-[11px] uppercase tracking-wider shadow-[0_8px_24px_rgba(188,157,255,0.4)] hover:scale-105 active:scale-95 transition-all"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            {newPostsCount} New {newPostsCount === 1 ? 'Post' : 'Posts'}
+          </button>
+        </div>
+      )}
+
       {/* Header — The Nocturnal style (Only show for individual user view) */}
       {filterUserId && (
         <div className="w-full px-4 md:px-6 py-3 glass-header border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0" style={{minHeight:'60px'}}>

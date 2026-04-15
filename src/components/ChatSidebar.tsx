@@ -269,71 +269,35 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       setLoading(false)
     }, 8000)
 
-    // Unique channel per user and per instance to prevent cross-tab or cross-component interference
-    const channelName = `sidebar-sync:${user.id}:${instanceId.current}`
-    const channel = supabase.channel(channelName)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload: any) => {
-         debouncedFetch()
-         // Mark as delivered via RPC
-          if (payload.new && payload.new.sender_id !== userIdRef.current && payload.new.status === 'sent') {
-            const chatId = payload.new.chat_id
-            
-            // If already scheduled for this chat, don't schedule again
-            if (pendingBatchDelivered.current.has(chatId)) return
+    // Transitioned to "Fake Realtime" Polling for sidebar updates
+    let syncIntervalId: NodeJS.Timeout
 
-            const markWithRetry = async (retries = 0) => {
-              try {
-                const { error } = await supabase.rpc('mark_messages_delivered', { cid: chatId })
-                if (error && (error.message?.includes('Lock') || error.details?.includes('Lock')) && retries < 2) {
-                  throw error
-                }
-              } catch (err) {
-                if (retries < 2) {
-                  setTimeout(() => markWithRetry(retries + 1), 600)
-                } else {
-                  console.warn('mark_messages_delivered failed after retries:', err)
-                }
-              } finally {
-                pendingBatchDelivered.current.delete(chatId)
-              }
-            }
+    const startSync = () => {
+      const isIdle = document.visibilityState === 'hidden'
+      const interval = isIdle ? 120000 : 30000 // 30s active / 120s idle
+      
+      syncIntervalId = setInterval(() => {
+        fetchUserAndChats(false)
+      }, interval)
+    }
 
-            // Batch window: 1.2 seconds for sidebar updates
-            const timeout = setTimeout(() => markWithRetry(), 1200)
-            pendingBatchDelivered.current.set(chatId, timeout)
-          }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => debouncedFetch())
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, () => debouncedFetch())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
-         // Dynamically patch profile data in existing chats without re-fetching
-         setChats(prevChats => {
-           if (!prevChats) return prevChats
-           return prevChats.map(chat => {
-             if (chat.other_profile && chat.other_profile.id === payload.new.id) {
-               return { ...chat, other_profile: { ...chat.other_profile, ...payload.new } }
-             }
-             return chat
-           })
-         })
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_members' }, () => debouncedFetch())
-      .subscribe((status: string) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-           console.warn(`Sidebar Realtime ${status}, triggering fallback fetch...`)
-           debouncedFetch()
-        }
-      })
+    startSync()
+
+    const handleVisibilityChange = () => {
+      clearInterval(syncIntervalId)
+      if (document.visibilityState === 'visible') {
+        fetchUserAndChats(false)
+      }
+      startSync()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     // Clock only - don't clone chats array every second
     const clockInterval = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
 
-    // Periodic synchronization (fallback for silent WebSocket drop or lock recovery)
-    const syncInterval = setInterval(() => {
-      fetchUserAndChats(false) // Background sync (no skeletons)
-    }, 45000) // Slightly longer window as we have multiple realtime triggers now
 
     // Add storage event listener to refresh nicknames if changed in other tabs/components
     const handleStorageChange = (e: StorageEvent) => {
@@ -345,10 +309,10 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
     window.addEventListener('storage', handleStorageChange)
 
     return () => { 
-      supabase.removeChannel(channel)
       window.removeEventListener('storage', handleStorageChange)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       clearInterval(clockInterval)
-      clearInterval(syncInterval)
+      clearInterval(syncIntervalId)
       if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
       if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
     }

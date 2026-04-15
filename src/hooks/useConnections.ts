@@ -43,22 +43,7 @@ export function useConnections(targetUserId?: string) {
 
   useEffect(() => {
     fetchStats()
-
-    // Real-time subscription for connection changes
-    const channel = supabase.channel(`connections-${targetUserId}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'user_connections'
-      }, () => {
-        fetchStats()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [targetUserId, fetchStats, supabase])
+  }, [targetUserId, fetchStats])
 
   const toggleFollow = async () => {
     if (!user || !targetUserId || user.id === targetUserId || loading) return
