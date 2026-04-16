@@ -169,7 +169,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
           globalMarkDeliveredLock = true;
           supabase.rpc('mark_all_messages_delivered')
             .then(() => { lastMarkDeliveredTime = Date.now() })
-            .catch((e) => console.warn('mark_all_messages_delivered error', e))
+            .catch((e: any) => console.warn('mark_all_messages_delivered error', e))
             .finally(() => { globalMarkDeliveredLock = false })
         }
       }
