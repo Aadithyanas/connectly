@@ -16,6 +16,10 @@ import GroupDiscovery from './GroupDiscovery'
 import { usePWAInstall } from '@/hooks/usePWAInstall'
 import { Download } from 'lucide-react'
 
+// Global lock to prevent multiple sidebar instances from hammering the DB simultaneously
+let globalMarkDeliveredLock = false;
+let lastMarkDeliveredTime = 0;
+
 interface ChatSidebarProps {
   onSelectChat: (chatId: string, metadata?: { name: string, avatar?: string, isGroup?: boolean }) => void
   activeChatId?: string
@@ -158,16 +162,16 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       
       if (user?.id) {
         localStorage.setItem(`chats_${user.id}`, JSON.stringify(formattedChats))
-        // Background: mark all messages as delivered since we just loaded the sidebar
-        // Avoid .catch() on the builder itself
-        const markDelivered = async () => {
-          try {
-            await supabase.rpc('mark_all_messages_delivered')
-          } catch (e) {
-            console.warn('mark_all_messages_delivered error', e)
-          }
+        
+        // Restore double tick: mark messages delivered, but precisely gated
+        // to prevent 3 concurrent updates per client.
+        if (!globalMarkDeliveredLock && Date.now() - lastMarkDeliveredTime > 3000) {
+          globalMarkDeliveredLock = true;
+          supabase.rpc('mark_all_messages_delivered')
+            .then(() => { lastMarkDeliveredTime = Date.now() })
+            .catch((e) => console.warn('mark_all_messages_delivered error', e))
+            .finally(() => { globalMarkDeliveredLock = false })
         }
-        markDelivered()
       }
     } catch (err) {
       console.error('Fetch chats error:', err)
