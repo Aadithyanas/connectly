@@ -37,7 +37,7 @@ export default function StatusViewer({ statuses, onClose, onDelete }: StatusView
     if (currentStatus?.id) {
       const supabase = createClient()
       supabase.rpc('increment_status_impressions', { status_id: currentStatus.id })
-        .then(({ error }) => {
+        .then(({ error }: { error: any }) => {
           if (error) console.error("Error incrementing impressions:", error)
         })
     }

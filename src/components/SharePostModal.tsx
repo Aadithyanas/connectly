@@ -52,15 +52,15 @@ export default function SharePostModal({ isOpen, onClose, post }: SharePostModal
         const { data: following } = await supabase.from('user_connections').select('following_id').eq('follower_id', user.id)
         const { data: followers } = await supabase.from('user_connections').select('follower_id').eq('following_id', user.id)
         
-        const followingIds = (following || []).map(f => f.following_id)
-        const followerIds = (followers || []).map(f => f.follower_id)
+        const followingIds = (following || []).map((f: any) => f.following_id)
+        const followerIds = (followers || []).map((f: any) => f.follower_id)
         const allConnectionIds = [...new Set([...followingIds, ...followerIds])]
         const newConnectionIds = allConnectionIds.filter(id => !otherUserIds.includes(id))
 
         // 3. Fetch Profiles for all relevant users
         const profileIds = [...new Set([...otherUserIds, ...newConnectionIds])]
         const { data: profiles } = await supabase.from('profiles').select('id, name, avatar_url').in('id', profileIds)
-        const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+        const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]))
 
         // 4. Format Existing Chats
         const formattedChats = chatData.map((chat: any) => {
