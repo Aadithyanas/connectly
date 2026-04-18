@@ -194,10 +194,22 @@ export default function ChatPage() {
         setSidebarType('contact')
         setSidebarData(profile)
         setIsInfoSidebarOpen(true)
-        setIsNewChatModalOpen(false)
       }
     } catch (err) {
       console.error("Exception in handleInspectUser:", err)
+    }
+  }
+
+  const handleMessageUser = async (userId: string) => {
+    try {
+      const { data: chatId, error } = await supabase.rpc('create_dm_chat', { other_user_id: userId })
+      if (!error && chatId) {
+        setActiveChatSession({ id: chatId })
+        setActiveTab('chat')
+        setActiveStatuses(null) // Close status viewer
+      }
+    } catch (err) {
+      console.error("Error starting chat from viewer:", err)
     }
   }
 
@@ -493,6 +505,8 @@ export default function ChatPage() {
           statuses={activeStatuses} 
           onClose={() => setActiveStatuses(null)} 
           onDelete={deleteStatus}
+          onInspectProfile={handleInspectUser}
+          onMessageUser={(id) => handleMessageUser(id)}
         />
       )}
 

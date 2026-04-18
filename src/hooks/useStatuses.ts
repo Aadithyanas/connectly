@@ -218,5 +218,25 @@ export function useStatuses() {
     }
   }
 
-  return { myStatuses, partnerStatuses, loading, uploadStatus, deleteStatus, refresh: fetchStatuses }
+  const fetchStatusViewers = useCallback(async (statusId: string) => {
+    if (!user) return []
+    
+    const { data, error } = await supabase
+      .from('status_views')
+      .select('viewed_at, profiles(id, name, avatar_url, role, availability_status)')
+      .eq('status_id', statusId)
+      .order('viewed_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching viewers:', error)
+      return []
+    }
+
+    return (data || []).map((sv: any) => ({
+      ...sv.profiles,
+      viewed_at: sv.viewed_at
+    }))
+  }, [supabase, user])
+
+  return { myStatuses, partnerStatuses, loading, uploadStatus, deleteStatus, fetchStatusViewers, refresh: fetchStatuses }
 }
