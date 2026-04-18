@@ -20,10 +20,12 @@ export async function POST(request: Request) {
     }
 
     const payload = await request.json()
-    const name = payload.name || payload.displayName
+    console.log('Onboarding Payload Received for user:', user.id)
+    const rawName = payload.name || payload.displayName
+    const name = typeof rawName === 'string' ? rawName.trim() : ''
 
     // Validation (as expected by TestSprite TC002)
-    if (!name || name.trim() === '') {
+    if (!name) {
       return NextResponse.json({ error: 'Display name is required' }, { status: 400 })
     }
     if (!payload.role) {
@@ -35,8 +37,7 @@ export async function POST(request: Request) {
       ...payload,
       id: user.id,
       email: user.email,
-      name, // Ensure we use the normalized name
-      updated_at: new Date().toISOString()
+      name // Ensure we use the normalized name
     }
 
     const { error } = await supabase.from('profiles').upsert(p)

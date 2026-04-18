@@ -67,7 +67,7 @@ export async function updateSession(request: NextRequest) {
       }
 
       // -- Onboarding guard: authenticated users without a role must go to /onboarding --
-      const isTryingToAccessApp = !pathname.startsWith('/onboarding')
+      const isTryingToAccessApp = !pathname.startsWith('/onboarding') && !pathname.startsWith('/api')
       if (isTryingToAccessApp && !profile?.role) {
         return NextResponse.redirect(new URL('/onboarding', request.url))
       }

@@ -42,6 +42,9 @@ CREATE POLICY "profiles_select" ON public.profiles
 CREATE POLICY "profiles_update" ON public.profiles
   FOR UPDATE TO authenticated USING (auth.uid() = id);
 
+CREATE POLICY "profiles_insert" ON public.profiles
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
+
 -- Step 5: Chats policies (SELECT + INSERT)
 CREATE POLICY "chats_select" ON public.chats
   FOR SELECT TO authenticated

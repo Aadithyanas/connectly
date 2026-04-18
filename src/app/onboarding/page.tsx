@@ -69,8 +69,8 @@ export default function OnboardingPage() {
     }
     if (user?.user_metadata?.full_name && !formData.name) setFormData(p => ({ ...p, name: user.user_metadata.full_name }))
     else if (user?.email && !formData.name) setFormData(p => ({ ...p, name: user.email!.split('@')[0] }))
-    const fetch = async () => { const { data } = await supabase.from('companies').select('*').order('name'); if (data) setCompanies(data) }
-    fetch()
+    const getCompanies = async () => { const { data } = await supabase.from('companies').select('*').order('name'); if (data) setCompanies(data) }
+    getCompanies()
   }, [profile, user])
 
   useEffect(() => {
@@ -112,13 +112,9 @@ export default function OnboardingPage() {
         education: role === 'student' && formData.college_name ? [{ school: formData.college_name, degree: formData.course || '', startDate: '', endDate: '', present: false, description: '' }] : [],
         experience: role === 'professional' && formData.job_role ? [{ title: formData.job_role, company: companies.find(c => c.id === formData.company_id)?.name || '', startDate: '', endDate: '', present: true, description: '' }] : [],
       }
-      console.log('Attempting profile upsert with payload:', p)
+      console.log('Onboarding attempt for user:', user.id, user.email)
+      console.log('Attempting profile upsert with payload:', JSON.stringify(p, null, 2))
       
-      // Use a timeout to detect hangs
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Database operation timed out after 30 seconds.')), 30000)
-      })
-
       const apiRes = await fetch('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,20 +122,30 @@ export default function OnboardingPage() {
       })
 
       if (!apiRes.ok) {
-        const errorData = await apiRes.json()
-        throw new Error(errorData.error || 'Failed to complete setup.')
+        let errorMsg = 'Failed to complete setup.'
+        try {
+          const errorData = await apiRes.json()
+          errorMsg = errorData.error || errorMsg
+        } catch (parseErr) {
+          const rawText = await apiRes.text()
+          console.error('Failed to parse error JSON. Status:', apiRes.status, 'Raw response:', rawText)
+          errorMsg = `Server error (${apiRes.status}). Please try again.`
+        }
+        throw new Error(errorMsg)
       }
       
-      console.log('Profile setup successful, initiating redirect...')
+      console.log('Profile setup successful, refreshing profile state...')
+      // Refresh the global auth profile so the rest of the app knows we have a role
+      await refreshProfile()
+      
+      console.log('Profile refreshed, initiating redirect...')
       if (!redirecting.current) {
         redirecting.current = true
         router.replace('/chat')
       }
     } catch (e: any) { 
       console.error('Onboarding flow interrupted:', e)
-      alert(e.message?.includes('timed out') 
-        ? 'Connection is slow. Please check your internet and try again.' 
-        : (e.message || 'Failed to complete setup. Please check your connection and try again.')) 
+      alert(e.message || 'Failed to complete setup. Please check your connection and try again.') 
     } finally { 
       setLoading(false) 
     }
