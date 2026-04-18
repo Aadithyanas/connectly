@@ -33,7 +33,7 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
       setSelectedFile(null)
       setCaption('')
       if (refresh) refresh()
-      alert('Status uploaded! 🚀')
+      alert('Initiative uploaded! 🚀')
     }
   }
 
@@ -46,10 +46,10 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
               <ChevronLeft className="w-5 h-5 text-zinc-500" />
             </button>
           )}
-          <h2 className="text-base font-bold">Status</h2>
+          <h2 className="text-base font-bold">Initiative</h2>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setIsPrivacyOpen(true)} className="p-2 hover:bg-white/[0.06] rounded-full transition-colors text-zinc-500" title="Status Privacy">
+          <button onClick={() => setIsPrivacyOpen(true)} className="p-2 hover:bg-white/[0.06] rounded-full transition-colors text-zinc-500" title="Initiative Privacy">
             <Settings className="w-4 h-4" />
           </button>
         </div>
@@ -57,9 +57,9 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
 
       <div className="flex-1 overflow-y-auto custom-scrollbar w-full">
         <div className="max-w-4xl mx-auto w-full p-4 md:p-6 space-y-8 pb-32">
-          {/* My Status */}
+          {/* My Initiative */}
           <div className="space-y-4">
-            <h3 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">My Status</h3>
+            <h3 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">My Initiative</h3>
             <div className="flex items-center group cursor-pointer">
               <div className="relative mr-4" onClick={() => myStatuses.length > 0 && onStatusClick(myStatuses)}>
                 <div className="w-14 h-14 rounded-full border-2 border-white/20 p-0.5 group-hover:scale-105 transition-transform">
@@ -73,7 +73,7 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
                           </div>
                         </div>
                       ) : (
-                        <Image src={myStatuses[0].content_url} alt="My Status" width={56} height={56} unoptimized className="object-cover h-full" />
+                        <Image src={myStatuses[0].content_url} alt="My Initiative" width={56} height={56} unoptimized className="object-cover h-full" />
                       )}
                     </div>
                   ) : (
@@ -91,21 +91,21 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
                 </label>
               </div>
               <div className="flex-1 min-w-0" onClick={() => myStatuses.length > 0 && onStatusClick(myStatuses)}>
-                <p className="text-white font-medium text-sm">My Status</p>
+                <p className="text-white font-medium text-sm">My Initiative</p>
                 <p className="text-zinc-600 text-xs truncate">
-                  {myStatuses.length > 0 ? 'Tap to view' : 'Add to my status'}
+                  {myStatuses.length > 0 ? 'Tap to view' : 'Add to my initiative'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Recent Updates */}
+          {/* Recent Initiatives */}
           <div className="space-y-4 pt-2">
-            <h3 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Recent updates</h3>
+            <h3 className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Recent initiatives</h3>
             {loading ? (
                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>
             ) : Object.keys(partnerStatuses).length === 0 ? (
-               <p className="text-zinc-600 text-sm text-center py-8 bg-white/[0.02] rounded-lg">No recent updates.</p>
+               <p className="text-zinc-600 text-sm text-center py-8 bg-white/[0.02] rounded-lg">No recent initiatives.</p>
             ) : (
               <div className="space-y-1">
                 {Object.entries(partnerStatuses).map(([userId, userStatuses]) => (
@@ -125,7 +125,7 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
                               </div>
                             </div>
                           ) : (
-                            <Image src={userStatuses[0].content_url} alt="Status" width={56} height={56} unoptimized className="object-cover h-full" />
+                            <Image src={userStatuses[0].content_url} alt="Initiative" width={56} height={56} unoptimized className="object-cover h-full" />
                           )}
                         </div>
                       </div>
@@ -138,7 +138,7 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
                         </span>
                       </div>
                       <p className="text-zinc-600 text-[10px] uppercase font-bold tracking-tight">
-                        {userStatuses.length} Update{userStatuses.length > 1 ? 's' : ''}
+                        {userStatuses.length} Initiative{userStatuses.length > 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>
@@ -154,7 +154,7 @@ export default function StatusTab({ onStatusClick, onBack }: StatusTabProps) {
         <div className="fixed inset-0 z-[300] bg-black flex flex-col">
           <div className="p-4 flex items-center justify-between text-white bg-black/50 backdrop-blur-md">
             <button onClick={() => setSelectedFile(null)} className="p-2 hover:bg-white/[0.06] rounded-full"><X className="w-5 h-5" /></button>
-            <span className="font-medium text-sm">Send Status</span>
+            <span className="font-medium text-sm">Send Initiative</span>
             <div className="w-10"></div>
           </div>
           <div className="flex-1 min-h-0 relative flex items-center justify-center p-4 overflow-hidden">

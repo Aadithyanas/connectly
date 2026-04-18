@@ -26,8 +26,8 @@ interface ChatSidebarProps {
   onOpenNewChat: () => void
   onOpenProfile: () => void
   onOpenSettings: () => void
-  activeTab: 'chat' | 'feed' | 'status' | 'challenges' | 'groups'
-  onTabChange: (tab: 'chat' | 'feed' | 'status' | 'challenges' | 'groups') => void
+  activeTab: 'chat' | 'feed' | 'initiative' | 'challenges' | 'groups'
+  onTabChange: (tab: 'chat' | 'feed' | 'initiative' | 'challenges' | 'groups') => void
   isModalOpen?: boolean
 }
 
@@ -456,9 +456,9 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
               <Compass className="w-4 h-4" />
             </button>
               <button 
-                onClick={() => onTabChange('status')}
-                className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'status' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
-                title="Statuses"
+                onClick={() => onTabChange('initiative')}
+                className={`p-2 rounded-full transition-all duration-300 ${activeTab === 'initiative' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
+                title="Initiatives"
               >
                 <CircleDashed className="w-4 h-4" />
               </button>

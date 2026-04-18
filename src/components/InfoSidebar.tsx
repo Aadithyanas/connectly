@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useConnections } from '@/hooks/useConnections'
 import ConnectionsModal from './ConnectionsModal'
 import { usePWAInstall } from '@/hooks/usePWAInstall'
+import { useUserRank } from '@/hooks/useUserRank'
 
 interface InfoSidebarProps {
   isOpen: boolean
@@ -47,6 +48,8 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
   const [experiences, setExperiences] = useState<any[]>(data?.experience || [])
   const [educations, setEducations] = useState<any[]>(data?.education?.length ? data.education : (data?.college_name ? [{ school: data?.college_name, degree: data?.course || '', startDate: '', endDate: '', present: false, description: '' }] : []))
   const [skills, setSkills] = useState<string[]>(data?.skills || [])
+  const [resumeUrl, setResumeUrl] = useState(data?.resume_url || '')
+  const [certificates, setCertificates] = useState<{title: string, url: string}[]>(data?.certificates || [])
   
   const [isConnectionsModalOpen, setIsConnectionsModalOpen] = useState(false)
   const [connectionsTab, setConnectionsTab] = useState<'followers' | 'following'>('followers')
@@ -72,6 +75,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
   
   const targetUserId = type === 'profile' ? user?.id : data?.id
   const { followersCount, followingCount, isFollowing, toggleFollow, loading: connectionLoading } = useConnections(targetUserId)
+  const { rankInfo, loading: rankLoading } = useUserRank(targetUserId)
 
   useEffect(() => {
     setName(data?.name || '')
@@ -97,6 +101,8 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
     setExperiences(data?.experience || [])
     setEducations(data?.education?.length ? data.education : (data?.college_name ? [{ school: data?.college_name, degree: data?.course || '', startDate: '', endDate: '', present: false, description: '' }] : []))
     setSkills(data?.skills || [])
+    setResumeUrl(data?.resume_url || '')
+    setCertificates(data?.certificates || [])
     if (isOpen) {
       fetchChallengeStats()
     }
@@ -220,7 +226,9 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
         college_name: collegeName, course, job_role: jobRole,
         experience_years: experienceYears === '' ? null : parseInt(experienceYears as string, 10), avatar_url: currentAvatarUrl,
         experience: experiences,
-        education: educations
+        education: educations,
+        resume_url: resumeUrl,
+        certificates: certificates
       }).eq('id', user.id)
       if (error) throw error
       refreshProfile()
@@ -418,8 +426,38 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                   )}
                 </div>
 
+                {!rankLoading && rankInfo && (type === 'profile' || type === 'contact') && (
+                  <div className="px-6 mt-5 w-full">
+                    <div className={`p-3.5 rounded-2xl flex flex-col items-center justify-center border backdrop-blur-xl transition-all ${rankInfo.badgeBorder}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-xs font-black tracking-widest uppercase drop-shadow-xl ${rankInfo.color}`}>
+                          {rankInfo.tier} Rank
+                        </span>
+                      </div>
+                      
+                      {rankInfo.nextTierXP ? (
+                        <>
+                          <div className="w-full bg-black/40 rounded-full overflow-hidden h-1.5 border border-white/5 relative">
+                            <div 
+                              className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ${rankInfo.color.includes('gradient') ? 'bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400' : rankInfo.tier === 'Diamond' ? 'bg-cyan-400 shadow-[0_0_10px_cyan]' : rankInfo.tier === 'Gold' ? 'bg-yellow-400' : rankInfo.tier === 'Silver' ? 'bg-slate-300' : 'bg-[#CD7F32]'}`}
+                              style={{ width: `${rankInfo.progressPercentage}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-1.5">
+                            {rankInfo.xp.toLocaleString()} / {rankInfo.nextTierXP.toLocaleString()} XP
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-1.5">
+                          {rankInfo.xp.toLocaleString()} XP (MAX RANK)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {type === 'contact' && (
-                  <div className="text-center">
+                  <div className="text-center mt-2">
                     <h3 className="text-white text-2xl font-bold">{nickname || data?.name || 'Unknown'}</h3>
                     <div className="flex items-center justify-center gap-1.5 mt-0.5">
                       {isContactOnline ? (
@@ -771,6 +809,67 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                             </a>
                           )}
                           {!linkedin && !instagram && !github && !portfolio && <p className="text-zinc-600 text-sm">No links added yet.</p>}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Professional Documents</label>
+                        {isEditing && (
+                          <button 
+                            onClick={() => setCertificates([...certificates, { title: '', url: '' }])}
+                            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors"
+                          >
+                            <Plus className="w-3 h-3" /> Add Certificate
+                          </button>
+                        )}
+                      </div>
+                      
+                      {isEditing ? (
+                        <div className="space-y-4">
+                          <div className="bg-white/[0.03] border border-white/[0.04] p-3 rounded-xl space-y-3 relative group">
+                            {resumeUrl && (
+                              <button 
+                                onClick={() => setResumeUrl('')}
+                                className="absolute -top-2 -right-2 p-1.5 bg-red-500/20 text-red-500 rounded-full hover:bg-red-500/40 transition-all z-10"
+                                title="Clear Resume"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                            <label className="text-[10px] text-zinc-500 uppercase font-bold">Resume / CV Link</label>
+                            <input type="text" placeholder="https://drive.google.com/... or anything else" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1" value={resumeUrl} onChange={(e) => setResumeUrl(e.target.value)} />
+                          </div>
+
+                          {certificates.map((cert, idx) => (
+                            <div key={idx} className="bg-white/[0.02] border border-white/[0.04] p-3 rounded-xl space-y-3 relative group">
+                              <button 
+                                onClick={() => setCertificates(certificates.filter((_, i) => i !== idx))}
+                                className="absolute -top-2 -right-2 p-1.5 bg-red-500/20 text-red-500 rounded-full hover:bg-red-500/40 transition-all z-10"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                              <input type="text" placeholder="Certificate Title" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1" value={cert.title} onChange={(e) => { const newCerts = [...certificates]; newCerts[idx].title = e.target.value; setCertificates(newCerts); }} />
+                              <input type="text" placeholder="Certificate URL" className="bg-transparent border-b border-white/10 w-full text-sm text-white focus:border-white/30 outline-none pb-1" value={cert.url} onChange={(e) => { const newCerts = [...certificates]; newCerts[idx].url = e.target.value; setCertificates(newCerts); }} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2 pt-1">
+                          {resumeUrl && (
+                            <a href={resumeUrl.startsWith('http') ? resumeUrl : `https://${resumeUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04]">
+                              <div className="flex items-center gap-3"><BookOpen className="w-4 h-4 text-zinc-400" /><span className="text-white text-[13px] font-medium">View Resume / CV</span></div>
+                              <Download className="w-3.5 h-3.5 text-zinc-600 group-hover:text-white transition-colors" />
+                            </a>
+                          )}
+                          {certificates.map((cert, idx) => (
+                            <a key={idx} href={cert.url.startsWith('http') ? cert.url : `https://${cert.url}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-xl transition-all border border-white/[0.04] group">
+                              <div className="flex items-center gap-3"><Trophy className="w-4 h-4 text-amber-500" /><span className="text-white text-[13px] font-medium">{cert.title || 'Certificate'}</span></div>
+                              <Download className="w-3.5 h-3.5 text-zinc-600 group-hover:text-white transition-colors" />
+                            </a>
+                          ))}
+                          {!resumeUrl && certificates.length === 0 && <p className="text-zinc-600 text-sm">No professional documents added.</p>}
                         </div>
                       )}
                     </div>

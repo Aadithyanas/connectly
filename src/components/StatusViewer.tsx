@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { X, ChevronLeft, ChevronRight, Play, Pause, MoreVertical, Volume2, VolumeX, Loader2, Trash2 } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Play, Pause, MoreVertical, Volume2, VolumeX, Loader2, Trash2, Eye } from 'lucide-react'
 import Image from 'next/image'
 import { Status } from '@/hooks/useStatuses'
 import { useAuth } from '@/context/AuthContext'
+import { createClient } from '@/utils/supabase/client'
 
 interface StatusViewerProps {
   statuses: Status[]
@@ -31,7 +32,16 @@ export default function StatusViewer({ statuses, onClose, onDelete }: StatusView
     setIsLoadingMetadata(true)
     setIsWaiting(false)
     setIsPaused(false)
-  }, [currentIndex])
+
+    // Increment impression count
+    if (currentStatus?.id) {
+      const supabase = createClient()
+      supabase.rpc('increment_status_impressions', { status_id: currentStatus.id })
+        .then(({ error }) => {
+          if (error) console.error("Error incrementing impressions:", error)
+        })
+    }
+  }, [currentIndex, currentStatus?.id])
 
   // Sync video play/pause with isPaused state
   useEffect(() => {
@@ -67,7 +77,7 @@ export default function StatusViewer({ statuses, onClose, onDelete }: StatusView
 
   const handleDelete = async () => {
     if (!onDelete || !currentStatus?.id || isDeleting) return
-    if (!confirm('Are you sure you want to delete this status?')) return
+    if (!confirm('Are you sure you want to delete this initiative?')) return
 
     setIsDeleting(true)
     const res = await onDelete(currentStatus.id)
@@ -81,7 +91,7 @@ export default function StatusViewer({ statuses, onClose, onDelete }: StatusView
         goToNext()
       }
     } else {
-      alert(res?.error || 'Failed to delete status')
+      alert(res?.error || 'Failed to delete initiative')
     }
   }
 
@@ -177,11 +187,17 @@ export default function StatusViewer({ statuses, onClose, onDelete }: StatusView
         </div>
         <div className="flex items-center gap-1">
             {currentStatus.user_id === user?.id && (
+              <div className="flex items-center gap-1 mr-2 px-3 py-1.5 bg-white/10 rounded-full backdrop-blur-md">
+                <Eye className="w-4 h-4 text-white/70" />
+                <span className="text-white text-xs font-bold">{currentStatus.impressions_count || 0}</span>
+              </div>
+            )}
+            {currentStatus.user_id === user?.id && (
               <button 
                 onClick={handleDelete} 
                 className="p-2.5 hover:bg-red-500/20 rounded-full transition-colors backdrop-blur-md text-red-500"
                 disabled={isDeleting}
-                title="Delete Status"
+                title="Delete Initiative"
               >
                 {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
               </button>
@@ -247,7 +263,7 @@ export default function StatusViewer({ statuses, onClose, onDelete }: StatusView
           <div className="relative w-full h-full">
             <Image 
               src={currentStatus.content_url} 
-              alt="Status" 
+              alt="Initiative" 
               fill
               unoptimized
               className="object-contain z-10"

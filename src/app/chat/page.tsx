@@ -14,7 +14,7 @@ import { useStatuses, Status } from '@/hooks/useStatuses'
 import { createClient } from '@/utils/supabase/client'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import SettingsModal from '@/components/SettingsModal'
-import { Home, MessageCircle, CircleDashed as StatusCircle, Plus, Trophy, Users } from 'lucide-react'
+import { Home, MessageCircle, CircleDashed as InitiativeCircle, Plus, Trophy, Users } from 'lucide-react'
 
 import { useAuth } from '@/context/AuthContext'
 
@@ -32,7 +32,7 @@ export default function ChatPage() {
   const [sidebarType, setSidebarType] = useState<'profile' | 'contact' | 'group'>('profile')
   const [sidebarData, setSidebarData] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState<'chat' | 'feed' | 'status' | 'challenges' | 'groups'>('feed')
+  const [activeTab, setActiveTab] = useState<'chat' | 'feed' | 'initiative' | 'challenges' | 'groups'>('feed')
   const [feedFilterUserId, setFeedFilterUserId] = useState<string | undefined>(undefined)
   const [activeStatuses, setActiveStatuses] = useState<Status[] | null>(null)
   const [isNavVisible, setIsNavVisible] = useState(true)
@@ -273,7 +273,7 @@ export default function ChatPage() {
           activeTab={activeTab}
           isModalOpen={isNewChatModalOpen}
           onTabChange={(tab) => {
-            const tabs = ['feed', 'chat', 'groups', 'status', 'challenges']
+            const tabs = ['feed', 'chat', 'groups', 'initiative', 'challenges']
             const index = tabs.indexOf(tab)
             if (index !== -1 && scrollContainerRef.current) {
               isInternalScrollRef.current = true
@@ -320,7 +320,7 @@ export default function ChatPage() {
             activeTab="chat"
             isModalOpen={isNewChatModalOpen}
             onTabChange={(tab) => {
-              const tabs = ['feed', 'chat', 'groups', 'status', 'challenges']
+              const tabs = ['feed', 'chat', 'groups', 'initiative', 'challenges']
               const index = tabs.indexOf(tab)
               if (index !== -1 && scrollContainerRef.current) {
                 isInternalScrollRef.current = true
@@ -345,7 +345,7 @@ export default function ChatPage() {
             activeTab="groups"
             isModalOpen={isNewChatModalOpen}
             onTabChange={(tab) => {
-              const tabs = ['feed', 'chat', 'groups', 'status', 'challenges']
+              const tabs = ['feed', 'chat', 'groups', 'initiative', 'challenges']
               const index = tabs.indexOf(tab)
               if (index !== -1 && scrollContainerRef.current) {
                 isInternalScrollRef.current = true
@@ -359,8 +359,8 @@ export default function ChatPage() {
           />
         </div>
 
-        {/* Page 3: Status Updates */}
-        <div data-tab="status" className="min-w-full h-full snap-start snap-always flex flex-col">
+        {/* Page 3: Initiative Updates */}
+        <div data-tab="initiative" className="min-w-full h-full snap-start snap-always flex flex-col">
           <StatusTab onStatusClick={setActiveStatuses} onBack={() => {}} />
         </div>
 
@@ -456,15 +456,15 @@ export default function ChatPage() {
                 if (scrollContainerRef.current) {
                   scrollContainerRef.current.scrollTo({ left: scrollContainerRef.current.offsetWidth * 3, behavior: 'smooth' })
                 }
-                setActiveTab('status')
+                setActiveTab('initiative')
               }, 10)
             }}
             className={`relative flex items-center justify-center w-12 h-12 transition-all duration-200 rounded-2xl ${
-              activeTab === 'status' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
+              activeTab === 'initiative' ? 'text-[#bc9dff]' : 'text-[#767575] hover:text-[#adaaaa]'
             }`}
           >
-            {activeTab === 'status' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
-            <StatusCircle className="w-[20px] h-[20px]" />
+            {activeTab === 'initiative' && <div className="absolute bottom-[6px] w-1 h-1 rounded-full bg-[#bc9dff]" />}
+            <InitiativeCircle className="w-[20px] h-[20px]" />
           </button>
 
           <button 

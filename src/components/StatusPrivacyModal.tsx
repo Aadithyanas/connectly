@@ -129,7 +129,7 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
     <div className="absolute inset-0 z-[200] bg-black/80 backdrop-blur-xl flex flex-col pt-10">
       <div className="flex items-center justify-between px-6 mb-8 text-white">
         <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-6 h-6" /></button>
-        <h2 className="text-xl font-bold">Status Privacy</h2>
+        <h2 className="text-xl font-bold">Initiative Privacy</h2>
         <button 
             disabled={saving}
             onClick={handleSave} 
@@ -146,7 +146,7 @@ export default function StatusPrivacyModal({ onClose }: StatusPrivacyModalProps)
           <>
             {/* Visibility Options */}
             <div className="space-y-4">
-              <p className="text-zinc-500 text-sm uppercase font-semibold tracking-wider">Who can see my status updates</p>
+              <p className="text-zinc-500 text-sm uppercase font-semibold tracking-wider">Who can see my initiative updates</p>
               <div className="space-y-2">
                 {[
                   { id: 'everyone', label: 'Everyone', icon: Globe, desc: 'All registered Connectly members' },

@@ -12,6 +12,7 @@ export interface Status {
   caption?: string
   created_at: string
   expires_at: string
+  impressions_count?: number
   user?: {
     name: string
     avatar_url: string
