@@ -27,6 +27,7 @@ export default function Home() {
       <main className="max-w-5xl w-full z-10 flex flex-col items-center gap-16 md:gap-20">
         {/* Hero */}
         <motion.div 
+          id="hero"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}

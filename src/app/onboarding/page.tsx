@@ -119,12 +119,16 @@ export default function OnboardingPage() {
         setTimeout(() => reject(new Error('Database operation timed out after 30 seconds.')), 30000)
       })
 
-      const { error } = await Promise.race([
-        supabase.from('profiles').upsert(p),
-        timeoutPromise as Promise<any>
-      ])
+      const apiRes = await fetch('/api/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(p)
+      })
 
-      if (error) throw new Error(error.message)
+      if (!apiRes.ok) {
+        const errorData = await apiRes.json()
+        throw new Error(errorData.error || 'Failed to complete setup.')
+      }
       
       console.log('Profile setup successful, initiating redirect...')
       if (!redirecting.current) {

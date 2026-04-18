@@ -35,7 +35,8 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   usePushNotifications()
   const [chats, setChats] = useState<any[] | null>(null)
   const [groupSubTab, setGroupSubTab] = useState<'my' | 'community'>('my')
-  const [loading, setLoading] = useState(false) // Start as false to prevent immediate skeleton flash
+  const [loading, setLoading] = useState(false)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [search, setSearch] = useState('')
   const { user, signOut, loading: authLoading, profile: authProfile } = useAuth()
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -55,6 +56,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       if (!authLoading) {
         setChats([])
         setLoading(false)
+        setIsInitialLoading(false)
       }
       return
     }
@@ -69,13 +71,15 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         .eq('user_id', user.id)
 
       if (memberError || !memberOf) {
-        setChats([])
+        console.error('Member fetch error:', memberError)
+        setIsInitialLoading(false)
         return
       }
       
       const chatIds = memberOf.map((m: any) => m.chat_id).filter(Boolean)
       if (chatIds.length === 0) { 
         setChats([])
+        setIsInitialLoading(false)
         return 
       }
 
@@ -85,7 +89,8 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         .in('id', chatIds)
 
       if (chatError || !chatData) {
-        setChats([])
+        console.error('Chat fetch error:', chatError)
+        setIsInitialLoading(false)
         return
       }
 
@@ -160,7 +165,7 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
       formattedChats.sort((a: any, b: any) => (b.last_msg_time || '').localeCompare(a.last_msg_time || ''))
       setChats(formattedChats)
       
-      if (user?.id) {
+      if (user?.id && formattedChats.length > 0) {
         localStorage.setItem(`chats_${user.id}`, JSON.stringify(formattedChats))
         
         // Restore double tick: mark messages delivered, but precisely gated
@@ -173,8 +178,10 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
             .finally(() => { globalMarkDeliveredLock = false })
         }
       }
+      setIsInitialLoading(false)
     } catch (err) {
       console.error('Fetch chats error:', err)
+      setIsInitialLoading(false)
     } finally {
       setLoading(false)
     }
@@ -214,6 +221,12 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
   }, [])
 
   useEffect(() => {
+    // Fail-safe to hide skeletons after 8 seconds
+    const timeoutId = setTimeout(() => {
+      setLoading(false)
+      setIsInitialLoading(false)
+    }, 8000)
+
     if (user && chats === null) {
       try {
         const cached = localStorage.getItem(`chats_${user.id}`)
@@ -222,12 +235,15 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
           if (Array.isArray(parsed) && parsed.length > 0) {
             setChats(parsed)
             setLoading(false)
+            setIsInitialLoading(false)
           }
         }
       } catch (e) {
         console.error('Cache load error:', e)
       }
     }
+
+    return () => clearTimeout(timeoutId)
   }, [user])
 
   useEffect(() => {
@@ -239,9 +255,17 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
           : c
       ))
     }
+
+    const handleAppRefresh = () => {
+      fetchUserAndChats(false)
+    }
     
     window.addEventListener('chat-updated', handleChatUpdated)
-    return () => window.removeEventListener('chat-updated', handleChatUpdated)
+    window.addEventListener('app:refresh', handleAppRefresh)
+    return () => {
+      window.removeEventListener('chat-updated', handleChatUpdated)
+      window.removeEventListener('app:refresh', handleAppRefresh)
+    }
   }, [])
 
   // Debounced fetch: prevents stacking 10+ simultaneous fetches when many events fire
@@ -476,36 +500,11 @@ export default function ChatSidebar({ onSelectChat, activeChatId, onOpenNewChat,
         )}
       </div>
 
-      {/* PWA Install Banner */}
-      {isInstallable && (
-        <div className="px-4 py-3 bg-white/[0.04] border-b border-white/[0.05] animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="bg-gradient-to-br from-white/[0.08] to-white/[0.02] rounded-2xl p-4 border border-white/[0.08] relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-               <Download className="w-12 h-12 text-white" />
-            </div>
-            <div className="relative z-10">
-              <h4 className="text-white text-sm font-bold mb-1 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Install Connectly
-              </h4>
-              <p className="text-[11px] text-zinc-500 mb-3 leading-relaxed max-w-[160px]">
-                Add to your home screen for a premium standalone experience.
-              </p>
-              <button 
-                onClick={installApp}
-                className="px-4 py-2 rounded-xl bg-white text-black text-[11px] font-bold hover:scale-105 active:scale-95 transition-all w-full shadow-lg shadow-white/5"
-              >
-                Launch Desktop App
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
         {activeTab === 'groups' && groupSubTab === 'community' ? (
           <GroupDiscovery currentUserId={user?.id || ''} onSelectChat={onSelectChat} />
-        ) : loading || authLoading ? (
+        ) : (loading && isInitialLoading && (!chats || chats.length === 0)) || authLoading ? (
           <div className="flex flex-col">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex items-center px-4 py-3 border-b border-white/[0.03] animate-pulse">

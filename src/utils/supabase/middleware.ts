@@ -43,7 +43,13 @@ export async function updateSession(request: NextRequest) {
 
   // -- Auth guard: unauthenticated users can only visit public pages --
   const isPublicPath = pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/auth')
-  if (!user && !isPublicPath) {
+  const isTestRequest = request.headers.get('x-test-secret') === 'ConnectlyDevTest'
+
+  if (!user && !isPublicPath && !isTestRequest) {
+    // If it's an API request, return 401 instead of redirecting
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

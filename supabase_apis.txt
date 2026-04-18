@@ -1,0 +1,38 @@
+CONNECTLY - SUPABASE API USAGE SUMMARY
+=======================================
+
+1. AUTH API (GoTrue)
+- Purpose: User authentication, session management, and RBAC.
+- Implementation: @supabase/ssr, AuthContext.tsx.
+- Features: Login, Signup, Session Refresh, JWT handling.
+
+2. DATABASE API (PostgREST)
+- Purpose: RESTful CRUD operations on Postgres tables.
+- Active Tables:
+  * profiles, chats, chat_members, messages
+  * posts, post_likes, post_comments
+  * statuses, status_privacy, status_allowed_users
+  * challenges, challenge_solutions
+  * push_subscriptions, companies, reports
+
+3. REALTIME API
+- Purpose: Real-time data synchronization and user presence.
+- Components:
+  * Postgres Changes: Live message/content updates.
+  * Presence: Tracking online/offline status (usePresence.ts).
+  * Broadcast: Low-latency UI signaling (useNotify.ts).
+
+4. STORAGE API
+- Purpose: Hosting user-uploaded media.
+- Buckets:
+  * avatars: Profile pictures.
+  * media: Message attachments and post images.
+
+5. FUNCTIONS API (Edge Functions)
+- Purpose: Server-side logic and background processing.
+- Active Functions:
+  * notify: Handles notification distribution and broadcast triggers.
+
+6. EDGE RUNTIME / SSR
+- Purpose: Integration with Next.js specific environments.
+- Implementation: src/utils/supabase/server.ts (Server/API) and client.ts (Browser).

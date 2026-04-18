@@ -1,0 +1,24 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "connectly",
+    "projectPath": "c:\\Dev\\Github repo\\connectly",
+    "testIds": [
+      "TC001",
+      "TC002",
+      "TC005",
+      "TC006"
+    ],
+    "additionalInstruction": "Verifying fixes for Onboarding (TC002), Status API (TC005), and Landing Page (TC001).\nWait for the server on localhost:3000 to be ready.\nThe Onboarding flow should now use /api/onboarding (POST).\nThe Status feed should now use GET /api/statuses.\nThe Landing page now has id=\"hero\".\nThe middleware now returns 401 for /api requests without auth.",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-lpDwCpuEihbmqI8jhpPx6Clqr1boE7RRq-tdPl9rbvHrXrxleCYq5MyXrxs2gND6SvWTN33hoErnnERvN4GYtbcK5NgFz_96EntP20Sppj62sTKB1hxaN_vJRVYp-0mivHI"
+    }
+  },
+  "serverPort": 55872,
+  "proxy": "http://1cf112e0-3657-45c8-8ab5-4411f898af58:rtGSCidphf9skS4cUCvd72VI5duHXsHk@tun.testsprite.com:8080"
+}

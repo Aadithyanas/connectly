@@ -305,6 +305,7 @@ export default function ChatPage() {
             filterUserId={feedFilterUserId}
             onClearFilter={() => setFeedFilterUserId(undefined)}
             onBack={() => setFeedFilterUserId(undefined)}
+            onInspectUser={handleInspectUser}
           />
         </div>
 

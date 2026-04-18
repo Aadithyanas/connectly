@@ -1,0 +1,465 @@
+[
+  {
+    "id": "TC001",
+    "title": "Send a message from a post-initiated direct chat",
+    "description": "Verifies a user can send a text message after opening a post and the sent message appears in the conversation.",
+    "category": "Real-time Discovery Feed",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /chat"
+      },
+      {
+        "type": "action",
+        "description": "Open the Discovery Feed section"
+      },
+      {
+        "type": "action",
+        "description": "Open a post to start a direct chat"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique message into the message composer"
+      },
+      {
+        "type": "action",
+        "description": "Send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new message appears in the conversation thread"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Send a text message in an existing chat",
+    "description": "Verifies an authenticated user can select an existing chat, send a text message, and see the message appear with a delivery indicator.",
+    "category": "Instant Messaging",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click a chat in the chat sidebar"
+      },
+      {
+        "type": "action",
+        "description": "Fill a short message into the message composer"
+      },
+      {
+        "type": "action",
+        "description": "Send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new message appears in the conversation with a delivery status indicator"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Complete onboarding profile and reach chat",
+    "description": "Verifies an authenticated user can complete required profile details in onboarding and then land on chat with profile reflected.",
+    "category": "Onboarding (Profile Setup)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /onboarding"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique display name into the display name field"
+      },
+      {
+        "type": "action",
+        "description": "Select a role from the role control"
+      },
+      {
+        "type": "action",
+        "description": "Fill a short bio into the bio field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the profile setup form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the chat dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user profile information is shown in the chat experience"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Send a media attachment in chat",
+    "description": "Verifies an authenticated user can attach a media item in a chat message and see the attachment render in the conversation after sending.",
+    "category": "Instant Messaging",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click a chat in the chat sidebar"
+      },
+      {
+        "type": "action",
+        "description": "Open the attachment picker in the message composer"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid media item from the available picker options"
+      },
+      {
+        "type": "action",
+        "description": "Send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a media attachment is displayed in the conversation for the newest message"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Filter discovery feed by user and open a post to start a direct chat",
+    "description": "Verifies a user can filter posts by a specific author and open a post to initiate a direct chat context.",
+    "category": "Real-time Discovery Feed",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /chat"
+      },
+      {
+        "type": "action",
+        "description": "Open the Discovery Feed section"
+      },
+      {
+        "type": "action",
+        "description": "Select a user in the feed filter control"
+      },
+      {
+        "type": "action",
+        "description": "Open a post from the filtered results"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a direct conversation view is opened or selected for messaging"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the chat composer is available for sending a message"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Navigate from landing page to login",
+    "description": "Verifies an anonymous visitor can reach the login page from the landing page and sees the login interface.",
+    "category": "Landing / Product Overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the primary call-to-action to start account access"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the login page"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC007",
+    "title": "View a status update in the status viewer",
+    "description": "Verifies an authenticated user can open a status from the status list and see its full content and author in the status viewer.",
+    "category": "Status Updates",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the Status tab in the main chat dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click a status item from the status list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the status viewer shows the selected status content and author information"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC008",
+    "title": "Prevent sending an empty message",
+    "description": "Verifies the chat composer blocks sending when the message is empty and no new message is added to the thread.",
+    "category": "Instant Messaging",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click a chat in the chat sidebar"
+      },
+      {
+        "type": "action",
+        "description": "Clear the message composer so it is empty"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an input validation state is shown and no new message is appended to the conversation"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC009",
+    "title": "Prevent sending an empty message in chat composer",
+    "description": "Verifies the chat composer blocks sending an empty message and provides an inline validation or disabled-send behavior.",
+    "category": "Real-time Discovery Feed",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /chat"
+      },
+      {
+        "type": "action",
+        "description": "Open any direct chat from the chat list"
+      },
+      {
+        "type": "action",
+        "description": "Clear the message composer so it is empty"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new message is added to the conversation thread"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC010",
+    "title": "Browse challenges and open challenge details",
+    "description": "Verifies an authenticated user can enter the challenges room, view active challenges, and open one to see its details.",
+    "category": "Challenges Arena",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the Challenges room in the main chat dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click an active challenge from the challenges list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a challenge details view is displayed for the selected challenge"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC011",
+    "title": "Onboarding blocks submission when required fields are missing",
+    "description": "Verifies onboarding prevents submission when a required field is blank and shows a validation error.",
+    "category": "Onboarding (Profile Setup)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /onboarding"
+      },
+      {
+        "type": "action",
+        "description": "Fill a short bio into the bio field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the profile setup form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a required-field validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user remains in the onboarding flow"
+      }
+    ],
+    "priority": "Medium"
+  }
+]

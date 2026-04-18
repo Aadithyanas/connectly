@@ -1,11 +1,13 @@
 'use client'
 
 import { usePosts, Post, PostComment } from '@/hooks/usePosts'
-import { Heart, MessageCircle, Share2, Plus, Briefcase, Rocket, Lightbulb, GraduationCap, Clock, Send, Loader2, X, Play, ChevronLeft, ChevronRight, ChevronUp, RefreshCw, AlertCircle } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Plus, Briefcase, Rocket, Lightbulb, GraduationCap, Clock, Send, Loader2, X, Play, ChevronLeft, ChevronRight, ChevronUp, RefreshCw, AlertCircle, Search, Edit2, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import CreatePostModal from './CreatePostModal'
+import SharePostModal from './SharePostModal'
+import { AnimatePresence, motion } from 'framer-motion'
 
 interface DiscoveryFeedProps {
   onStartChat?: (userId: string, post?: Post) => void
@@ -13,30 +15,32 @@ interface DiscoveryFeedProps {
   onClearFilter?: () => void
   onBack?: () => void
   onScrollToggle?: (visible: boolean) => void
+  onInspectUser?: (userId: string) => void
 }
 
-export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter, onBack, onScrollToggle }: DiscoveryFeedProps) {
+export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter, onBack, onScrollToggle, onInspectUser }: DiscoveryFeedProps) {
   const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'professional'>('all')
   const { posts, loading, toggleLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost, newPostsCount, refresh } = usePosts(filterUserId, roleFilter === 'all' ? undefined : roleFilter)
   const [createModal, setCreateModal] = useState<{ isOpen: boolean, quotedPost?: Post }>({ isOpen: false })
-  
+  const [shareModal, setShareModal] = useState<{ isOpen: boolean, post?: Post }>({ isOpen: false })
+
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [showHeader, setShowHeader] = useState(true)
   const lastScrollTop = useRef(0)
 
   useEffect(() => {
     // Dock is now always visible or handled by parent
-     onScrollToggle?.(true)
+    onScrollToggle?.(true)
   }, [onScrollToggle])
 
   const handleScroll = () => {
     if (!scrollContainerRef.current) return
     const currentScroll = scrollContainerRef.current.scrollTop
     const isScrollingDown = currentScroll > lastScrollTop.current
-    
+
     // Threshold or range checks to avoid jitter
     if (Math.abs(currentScroll - lastScrollTop.current) < 10) return
-    
+
     if (currentScroll < 50) {
       setShowHeader(true)
     } else if (isScrollingDown && showHeader) {
@@ -44,7 +48,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
     } else if (!isScrollingDown && !showHeader) {
       setShowHeader(true)
     }
-    
+
     lastScrollTop.current = currentScroll
   }
 
@@ -69,7 +73,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
       {/* New Posts Pill */}
       {newPostsCount > 0 && (
         <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-4 duration-500">
-          <button 
+          <button
             onClick={handleNewPostsClick}
             className="flex items-center gap-2 px-5 py-2.5 bg-[#bc9dff] text-white rounded-full font-bold text-[11px] uppercase tracking-wider shadow-[0_8px_24px_rgba(188,157,255,0.4)] hover:scale-105 active:scale-95 transition-all"
           >
@@ -81,7 +85,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
 
       {/* Header — The Nocturnal style (Only show for individual user view) */}
       {filterUserId && (
-        <div className="w-full px-4 md:px-6 py-3 glass-header border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0" style={{minHeight:'60px'}}>
+        <div className="w-full px-4 md:px-6 py-3 glass-header border-b border-white/[0.04] flex items-center justify-between sticky top-0 z-20 shrink-0" style={{ minHeight: '60px' }}>
           <div className="flex items-center gap-3">
             {onBack && (
               <button onClick={onBack} className="md:hidden p-1.5 hover:bg-white/[0.06] rounded-full text-[#adaaaa] transition-colors">
@@ -98,7 +102,7 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClearFilter}
             className="flex items-center gap-2 text-[#adaaaa] hover:text-white transition-colors font-bold text-xs uppercase cursor-pointer"
           >
@@ -109,15 +113,14 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
       )}
 
       {/* Feed Content */}
-      <div 
-        ref={scrollContainerRef} 
+      <div
+        ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto custom-scrollbar w-full p-0" 
+        className="flex-1 overflow-y-auto custom-scrollbar w-full p-0"
       >
         {!filterUserId && (
-          <div className={`sticky top-0 z-[40] transition-all duration-300 ease-in-out ${
-            showHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
-          }`}>
+          <div className={`sticky top-0 z-[40] transition-all duration-300 ease-in-out ${showHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
+            }`}>
             <div className="w-full px-6 py-6 bg-black/90 backdrop-blur-3xl border-b border-white/[0.04]">
               <div className="flex flex-col items-center justify-center text-center">
                 <h1 className="font-headline text-3xl md:text-5xl text-white tracking-tighter font-black">
@@ -133,41 +136,38 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
             {/* Role Filter Chips (Sticky header) */}
             <div className="w-full bg-black/80 backdrop-blur-2xl border-b border-white/[0.04] overflow-x-auto no-scrollbar scroll-smooth">
               <div className="flex items-center gap-3 py-4 px-4 min-w-max">
-              <button 
-                onClick={() => setRoleFilter('all')}
-                className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                  roleFilter === 'all' 
-                    ? 'primary-gradient text-white primary-shadow' 
-                    : 'bg-white/[0.03] border border-white/[0.05] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-white/[0.06]'
-                }`}
-              >
-                All Roles
-              </button>
-              <button 
-                onClick={() => setRoleFilter('professional')}
-                className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                  roleFilter === 'professional' 
-                    ? 'bg-[#5e289b] text-white border border-[#5e289b]' 
-                    : 'bg-white/[0.03] border border-white/[0.05] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-white/[0.06]'
-                }`}
-              >
-                <Briefcase className="w-[11px] h-[11px]" />
-                Professionals
-              </button>
-              <button 
-                onClick={() => setRoleFilter('student')}
-                className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                  roleFilter === 'student' 
-                    ? 'bg-[#5e289b] text-white border border-[#5e289b]' 
-                    : 'bg-white/[0.03] border border-white/[0.05] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-white/[0.06]'
-                }`}
-              >
-                <GraduationCap className="w-[11px] h-[11px]" />
-                Students
-              </button>
+                <button
+                  onClick={() => setRoleFilter('all')}
+                  className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${roleFilter === 'all'
+                      ? 'primary-gradient text-white primary-shadow'
+                      : 'bg-white/[0.03] border border-white/[0.05] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-white/[0.06]'
+                    }`}
+                >
+                  All Roles
+                </button>
+                <button
+                  onClick={() => setRoleFilter('professional')}
+                  className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap ${roleFilter === 'professional'
+                      ? 'bg-[#5e289b] text-white border border-[#5e289b]'
+                      : 'bg-white/[0.03] border border-white/[0.05] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-white/[0.06]'
+                    }`}
+                >
+                  <Briefcase className="w-[11px] h-[11px]" />
+                  Professionals
+                </button>
+                <button
+                  onClick={() => setRoleFilter('student')}
+                  className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap ${roleFilter === 'student'
+                      ? 'bg-[#5e289b] text-white border border-[#5e289b]'
+                      : 'bg-white/[0.03] border border-white/[0.05] text-[#adaaaa] hover:text-[#bc9dff] hover:bg-white/[0.06]'
+                    }`}
+                >
+                  <GraduationCap className="w-[11px] h-[11px]" />
+                  Students
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         )}
 
         <div className="w-full md:max-w-5xl md:mx-auto md:space-y-8 p-0 md:p-10">
@@ -196,9 +196,9 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
             }
 
             return filteredPosts.map(post => (
-              <PostCard 
-                key={post.id} 
-                post={post} 
+              <PostCard
+                key={post.id}
+                post={post}
                 onLike={() => toggleLike(post.id, !!post.is_liked)}
                 fetchComments={fetchComments}
                 activeComments={activeComments}
@@ -208,6 +208,8 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
                 updatePost={updatePost}
                 deletePost={deletePost}
                 onQuote={(postToQuote) => setCreateModal({ isOpen: true, quotedPost: postToQuote })}
+                onShare={(postToShare) => setShareModal({ isOpen: true, post: postToShare })}
+                onInspectUser={onInspectUser}
               />
             ));
           })()}
@@ -230,6 +232,16 @@ export default function DiscoveryFeed({ onStartChat, filterUserId, onClearFilter
             quotedPost={createModal.quotedPost}
           />
         )}
+
+        <AnimatePresence>
+          {shareModal.isOpen && shareModal.post && (
+            <SharePostModal
+              isOpen={shareModal.isOpen}
+              onClose={() => setShareModal({ isOpen: false })}
+              post={shareModal.post}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )
@@ -246,9 +258,11 @@ interface PostCardProps {
   deletePost: (postId: string) => Promise<any>
   onStartChat?: (userId: string, post?: Post) => void
   onQuote: (post: Post) => void
+  onShare: (post: Post) => void
+  onInspectUser?: (userId: string) => void
 }
 
-function PostCard({ post, onLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost, onStartChat, onQuote }: PostCardProps) {
+function PostCard({ post, onLike, fetchComments, activeComments, loadingComments, addComment, updatePost, deletePost, onStartChat, onQuote, onShare, onInspectUser }: PostCardProps) {
   const { user } = useAuth()
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
@@ -266,6 +280,7 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
   const [editTitle, setEditTitle] = useState(post.title || '')
   const [isSaving, setIsSaving] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
+  const [showUserMenu, setShowUserMenu] = useState(false)
 
   const isPostOwner = user?.id === post.user_id
   const isHiring = post.category === 'hiring'
@@ -289,6 +304,30 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
     else alert(`Could not send comment: ${error}`)
     setSubmitting(false)
   }
+
+  const handleExternalShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/chat?post=${post.id}`;
+    const shareData = {
+      title: post.title || 'Connectly Post',
+      text: post.content ? post.content.slice(0, 100) + '...' : 'Check out this post on Connectly',
+      url: shareUrl
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        // Alert is fine for now
+        alert('Link copied to clipboard!');
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Share failed:', err);
+      }
+    }
+  };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft
@@ -320,9 +359,9 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
   }
 
   return (
-    <div className="relative group w-full md:max-w-2xl xl:max-w-3xl md:mx-auto bg-[#0e0e0e] md:border border-white/[0.03] md:rounded-[1.5rem] overflow-hidden transition-all duration-300 pb-2" style={{boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}}>
+    <div className="relative group w-full md:max-w-2xl xl:max-w-3xl md:mx-auto bg-[#0e0e0e] md:border border-white/[0.03] md:rounded-[1.5rem] overflow-hidden transition-all duration-300 pb-2" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
       {fullscreenMedia && (
-        <div 
+        <div
           className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 md:p-12"
           onClick={() => setFullscreenMedia(null)}
         >
@@ -343,9 +382,9 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
 
       {/* Header */}
       <div className="px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-[#bc9dff]/20">
+        <div className="flex items-center gap-3 relative">
+          <div className="relative shrink-0 cursor-pointer" onClick={() => setShowUserMenu(!showUserMenu)}>
+            <div className={`w-10 h-10 rounded-full overflow-hidden transition-all duration-300 ${showUserMenu ? 'ring-2 ring-[#bc9dff] ring-offset-2 ring-offset-black' : 'border border-[#bc9dff]/20'}`}>
               {post.user?.avatar_url ? (
                 <img src={post.user.avatar_url} alt="User" className="w-full h-full object-cover" />
               ) : (
@@ -360,7 +399,12 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5 leading-tight">
-              <span className="font-headline text-white text-sm hover:text-[#bc9dff] cursor-pointer transition-colors">{post.user?.name}</span>
+              <span
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="font-headline text-white text-sm hover:text-[#bc9dff] cursor-pointer transition-colors"
+              >
+                {post.user?.name}
+              </span>
               <span className="text-[#adaaaa] text-[11px] ml-1">· {new Date(post.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
             </div>
             {post.category && (
@@ -369,8 +413,71 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
               </span>
             )}
           </div>
+
+          {/* User Inspection Menu */}
+          <AnimatePresence>
+            {showUserMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                className="absolute left-0 top-12 z-50 w-48 bg-[#1a1a1a] border border-white/[0.06] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              >
+                <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-white/[0.02]">
+                  <span className="text-[10px] uppercase text-zinc-500 font-bold tracking-wider">Menu</span>
+                  <button onClick={() => setShowUserMenu(false)} className="p-1 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      if (onInspectUser) {
+                        onInspectUser(post.user_id)
+                      }
+                      setShowUserMenu(false)
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-xs text-zinc-300 hover:bg-white/5 transition-colors font-bold uppercase tracking-wider"
+                  >
+                    <Search className="w-3.5 h-3.5 text-[#bc9dff]" />
+                    Inspect Profile
+                  </button>
+                  {!isPostOwner && (
+                    <button
+                      onClick={() => { onStartChat?.(post.user_id, post); setShowUserMenu(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-xs text-zinc-300 hover:bg-white/5 transition-colors font-bold uppercase tracking-wider"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 text-[#bc9dff]" />
+                      Message User
+                    </button>
+                  )}
+                  
+                  {isPostOwner && (
+                    <>
+                      <div className="h-[1px] bg-white/5 my-1" />
+                      <button
+                        onClick={() => { setIsEditingPost(true); setShowUserMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-xs text-zinc-300 hover:bg-white/5 transition-colors font-bold uppercase tracking-wider"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-[#bc9dff]" />
+                        Edit Post
+                      </button>
+                      <button
+                        onClick={() => { handleDelete(); setShowUserMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors font-bold uppercase tracking-wider"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        Delete Post
+                      </button>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-        
+
         {isPostOwner && (
           <div className="relative">
             <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-white hover:text-zinc-300">
@@ -394,16 +501,16 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
       {isEditingPost && (
         <div className="px-4 pb-4">
           {editTitle !== '' && (
-            <input 
-              value={editTitle} 
-              onChange={e => setEditTitle(e.target.value)} 
+            <input
+              value={editTitle}
+              onChange={e => setEditTitle(e.target.value)}
               className="w-full bg-white/[0.03] text-white text-sm font-bold p-3 rounded-lg border border-white/[0.06] mb-2 focus:border-white/20 outline-none"
               placeholder="Title"
             />
           )}
-          <textarea 
-            value={editContent} 
-            onChange={e => setEditContent(e.target.value)} 
+          <textarea
+            value={editContent}
+            onChange={e => setEditContent(e.target.value)}
             className="w-full bg-white/[0.03] text-white text-sm p-3 rounded-lg border border-white/[0.06] min-h-[100px] focus:border-white/20 outline-none mb-2"
           />
           <div className="flex justify-end gap-2">
@@ -418,7 +525,7 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
       {/* Media Carousel — Nocturnal style */}
       {post.media_urls && post.media_urls.length > 0 && (
         <div className="relative w-full bg-[#0a0a0a] flex items-center justify-center group/carousel overflow-hidden md:rounded-[1.5rem] my-0 md:my-2">
-          <div 
+          <div
             ref={scrollRef} onScroll={handleScroll}
             className="w-full max-h-[85vh] overflow-x-auto overflow-y-hidden flex snap-x snap-mandatory no-scrollbar"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -428,9 +535,9 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
                 onClick={() => setFullscreenMedia({ url, type: post.media_types?.[idx] || 'image' })}
               >
                 {post.media_types?.[idx] === 'video' ? (
-                  <FeedVideoPlayer 
-                    url={url} 
-                    isActive={idx === activeMediaIndex} 
+                  <FeedVideoPlayer
+                    url={url}
+                    isActive={idx === activeMediaIndex}
                     isMuted={isMuted}
                     onToggleMute={() => setIsMuted(!isMuted)}
                   />
@@ -463,7 +570,7 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
 
       {/* Title & Description for Text-Only posts */}
       {(!post.media_urls || post.media_urls.length === 0) && !isEditingPost && (
-        <div className="px-5 py-6 mx-3 my-2 rounded-[1.25rem]" style={{background:'linear-gradient(135deg, #1a1a1a 0%, #0e0e0e 100%)', border:'1px solid rgba(188,157,255,0.08)'}}>
+        <div className="px-5 py-6 mx-3 my-2 rounded-[1.25rem]" style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #0e0e0e 100%)', border: '1px solid rgba(188,157,255,0.08)' }}>
           {post.title && <h3 className="font-headline text-white text-xl mb-3 leading-tight">{post.title}</h3>}
           <p className="text-[#adaaaa] text-sm leading-relaxed whitespace-pre-wrap">
             {!isExpanded && post.content && post.content.length > 200 ? (
@@ -487,9 +594,9 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
       {post.quoted_post_id && (
         <div className="px-5 pb-2">
           {post.quoted_post ? (
-            <div className="rounded-[1rem] p-4 bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.03] transition-colors cursor-pointer group/quote shadow-inner relative overflow-hidden" 
+            <div className="rounded-[1rem] p-4 bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.03] transition-colors cursor-pointer group/quote shadow-inner relative overflow-hidden"
               onClick={() => {
-                 // Option to navigate or expand quoted post in future
+                // Option to navigate or expand quoted post in future
               }}>
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#bc9dff]/50"></div>
               <div className="flex flex-col gap-2">
@@ -514,9 +621,9 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
                 {post.quoted_post.media_urls && post.quoted_post.media_urls.length > 0 && (
                   <div className="mt-2 w-full h-32 rounded-lg overflow-hidden relative">
                     {post.quoted_post.media_types?.[0] === 'video' ? (
-                       <video src={post.quoted_post.media_urls[0]} className="w-full h-full object-cover pointer-events-none" />
+                      <video src={post.quoted_post.media_urls[0]} className="w-full h-full object-cover pointer-events-none" />
                     ) : (
-                       <img src={post.quoted_post.media_urls[0]} alt="Quote Media" className="w-full h-full object-cover" />
+                      <img src={post.quoted_post.media_urls[0]} alt="Quote Media" className="w-full h-full object-cover" />
                     )}
                     {post.quoted_post.media_urls.length > 1 && (
                       <div className="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[9px] text-white font-bold backdrop-blur-sm">
@@ -529,45 +636,47 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
             </div>
           ) : (
             <div className="rounded-[1rem] p-4 bg-white/[0.02] border border-[#ff4d4d]/20 shadow-inner flex items-center gap-3">
-               <AlertCircle className="w-5 h-5 text-[#ff4d4d]/60" />
-               <div>
-                  <p className="text-[#ff4d4d]/80 text-sm font-bold">Post unavailable</p>
-                  <p className="text-zinc-500 text-[11px]">This post was deleted by the author.</p>
-               </div>
+              <AlertCircle className="w-5 h-5 text-[#ff4d4d]/60" />
+              <div>
+                <p className="text-[#ff4d4d]/80 text-sm font-bold">Post unavailable</p>
+                <p className="text-zinc-500 text-[11px]">This post was deleted by the author.</p>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Interaction Bar */}
-      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+      {/* Interaction Bar - Standardized Layout */}
+      <div className="px-4 pt-4 pb-1 flex items-center justify-between">
         <div className="flex items-center gap-5">
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); onLike(); }}
-            className={`transition-all active:scale-90 group/btn`}
+            className={`transition-all active:scale-75 group/btn`}
           >
-            <Heart className={`w-6 h-6 transition-colors ${post.is_liked ? 'fill-[#ff97b8] text-[#ff97b8]' : 'text-[#adaaaa] hover:text-[#ff97b8] group-hover/btn:text-[#ff97b8]'}`} />
+            <Heart className={`w-6 h-6 transition-colors duration-300 ${post.is_liked ? 'fill-[#ff97b8] text-[#ff97b8]' : 'text-[#adaaaa] hover:text-[#ff97b8] group-hover/btn:text-[#ff97b8]'}`} />
           </button>
-          <button 
+          
+          <button
             onClick={toggleComments}
-            className="transition-all active:scale-90 text-[#adaaaa] hover:text-[#bc9dff]"
+            className="transition-all active:scale-75 text-[#adaaaa] hover:text-[#bc9dff]"
           >
             <MessageCircle className="w-6 h-6 -scale-x-100" />
           </button>
-          {!isPostOwner && onStartChat && (
-            <button 
-              onClick={(e) => { e.stopPropagation(); onStartChat(post.user_id, post); }}
-              className="transition-all active:scale-90 text-[#adaaaa] hover:text-[#bc9dff]"
-            >
-              <Send className="w-[22px] h-[22px] -mt-0.5 -rotate-[20deg]" />
-            </button>
-          )}
-          {/* Repost/Quote removed as per user request */}
+
+          <button
+            onClick={(e) => { e.stopPropagation(); onShare(post); }}
+            className="text-[#adaaaa] hover:text-[#bc9dff] active:scale-75 transition-all flex items-center justify-center group/share"
+          >
+            <Send className="w-[22px] h-[22px] -rotate-[15deg] transition-transform group-hover/share:translate-x-0.5 group-hover/share:-translate-y-0.5" />
+          </button>
         </div>
-        <div className="flex justify-center flex-1">
-        </div>
-        <button className="text-[#adaaaa] hover:text-[#bc9dff] active:scale-90 transition-all">
-          <Share2 className="w-6 h-6" />
+
+        <button
+          onClick={handleExternalShare}
+          className="text-[#adaaaa] hover:text-[#bc9dff] active:scale-75 transition-all p-1"
+          title="Share to external apps"
+        >
+          <Share2 className="w-5 h-5" />
         </button>
       </div>
 
@@ -634,7 +743,7 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
               View all {post.comments_count} {post.comments_count === 1 ? 'comment' : 'comments'}
             </button>
           ) : (
-            <button 
+            <button
               onClick={toggleComments}
               className="flex items-center gap-1.5 text-[11px] uppercase font-bold text-[#bc9dff] tracking-wider hover:text-white transition-colors"
             >
@@ -647,22 +756,22 @@ function PostCard({ post, onLike, fetchComments, activeComments, loadingComments
 
       {/* Inline Add Comment */}
       <form onSubmit={handleAddComment} className="px-4 mt-1 pb-2 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full overflow-hidden shrink-0" style={{border:'1px solid rgba(188,157,255,0.2)'}}>
+        <div className="w-7 h-7 rounded-full overflow-hidden shrink-0" style={{ border: '1px solid rgba(188,157,255,0.2)' }}>
           {user?.user_metadata?.avatar_url ? (
             <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full primary-gradient flex items-center justify-center text-[9px] text-white font-bold uppercase">{user?.user_metadata?.name?.[0] || 'U'}</div>
           )}
         </div>
-        <input 
-          type="text" 
+        <input
+          type="text"
           placeholder="Add a comment..."
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
           className="flex-1 bg-transparent text-[13px] text-white placeholder-[#adaaaa] outline-none"
         />
         {commentText.trim() && (
-          <button 
+          <button
             type="submit"
             disabled={submitting}
             className="text-[#bc9dff] font-bold text-[13px] px-1 disabled:opacity-50 transition-opacity"
@@ -722,7 +831,7 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
 
   useEffect(() => {
     if (!videoRef.current) return
-    
+
     if (isActive) {
       const playPromise = videoRef.current.play()
       if (playPromise !== undefined) {
@@ -743,7 +852,7 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
     setIsLoading(true)
     setRetryCount(prev => prev + 1)
     if (videoRef.current) {
-       videoRef.current.load()
+      videoRef.current.load()
     }
   }
 
@@ -766,12 +875,12 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
           <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
         </div>
       )}
-      
+
       {hasError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/60 px-6 text-center">
           <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
           <p className="text-white text-sm font-bold mb-2">Video couldn't load</p>
-          <button 
+          <button
             onClick={handleRetry}
             className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white text-xs font-bold transition-all border border-white/10"
           >
@@ -781,13 +890,13 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
         </div>
       )}
 
-      <video 
+      <video
         ref={videoRef}
         key={`${url}-${retryCount}`}
-        src={url} 
-        muted={isMuted} 
-        loop 
-        playsInline 
+        src={url}
+        muted={isMuted}
+        loop
+        playsInline
         onLoadedData={() => { setIsLoading(false); setHasError(false); }}
         onCanPlay={() => { setIsLoading(false); setHasError(false); }}
         onPlaying={() => { setIsLoading(false); setHasError(false); setIsPlaying(true); }}
@@ -803,10 +912,10 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
         }}
         preload="auto"
         onClick={togglePlay}
-        className={`w-full h-auto max-h-[85vh] object-contain cursor-pointer transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`} 
+        className={`w-full h-auto max-h-[85vh] object-contain cursor-pointer transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       />
-      
-      <button 
+
+      <button
         onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
         className="absolute bottom-4 right-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-all z-20 shadow-xl border border-white/10 flex items-center justify-center"
         title={isMuted ? "Unmute" : "Mute"}
@@ -819,13 +928,13 @@ function FeedVideoPlayer({ url, isActive, isMuted, onToggleMute }: { url: string
       </button>
 
       {/* Play/Pause indicator overlay */}
-      <div 
+      <div
         onClick={togglePlay}
         className={`absolute inset-0 flex items-center justify-center transition-all duration-300 cursor-pointer ${isPlaying ? 'opacity-0 pointer-events-none scale-110' : 'opacity-100 bg-black/10'}`}
       >
-         <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl">
-            <Play className="w-8 h-8 text-white fill-white" />
-         </div>
+        <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl">
+          <Play className="w-8 h-8 text-white fill-white" />
+        </div>
       </div>
     </div>
   )

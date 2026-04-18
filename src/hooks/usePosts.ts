@@ -105,7 +105,7 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
             profiles:profiles!posts_user_id_fkey(name, avatar_url, role)
           )
         `)
-        .limit(15) // Pagination: Limit initial fetch
+        .limit(50) // Higher limit for ranking
 
       if (filterUserId) {
         query = query.eq('user_id', filterUserId)
@@ -143,15 +143,35 @@ export function usePosts(filterUserId?: string, filterRole?: string) {
           is_liked: likedPostIds.has(p.id),
           media_urls: Array.isArray(p.media_urls) ? p.media_urls : [],
           media_types: Array.isArray(p.media_types) ? p.media_types : [],
-          quoted_post
         }
       })
 
-      setPosts(formatted)
+      // Ranking Algorithm (Hot Score)
+      // Score = (Likes * 5) + (Comments * 10) + (RecencyBonus)
+      // RecencyBonus decays over 48 hours
+      const now = Date.now()
+      const ranked = formatted.sort((a, b) => {
+        if (filterUserId) return 0 // Don't rank on individual journey, keep chronological
+
+        const getScore = (p: Post) => {
+          const ageHours = (now - new Date(p.created_at).getTime()) / (1000 * 60 * 60)
+          const engagement = (p.likes_count * 5) + (p.comments_count * 10)
+          
+          // Exponential decay: newer posts get a massive boost that fades
+          const recencyBoost = Math.max(0, 50 - ageHours) * 2 
+          return engagement + recencyBoost
+        }
+        return getScore(b) - getScore(a)
+      })
+
+      setPosts(ranked)
       setNewPostsCount(0) // Reset count on full refresh
       if (!filterUserId) {
         localStorage.setItem('tech_feed_cache', JSON.stringify(formatted))
       }
+
+      // Heartbeat: notify other components that we've refreshed
+      window.dispatchEvent(new CustomEvent('app:refresh', { detail: { source: 'usePosts' } }))
     } catch (err) {
       console.error('Error fetching posts:', err)
     } finally {

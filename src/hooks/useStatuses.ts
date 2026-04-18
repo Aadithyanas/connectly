@@ -25,6 +25,18 @@ export function useStatuses() {
   const { user } = useAuth()
   const supabase = createClient()
 
+  // Hydrate from cache on mount
+  useEffect(() => {
+    if (user) {
+      try {
+        const savedMy = localStorage.getItem(`my_statuses_${user.id}`)
+        const savedPartner = localStorage.getItem(`partner_statuses_${user.id}`)
+        if (savedMy) setMyStatuses(JSON.parse(savedMy))
+        if (savedPartner) setPartnerStatuses(JSON.parse(savedPartner))
+      } catch (e) {}
+    }
+  }, [user])
+
   const fetchStatuses = useCallback(async () => {
     if (!user) return
 
@@ -63,6 +75,13 @@ export function useStatuses() {
 
     setMyStatuses(mine)
     setPartnerStatuses(othersGrouped)
+    
+    // Save to cache only if we have data to keep it from clearing on accidental empty fetch
+    if (user?.id && (mine.length > 0 || Object.keys(othersGrouped).length > 0)) {
+      localStorage.setItem(`my_statuses_${user.id}`, JSON.stringify(mine))
+      localStorage.setItem(`partner_statuses_${user.id}`, JSON.stringify(othersGrouped))
+    }
+
     setLoading(false)
   }, [supabase, user])
 
@@ -71,6 +90,11 @@ export function useStatuses() {
 
     // Initial fetch
     fetchStatuses()
+
+    // Loading fail-safe timeout
+    const timeoutId = setTimeout(() => {
+      setLoading(false)
+    }, 8000)
 
     // Polling setup
     let intervalId: NodeJS.Timeout
@@ -95,11 +119,18 @@ export function useStatuses() {
       startPolling()
     }
 
+    const handleAppRefresh = () => {
+      fetchStatuses()
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('app:refresh', handleAppRefresh)
 
     return () => {
       clearInterval(intervalId)
+      clearTimeout(timeoutId)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('app:refresh', handleAppRefresh)
     }
   }, [fetchStatuses, user])
 

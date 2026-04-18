@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { X, Camera, Edit2, Check, User, Users, ShieldCheck, LogOut, Trash2, Mail, Info, Briefcase, GraduationCap, Globe, Link, Signal, Building2, BookOpen, Rocket, Play, Plus, Trophy } from 'lucide-react'
+import { X, Camera, Edit2, Check, User, Users, ShieldCheck, LogOut, Trash2, Mail, Info, Briefcase, GraduationCap, Globe, Link, Signal, Building2, BookOpen, Rocket, Play, Plus, Trophy, Download } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useIsUserOnline } from '@/hooks/useOnlineStatus'
 import { useAuth } from '@/context/AuthContext'
 import { useConnections } from '@/hooks/useConnections'
 import ConnectionsModal from './ConnectionsModal'
+import { usePWAInstall } from '@/hooks/usePWAInstall'
 
 interface InfoSidebarProps {
   isOpen: boolean
@@ -19,6 +20,8 @@ interface InfoSidebarProps {
 }
 
 export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }: InfoSidebarProps) {
+  const { isInstallable, installApp } = usePWAInstall()
+  const [showPwaBanner, setShowPwaBanner] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(data?.name || '')
   const [bio, setBio] = useState(data?.bio || '')
@@ -780,6 +783,7 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
                         </button>
                       </div>
                     )}
+
                   </>
                 )}
 
@@ -1048,14 +1052,49 @@ export default function InfoSidebar({ isOpen, onClose, type, data, onViewPosts }
               {/* Danger Zone */}
               <div className="pt-8 pb-40 space-y-4">
                 {type === 'profile' && (
-                  <button 
-                    onClick={handleLogout}
-                    disabled={loading}
-                    className="w-full flex items-center gap-4 p-4 text-red-400 hover:bg-red-500/[0.05] rounded-xl transition-all font-medium border border-red-500/10 group disabled:opacity-50"
-                  >
-                    <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                    <span className="text-sm">{loading ? 'Logging out...' : 'Logout Account'}</span>
-                  </button>
+                  <>
+                    <button 
+                      onClick={handleLogout}
+                      disabled={loading}
+                      className="w-full flex items-center gap-4 p-4 text-red-400 hover:bg-red-500/[0.05] rounded-xl transition-all font-medium border border-red-500/10 group disabled:opacity-50"
+                    >
+                      <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm">{loading ? 'Logging out...' : 'Logout Account'}</span>
+                    </button>
+
+                    {isInstallable && showPwaBanner && (
+                      <div className="mt-8 pt-6 border-t border-white/[0.04] animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-gradient-to-br from-[#bc9dff]/10 to-white/[0.02] rounded-2xl p-5 border border-[#bc9dff]/20 relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform pointer-events-none">
+                            <Download className="w-16 h-16 text-[#bc9dff]" />
+                          </div>
+                          
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setShowPwaBanner(false); }} 
+                            className="absolute top-3 right-3 p-1.5 bg-black/40 hover:bg-black/60 rounded-full text-zinc-400 hover:text-white transition-colors z-20 backdrop-blur-md"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+
+                          <div className="relative z-10 pr-8">
+                            <h4 className="text-white text-sm font-bold mb-1.5 flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#bc9dff] animate-pulse" />
+                              Install Connectly
+                            </h4>
+                            <p className="text-[12px] text-zinc-400 mb-4 leading-relaxed max-w-[200px]">
+                              Add to your home screen for a premium standalone experience.
+                            </p>
+                            <button 
+                              onClick={installApp}
+                              className="px-5 py-2.5 rounded-xl bg-[#bc9dff] text-black text-[11px] font-bold tracking-wide hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(188,157,255,0.4)]"
+                            >
+                              Launch Desktop App
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
                 {type === 'contact' && (
                   <button className="w-full flex items-center gap-4 p-4 text-red-400 hover:bg-red-500/[0.05] rounded-xl transition-all font-medium border border-red-500/10 group">

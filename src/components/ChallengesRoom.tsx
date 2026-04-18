@@ -15,6 +15,7 @@ export default function ChallengesRoom({ onSessionChange }: ChallengesRoomProps)
   const [solutions, setSolutions] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedChallenge, setSelectedChallenge] = useState<any>(null)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const { user, loading: authLoading } = useAuth()
   const supabase = createClient()
 
@@ -29,15 +30,61 @@ export default function ChallengesRoom({ onSessionChange }: ChallengesRoomProps)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
+    if (user) {
+      try {
+        const saved = localStorage.getItem(`arena_challenges_${user.id}`)
+        if (saved) {
+          setChallenges(JSON.parse(saved))
+          setLoading(false)
+          setIsInitialLoading(false)
+        }
+      } catch (e) {}
+    }
+  }, [user])
+
+  useEffect(() => {
+    // Fail-safe to hide skeletons after 8 seconds
+    const timeoutId = setTimeout(() => {
+      setLoading(false)
+      setIsInitialLoading(false)
+    }, 8000)
+
+    return () => clearTimeout(timeoutId)
+  }, [])
+
+  useEffect(() => {
     if (!authLoading) {
       setPage(1)
       fetchChallenges(1, true)
     }
   }, [user, authLoading, activeDifficulty, activeCategory])
 
+  // Foreground refresh logic
+  useEffect(() => {
+    if (authLoading || !user) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchChallenges(1, true)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    const handleAppRefresh = () => {
+      fetchChallenges(1, true)
+    }
+    window.addEventListener('app:refresh', handleAppRefresh)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('app:refresh', handleAppRefresh)
+    }
+  }, [user, authLoading, activeDifficulty, activeCategory, searchQuery])
+
   const fetchChallenges = async (pageNum = 1, reset = false) => {
     if (authLoading) return
-    setLoading(true)
+    if (reset && !isInitialLoading) setLoading(true)
     try {
       const url = new URL('/api/challenges/list', window.location.origin)
       url.searchParams.append('page', pageNum.toString())
@@ -52,6 +99,11 @@ export default function ChallengesRoom({ onSessionChange }: ChallengesRoomProps)
       setChallenges(prev => reset ? newChallenges : [...prev, ...newChallenges])
       setHasMore(data.hasMore)
       
+      // Save to cache
+      if (user && reset && newChallenges.length > 0) {
+        localStorage.setItem(`arena_challenges_${user.id}`, JSON.stringify(newChallenges))
+      }
+
       if (user) {
         const { data: solData } = await supabase
           .from('challenge_solutions')
@@ -60,8 +112,10 @@ export default function ChallengesRoom({ onSessionChange }: ChallengesRoomProps)
         
         if (solData) setSolutions(solData.map((s: any) => s.challenge_id))
       }
+      setIsInitialLoading(false)
     } catch (err) {
       console.error('🏟️ Arena: Fetch Failed:', err)
+      setIsInitialLoading(false)
     } finally {
       setLoading(false)
     }

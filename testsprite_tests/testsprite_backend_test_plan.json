@@ -1,0 +1,32 @@
+[
+  {
+    "id": "TC001",
+    "title": "test_landing_page_accessibility",
+    "description": "Verify that the landing page at / loads correctly without authentication and displays the hero section and features overview."
+  },
+  {
+    "id": "TC002",
+    "title": "test_onboarding_profile_setup_validation",
+    "description": "Verify that the onboarding page at /onboarding requires authentication and enforces validation for required fields such as display name and role before allowing profile submission."
+  },
+  {
+    "id": "TC003",
+    "title": "test_realtime_discovery_feed_post_filtering",
+    "description": "Verify that the /chat page displays the real-time discovery feed, allows filtering posts by user, and enables starting a direct chat from a post."
+  },
+  {
+    "id": "TC004",
+    "title": "test_instant_messaging_send_text_and_media",
+    "description": "Verify that users can send text messages and media attachments in direct or group chats on the /chat page, and that message delivery status is updated accordingly."
+  },
+  {
+    "id": "TC005",
+    "title": "test_status_updates_viewing",
+    "description": "Verify that users can view the list of temporary status updates on the /chat page and open a specific status to see full content and author details."
+  },
+  {
+    "id": "TC006",
+    "title": "test_challenges_arena_active_challenges_listing",
+    "description": "Verify that users can enter the challenges room from /chat, view the list of active coding or technical challenges, and open a challenge to see its details."
+  }
+]

@@ -1,0 +1,100 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js
+  - React
+  - Supabase (Auth, DB, Realtime, Storage)
+  - Framer Motion
+  - Tailwind CSS
+  - Lucide React
+  - Cloudinary (Media hosting)
+  - MongoDB
+routes:
+  - path: /
+    file: src/app/page.tsx
+    auth_required: false
+    description: Landing page with hero and features overview.
+  - path: /login
+    file: src/app/login/page.tsx
+    auth_required: false
+    description: User login page with Google Auth.
+  - path: /chat
+    file: src/app/chat/page.tsx
+    auth_required: true
+    description: Main dashboard containing Feed, Chat, Groups, Status, and Challenges.
+  - path: /onboarding
+    file: src/app/onboarding/page.tsx
+    auth_required: true
+    description: User onboarding flow to set up profile.
+features:
+  - name: User Authentication
+    description: Login using Google OAuth via Supabase.
+    files:
+      - src/app/login/page.tsx
+      - src/context/AuthContext.tsx
+    entry_route: /login
+    user_interactions:
+      - Click "Get Started" or "Google login" button
+      - Complete Google OAuth flow
+    api_calls:
+      - method: POST
+        endpoint: /auth/v1/authorize
+    auth_required: false
+  - name: Real-time Discovery Feed
+    description: Browse and interact with posts from industry professionals.
+    files:
+      - src/app/chat/page.tsx
+      - src/components/DiscoveryFeed.tsx
+    entry_route: /chat
+    user_interactions:
+      - Scroll through the feed
+      - Filter posts by user
+      - Click on a post to start a direct chat
+    api_calls:
+      - method: GET
+        endpoint: /api/posts
+    auth_required: true
+  - name: Instant Messaging
+    description: Real-time direct and group messaging with media support.
+    files:
+      - src/app/chat/page.tsx
+      - src/components/ChatSidebar.tsx
+      - src/components/ChatWindow.tsx
+    entry_route: /chat
+    user_interactions:
+      - Select a chat from the sidebar
+      - Type and send messages
+      - Upload and send media attachments
+      - View message delivery status
+    api_calls:
+      - method: POST
+        endpoint: /api/messages
+    auth_required: true
+  - name: Status Updates
+    description: Post and view temporary updates.
+    files:
+      - src/components/StatusTab.tsx
+      - src/components/StatusViewer.tsx
+      - src/hooks/useStatuses.ts
+    entry_route: /chat
+    user_interactions:
+      - View list of status updates
+      - Click to view a specific status
+    api_calls:
+      - method: GET
+        endpoint: /api/statuses
+    auth_required: true
+  - name: Challenges Arena
+    description: Participate in coding or technical challenges.
+    files:
+      - src/components/ChallengesRoom.tsx
+    entry_route: /chat
+    user_interactions:
+      - Enter the challenges room
+      - View active challenges
+    api_calls:
+      - method: GET
+        endpoint: /api/challenges
+    auth_required: true
+known_limitations: []
